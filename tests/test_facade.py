@@ -71,49 +71,49 @@ def get_test_df():
 # ``````````````````````````````````````````````````````````````````````````````````````````````````
 
 @pytest.mark.parametrize("no_mp", [True, False])
-def test_BayesDBCrossCat_init_crash(bdb_file, no_mp):
-    facade.BayesDBCrossCat(bdb_file.name, no_mp=no_mp)
+def test_BayesDBClient_init_crash(bdb_file, no_mp):
+    facade.BayesDBClient(bdb_file.name, no_mp=no_mp)
 
 
 @pytest.mark.parametrize("no_mp", [True, False])
-def test_BayesDBCrossCat_init_csv_crash(bdb_file, csv_data, no_mp):
+def test_BayesDBClient_init_csv_crash(bdb_file, csv_data, no_mp):
     table_name = 'tmp_table'
     f_csv, _ = csv_data
-    facade.BayesDBCrossCat.from_csv(bdb_file.name, table_name, f_csv, no_mp=no_mp)
+    facade.BayesDBClient.from_csv(bdb_file.name, table_name, f_csv, no_mp=no_mp)
 
 
 @pytest.mark.parametrize("no_mp", [True, False])
-def test_BayesDBCrossCat_init_csv_with_codebook_crash(bdb_file, csv_data, no_mp):
+def test_BayesDBClient_init_csv_with_codebook_crash(bdb_file, csv_data, no_mp):
     table_name = 'tmp_table'
     f_csv, f_codebook = csv_data
-    facade.BayesDBCrossCat.from_csv(bdb_file.name, table_name, f_csv,
-                                    csv_code_filename=f_codebook, no_mp=no_mp)
+    facade.BayesDBClient.from_csv(bdb_file.name, table_name, f_csv,
+                                    codebook_filename=f_codebook, no_mp=no_mp)
 
 
 @pytest.mark.parametrize("no_mp", [True, False])
-def test_BayesDBCrossCat_init_pandas_with_codebook_crash(bdb_file, csv_data, no_mp):
+def test_BayesDBClient_init_pandas_with_codebook_crash(bdb_file, csv_data, no_mp):
     table_name = 'tmp_table'
     pandas_df = get_test_df()
     f_csv, f_codebook = csv_data
-    facade.BayesDBCrossCat.from_pandas(bdb_file.name, table_name, pandas_df,
-                                       csv_code_filename=f_codebook, no_mp=no_mp)
+    facade.BayesDBClient.from_pandas(bdb_file.name, table_name, pandas_df,
+                                       codebook_filename=f_codebook, no_mp=no_mp)
 
 
 @pytest.mark.parametrize("no_mp", [True, False])
-def test_BayesDBCrossCat_init_pandas_crash(bdb_file, no_mp):
+def test_BayesDBClient_init_pandas_crash(bdb_file, no_mp):
     table_name = 'tmp_table'
     pandas_df = get_test_df()
 
-    facade.BayesDBCrossCat.from_pandas(bdb_file.name, table_name, pandas_df, no_mp=no_mp)
+    facade.BayesDBClient.from_pandas(bdb_file.name, table_name, pandas_df, no_mp=no_mp)
 
 
 # make sure that the to_df method is handling numeric values
 @pytest.mark.parametrize("no_mp", [True, False])
-def test_BayesDBCrossCat_query_numeric_output(bdb_file, no_mp):
+def test_BayesDBClient_query_numeric_output(bdb_file, no_mp):
     table_name = 'tmp_table'
     pandas_df = get_test_df()
 
-    client = facade.BayesDBCrossCat.from_pandas(bdb_file.name, table_name, pandas_df, no_mp=no_mp)
+    client = facade.BayesDBClient.from_pandas(bdb_file.name, table_name, pandas_df, no_mp=no_mp)
     res = client.query('SELECT age FROM {} WHERE division = accounting'.format(table_name))
     assert isinstance(res, facade.BQLQueryResult)
     assert res.__dict__['_df'] is None
@@ -127,11 +127,11 @@ def test_BayesDBCrossCat_query_numeric_output(bdb_file, no_mp):
 
 # make sure that to_df is handling string values
 @pytest.mark.parametrize("no_mp", [True, False])
-def test_BayesDBCrossCat_query_string_output(bdb_file, no_mp):
+def test_BayesDBClient_query_string_output(bdb_file, no_mp):
     table_name = 'tmp_table'
     pandas_df = get_test_df()
 
-    client = facade.BayesDBCrossCat.from_pandas(bdb_file.name, table_name, pandas_df, no_mp=no_mp)
+    client = facade.BayesDBClient.from_pandas(bdb_file.name, table_name, pandas_df, no_mp=no_mp)
     res = client.query('SELECT gender FROM {} WHERE height = 73 ORDER BY RANK DESC'.format(table_name))
     assert isinstance(res, facade.BQLQueryResult)
     assert res.__dict__['_df'] is None
