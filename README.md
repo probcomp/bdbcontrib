@@ -3,10 +3,10 @@
 
  **Requires**
 
- - Matplotlib
- - Seaborn
- - Pandas
- - numpy
+- Matplotlib
+- Seaborn
+- Pandas
+- numpy
 
  ## CrossCat wrapper
 
@@ -14,8 +14,8 @@
 import bdbcontrib.facade
 
 # load data from csv
-lient = facade.BayesDBClient.from_csv('my_database.bdb', 'my_table', 'data.csv', 
-                                      csv_code_filename='codebook.csv')
+client = facade.BayesDBClient.from_csv('my_database.bdb', 'my_table', 'data.csv', 
+                                        csv_code_filename='codebook.csv')
 
 # Intialize and analyze models
 client('INITIALIZE 10 MODELS FOR my_table')
@@ -24,13 +24,13 @@ client('ANALYZE my_table FOR 100 ITERATIONS WAIT')
 
 Do a query and get the results as a pandas DataFrame
 ``` python
-df = cc_client('SELECT column_0 from my_table').as_df()
+df = client('SELECT column_0 from my_table').as_df()
 ```
 
-Render a vizualization of a given crosscat state
+Render a vizualization of a given crosscat state, hilighting the `age` column in blue
 ``` python
 import matplotlib.pyplot as plt
-cc_client.plot_state('my_table', 0)
+client.plot_state('my_table', 0, hilight_cols=['age'], hilight_cols_colors=['blue'] )
 plt.show()
  ```
 
@@ -41,22 +41,6 @@ plt.show()
 - Categorical-Numerical: **Violin plot**
 - Categorical-Categorical: **Heatmap**
 
-## Example `draw_state`
-Render a visualization of a Crosscat state hilighting the 'age' column in blue
-
-```python
-from bdbcontrib.draw_cc_state import daw_state
-modelno = 0
-draw_state(client.bdb, 'my_table', modelno, hilight_cols=['age'], hilight_cols_colors=['red'])
-```
-
-View the 'blank state'---the raw data without any Crosscat structure
-
-```python
-modelno = 0
-draw_state(client.bdb, 'my_table', modelno, blank_state=True, 
-           hilight_cols=['age'], hilight_cols_colors=['red'])
-```
 
 ### Example `pairplot`
 Plot data straight from the table:
