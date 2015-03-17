@@ -50,7 +50,7 @@ def conv_categorical_vals_to_numeric(bdb, bdb_table_name, data_srs):
     return np.array(values, dtype=float), unique_vals, lookup
 
 
-# STUB
+# FIXME: STUB
 def prep_plot_df(bdb, table_name, data_df, var_names, vartypes):
     return data_df[list(var_names)]
 
@@ -85,7 +85,8 @@ def do_heatmap(bdb, table_name, plot_df, vartypes, ax=None):
     bins_y = len(uvals_y)
 
     hst, _, _ = np.histogram2d(vals_y, vals_x, bins=[bins_y, bins_x])
-    ax.matshow(hst, aspect='auto', origin='lower', cmap='Blues')
+    cmap = 'PuBu'
+    ax.matshow(hst, aspect='auto', origin='lower', cmap=cmap)
     ax.grid(b=False)
     ax.set_xticks(range(bins_x))
     ax.set_yticks(range(bins_y))
@@ -155,7 +156,42 @@ def do_pair_plot(bdb, table_name, plot_df, vartypes, ax=None):
     return ax
 
 
-def pairplot_cols(bdb, table_name, data_df, use_shortname=False):
+def zmatrix(data_df, clustermap_kws=None):
+    """
+    Plots a clustermap from and ESTIMATE PAIRWISE query.
+    Args:
+        - data_df (pandas.DataFrame): The result of the query in pandas form.
+    Kwargs:
+        - clustermap_kws (dict): kwargs for seaborn.clustermap. See seaborn
+        documentation. Of particular importance is the pivot_kws kwarg. pivot_kws
+        is a dict with entries index, column, and values that let clustermap know
+        how to reshape the data. If the query does not follow the standard
+        ESTIMATE PAIRWISE output, it may be necessary to define pivot_kws
+    """
+    if clustermap_kws is None:
+        clustermap_kws = {}
+
+    if clustermap_kws.get('pivot_kws', None) is None:
+        # XXX: If the user doesnt tell us otherwise, we assume that this comes
+        # fom a standard estimate pairwise query, which outputs columns
+        # (table_id, col0, col1, value). The indices are indexed from the back
+        # because it will also handle the no-table_id case
+        pivot_kws = {
+            'index': data_df.columns[-3],
+            'columns': data_df.columns[-2],
+            'values': data_df.columns[-1],
+        }
+        clustermap_kws['pivot_kws'] = pivot_kws
+
+    if clustermap_kws.get('cmap', None) is None:
+        # Choose a soothing blue colormap
+        clustermap_kws['cmap'] = 'PuBu'
+
+    return sns.clustermap(data_df, **clustermap_kws)
+
+
+# TODO: bdb, and table_name should be optional arguments
+def pairplot(bdb, table_name, df, use_shortname=False):
     """
     Plots the columns in data_df in a facet grid.
     - categorical-categorical pairs are displayed as a heatmap
@@ -169,6 +205,8 @@ def pairplot_cols(bdb, table_name, data_df, use_shortname=False):
     # - who knows what the columns are named. What is the user selects columns
     #   as shortname?
     # where to handle dropping NaNs? Missing values may be informative.
+
+    data_df = df.dropna()
 
     n_vars = data_df.shape[1]
     plt_grid = gridspec.GridSpec(n_vars, n_vars)
@@ -246,12 +284,12 @@ if __name__ == '__main__':
     df = cc_client('SELECT one_n, zero_5, five_c, four_8 FROM plottest').as_df()
 
     plt.figure(tight_layout=True, facecolor='white')
-    pairplot_cols(cc_client.bdb, 'plottest', df, use_shortname=False)
+    pairplot(cc_client.bdb, 'plottest', df, use_shortname=False)
     plt.show()
 
     df = cc_client('SELECT three_n + one_n, three_n * one_n,'
                    ' zero_5 || four_8 FROM plottest').as_df()
 
     plt.figure(tight_layout=True, facecolor='white')
-    pairplot_cols(cc_client.bdb, 'plottest', df, use_shortname=False)
+    pairplot(cc_client.bdb, 'plottest', df, use_shortname=False)
     plt.show()
