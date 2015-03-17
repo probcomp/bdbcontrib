@@ -455,12 +455,12 @@ if __name__ == "__main__":
 
     input_df = pd.DataFrame(T, columns=['col_%i' % i for i in range(num_cols)])
 
-    cc_client = facade.BayesDBCrossCat.from_pandas('plttest.bdb', table_name, input_df)
-    cc_client('initialize 4 models for {}'.format(table_name))
-    cc_client('analyze {} for 10 iterations wait'.format(table_name))
+    client = facade.BayesDBClient.from_pandas('plttest.bdb', table_name, input_df)
+    client('initialize 4 models for {}'.format(table_name))
+    client('analyze {} for 10 iterations wait'.format(table_name))
 
     plt.figure(facecolor='white', tight_layout=False)
-    ax = draw_state(cc_client.bdb, 'plottest', 0, separator_width=1,
+    ax = draw_state(client.bdb, 'plottest', 0, separator_width=1,
                     separator_color=(0., 0., 1., 1.), short_names=False,
                     nan_color=(1, .15, .25, 1.))
     plt.show()
