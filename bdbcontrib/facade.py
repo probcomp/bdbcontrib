@@ -1,6 +1,7 @@
 
 import pandas as pd
 import bayeslite
+import bayeslite.crosscat
 import bayeslite.bql as bql
 from bdbcontrib import draw_cc_state
 from crosscat.LocalEngine import LocalEngine
@@ -36,6 +37,7 @@ class BQLQueryResult(object):
     def __init__(self, bdb, bql_query):
         self.bql_query = bql_query
         self._df = None
+        self._bdb = bdb
 
         phrases = bayeslite.parse.parse_bql_string(bql_query)
         phrase = phrases.next()
@@ -52,7 +54,8 @@ class BQLQueryResult(object):
     def as_df(self):
         """ Returns the query result as a dataframe."""
         if self._df is None:
-            self._df = cursor_to_df(self._cursor)
+            with self._bdb.savepoint():
+                self._df = cursor_to_df(self._cursor)
         return self._df
 
     def as_cursor(self):
@@ -73,14 +76,15 @@ def do_query(bdb, bql_query):
     return BQLQueryResult(bdb, bql_query)
 
 
-class BayesDBCrossCat(object):
+# ``````````````````````````````````````````````````````````````````````````````````````````````````
+class BayesDBClient(object):
     """
     """
     def __init__(self, bdb_filename, no_mp=False):
         if no_mp:
-            self.engine = LocalEngine()
+            self.engine = bayeslite.crosscat.CrosscatEngine(LocalEngine())
         else:
-            self.engine = MultiprocessingEngine()
+            self.engine = bayeslite.crosscat.CrosscatEngine(MultiprocessingEngine())
 
         if bdb_filename is None:
             print "WARNING: bdb_filename is None, all analyses will be conducted in memory"
@@ -94,48 +98,48 @@ class BayesDBCrossCat(object):
         return self.query(bql_query_str)
 
     @classmethod
-    def from_csv(cls, bdb_filename, table_name, csv_data_filename, csv_code_filename=None,
+    def from_csv(cls, bdb_filename, btable_name, csv_filename, codebook_filename=None,
                  no_mp=False, column_types=None, ifnotexists=False):
         """
         Initilize table using a csv file.
         """
         self = cls(bdb_filename, no_mp=no_mp)
-        self.add_table_from_csv(table_name, csv_data_filename, column_types=column_types,
+        self.add_table_from_csv(btable_name, csv_filename, column_types=column_types,
                                 ifnotexists=False)
-        if csv_code_filename is not None:
-            self.add_codebook_to_table(table_name, csv_code_filename)
+        if codebook_filename is not None:
+            self.add_codebook_to_table(btable_name, codebook_filename)
         return self
 
     @classmethod
-    def from_pandas(cls, bdb_filename, table_name, pandas_df, csv_code_filename=None, no_mp=False,
+    def from_pandas(cls, bdb_filename, btable_name, pandas_df, codebook_filename=None, no_mp=False,
                     column_types=None, ifnotexists=False):
         """
         Initialize table using a pandas df.
         """
         self = cls(bdb_filename, no_mp=no_mp)
-        self.add_table_from_pandas(table_name, pandas_df, column_types=column_types,
+        self.add_table_from_pandas(btable_name, pandas_df, column_types=column_types,
                                    ifnotexists=False)
-        if csv_code_filename is not None:
-            self.add_codebook_to_table(table_name, csv_code_filename)
+        if codebook_filename is not None:
+            self.add_codebook_to_table(btable_name, codebook_filename)
         return self
 
-    def add_table_from_csv(self, table_name, csv_data_filename, csv_code_filename=None,
+    def add_table_from_csv(self, btable_name, csv_filename, codebook_filename=None,
                            column_types=None, ifnotexists=False):
-        bayeslite.bayesdb_import_csv_file(self.bdb, table_name, csv_data_filename,
+        bayeslite.bayesdb_import_csv_file(self.bdb, btable_name, csv_filename,
                                           column_types=column_types, ifnotexists=ifnotexists)
 
-    def add_table_from_pandas(self, table_name, pandas_df, csv_code_filename=None,
+    def add_table_from_pandas(self, btable_name, pandas_df, codebook_filename=None,
                               column_types=None, ifnotexists=False):
-        bayeslite.bayesdb_import_pandas_df(self.bdb, table_name, pandas_df,
+        bayeslite.bayesdb_import_pandas_df(self.bdb, btable_name, pandas_df,
                                            column_types=column_types)
 
-    def add_codebook_to_table(self, table_name, csv_code_filename):
-        bayeslite.bayesdb_import_codebook_csv_file(self.bdb, table_name, csv_code_filename)
+    def add_codebook_to_table(self, btable_name, codebook_filename):
+        bayeslite.bayesdb_import_codebook_csv_file(self.bdb, btable_name, codebook_filename)
 
     def query(self, bql_query):
         """ Do query; return BQLQueryResult """
         return do_query(self.bdb, bql_query)
 
-    def plot_state(self, table_name, modelno, **kwargs):
+    def plot_state(self, btable_name, modelno, **kwargs):
         """ Render a visualization of the crosscat state of a given model """
-        return draw_cc_state.draw_state(self.bdb, table_name, modelno, **kwargs)
+        return draw_cc_state.draw_state(self.bdb, btable_name, modelno, **kwargs)
