@@ -140,6 +140,6 @@ class BayesDBClient(object):
         """ Do query; return BQLQueryResult """
         return do_query(self.bdb, bql_query)
 
-    def plot_state(self, btable_name, modelno, **kwargs):
+    def drawstate(self, btable_name, modelno, **kwargs):
         """ Render a visualization of the crosscat state of a given model """
         return draw_cc_state.draw_state(self.bdb, btable_name, modelno, **kwargs)

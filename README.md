@@ -1,14 +1,15 @@
 # `bdbcontrib`
- A set of convenience utilities for BayesDB (SQLite backend)
 
- **Requires**
+A set of convenience utilities for BayesDB (SQLite backend)
+
+**Requires**
 
 - Matplotlib
 - Seaborn
 - Pandas
 - numpy
 
- ## CrossCat wrapper
+## CrossCat wrapper
 
  ```python
 import bdbcontrib.facade
@@ -30,7 +31,7 @@ df = client('SELECT column_0 from my_table').as_df()
 Render a vizualization of a given crosscat state, hilighting the `age` column in blue
 ``` python
 import matplotlib.pyplot as plt
-client.plot_state('my_table', 0, hilight_cols=['age'], hilight_cols_colors=['blue'] )
+client.drawstate('my_table', 0, hilight_cols=['age'], hilight_cols_colors=['blue'] )
 plt.show()
  ```
 
