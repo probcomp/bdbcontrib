@@ -1,4 +1,3 @@
-import time
 import pytest
 from bdbcontrib import facade
 import tempfile
@@ -17,7 +16,7 @@ CSV_DATA = '''age,gender,salary,height,division,rank
 '''
 
 
-CODEBOOK_DATA = '''column_label,short_name,description,value_map
+CODEBOOK_DATA = '''name,shortname,description,value_map
 age,age,age in people years,NaN
 gender,gender,not to be confused with sex,NaN
 salary,"salary, dh",yearly salary in doll hairs,NaN
@@ -87,7 +86,7 @@ def test_BayesDBClient_init_csv_with_codebook_crash(bdb_file, csv_data, no_mp):
     table_name = 'tmp_table'
     f_csv, f_codebook = csv_data
     facade.BayesDBClient.from_csv(bdb_file.name, table_name, f_csv,
-                                    codebook_filename=f_codebook, no_mp=no_mp)
+                                  codebook_filename=f_codebook, no_mp=no_mp)
 
 
 @pytest.mark.parametrize("no_mp", [True, False])
@@ -96,7 +95,7 @@ def test_BayesDBClient_init_pandas_with_codebook_crash(bdb_file, csv_data, no_mp
     pandas_df = get_test_df()
     f_csv, f_codebook = csv_data
     facade.BayesDBClient.from_pandas(bdb_file.name, table_name, pandas_df,
-                                       codebook_filename=f_codebook, no_mp=no_mp)
+                                     codebook_filename=f_codebook, no_mp=no_mp)
 
 
 @pytest.mark.parametrize("no_mp", [True, False])
