@@ -8,6 +8,14 @@ from matplotlib.patches import Rectangle
 from crosscat.utils import sample_utils as su
 from matplotlib import pyplot as plt
 import matplotlib as mpl
+from textwrap import wrap
+
+from crosscat_utils import get_column_probabilities, get_row_probabilities
+from crosscat_utils import get_cols_in_view, get_rows_in_cluster 
+from crosscat_utils import get_metadata, get_M_c
+
+from general_utils import get_descriptions, get_shortnames
+from general_utils import get_data_as_list
 
 import bayeslite
 
@@ -15,79 +23,20 @@ import bayeslite
 NO_CMAP = mpl.colors.ListedColormap([(.5, .5, .5, 1), (.5, .5, .5, 1)])
 
 
-def get_cols_in_view(X_L, view):
-    return [c for c, v in enumerate(X_L['column_partition']['assignments']) if v == view]
+def convert_t_do_numerical(T, M_c):
+    for colno, md in enumerate(M_c['column_metadata']):
+        lookup = md['code_to_value']
+        if len(lookup) == 0:
+            continue
+        for row in range(len(T)):
+            val = T[row][colno]
+            if isinstance(val, float):
+                if np.isnan(val):
+                    continue
+            T[row][colno] = lookup[val]
 
-
-def get_rows_in_cluster(X_D, view, cluster):
-    return [r for r, c in enumerate(X_D[view]) if c == cluster]
-
-
-def get_short_names(bdb, table_id, column_names):
-    short_names = []
-    # XXX: this is wasteful.
-    bql = '''
-        SELECT c.colno, c.name, c.short_name
-            FROM bayesdb_table AS t, bayesdb_table_column AS c
-            WHERE t.id = ? AND c.table_id = t.id
-        '''
-    curs = bdb.sql_execute(bql, (table_id,))
-    records = curs.fetchall()
-    for cname in column_names:
-        for record in records:
-            if record[1] == cname:
-                sname = record[2]
-                if sname is None:
-                    sname = cname
-                    print 'Warning: No short name found for {}. Using column name.'.format(cname)
-                short_names.append(sname)
-                break
-
-    assert len(short_names) == len(column_names)
-    return short_names
-
-
-def get_row_probabilities(X_L, X_D, M_c, T, view):
-    """
-    Returns the predictive probability of the data in each row of T in view.
-    """
-    num_rows = len(X_D[0])
-    cols_in_view = get_cols_in_view(X_L, view)
-    num_clusters = max(X_D[view])+1
-    cluster_models = [su.create_cluster_model_from_X_L(M_c, X_L, view, c)
-                      for c in range(num_clusters)]
-
-    logps = np.zeros(num_rows)
-    for row in range(num_rows):
-        cluster_idx = X_D[view][row]
-        for col in cols_in_view:
-            x = T[row][col]
-            if np.isnan(x):
-                continue
-            component_model = cluster_models[cluster_idx][col]
-            component_model.remove_element(x)
-            logps[row] += component_model.calc_element_predictive_logp(x)
-            component_model.insert_element(x)
-
-    assert len(logps) == len(X_D[0])
-    return logps
-
-
-def get_column_probabilities(X_L, M_c):
-    """
-    Returns the marginal probability of each column.
-    """
-    num_cols = len(X_L['column_partition']['assignments'])
-    num_views = len(X_L['view_state'])
-    logps = np.zeros(num_cols)
-    for view in range(num_views):
-        num_clusters = len(X_L['view_state'][view]['row_partition_model']['counts'])
-        for cluster in range(num_clusters):
-            cluster_model = su.create_cluster_model_from_X_L(M_c, X_L, view, cluster)
-            for col in get_cols_in_view(X_L, view):
-                component_model = cluster_model[col]
-                logps[col] += component_model.calc_marginal_logp()
-    return logps
+    Tary = np.array(T)
+    return Tary
 
 
 def sort_state(X_L, X_D, M_c, T):
@@ -183,12 +132,39 @@ def cmap_color_brightness(value, base_color, vmin, vmax, nan_color=(1., 0., 0., 
     return color
 
 
+def gen_collapsed_legend_from_dict(hl_colors_dict, loc=0, title=None, fontsize='medium', wrap_threshold=1000):
+    if not isinstance(hl_colors_dict, dict):
+        raise TypeError("hl_colors_dict must be a dict")
+
+    colors = list(set(hl_colors_dict.values()))
+    collapsed_dict = dict(zip(colors, [[] for i in range(len(colors))]))
+
+    for color in colors:
+        collapsed_dict[color] == []
+
+    for label, color in hl_colors_dict.iteritems():
+        collapsed_dict[color].append(label)
+
+    for color in collapsed_dict.keys():
+        collapsed_dict[color] = "\n".join(wrap(", ".join(sorted(collapsed_dict[color])), wrap_threshold))
+
+    legend_artists = []
+    legend_labels = []
+    for color, label in collapsed_dict.iteritems():
+        legend_artists.append(plt.Line2D((0, 1), (0, 0), color=color, lw=3))
+        legend_labels.append(label)
+
+    legend = plt.legend(legend_artists, legend_labels, loc=loc, title=title, fontsize=fontsize)
+
+    return legend
+
+
 def gen_hilight_colors(hl_labels=None, hl_colors=None):
     """
     Generates a hilight color lookup from labels to colors. Generates labels from Set1 by default.
     """
     if hl_labels is None:
-        hl_labels = []
+        return {}
 
     hl_colors_out = {}
     if hl_colors is None:
@@ -196,11 +172,17 @@ def gen_hilight_colors(hl_labels=None, hl_colors=None):
             hl_max = float(len(hl_labels))
             hl_colors_out = dict([(i, plt.cm.Set1(i/hl_max)) for i in hl_labels])
     else:
-        if not isinstance(hl_colors, list):
-            raise TypeError('hl_colors must be a list')
+        if isinstance(hl_colors, list):
+            hl_colors_out = dict(zip(hl_labels, hl_colors))
+        elif isinstance(hl_colors, dict):
+            for key in hl_colors.keys():
+                if key not in hl_labels:
+                    raise ValueError("hl_colors dict must have an entry for each hl_label")
+            hl_colors_out = hl_colors
+        else:
+            raise TypeError('hl_colors must be a list or dict')
         if len(hl_colors) != len(hl_labels):
             raise ValueError('hl_colors must have an entry for each entry in hl_labels')
-        hl_colors_out = dict(zip(hl_labels, hl_colors))
 
     return hl_colors_out
 
@@ -222,7 +204,7 @@ def gen_blank_sort(num_rows, num_cols):
 
 
 def gen_cell_colors(T, sorted_views, sorted_cols, sorted_clusters, sorted_rows,
-                            column_partition, cmap, border_width, nan_color=(1., 0., 0., 1.)):
+                    column_partition, cmap, border_width, nan_color=(1., 0., 0., 1.)):
     # generate a heatmap using the data (allows clusters to ahve different base colors)
     num_rows = len(T)
     num_cols = len(T[0])
@@ -253,7 +235,10 @@ def gen_cell_colors(T, sorted_views, sorted_cols, sorted_clusters, sorted_rows,
 
         view = column_partition[col]
         col_cpy = np.copy(T[:, col])
-        col_cpy = col_cpy[np.isfinite(col_cpy)]
+        try:
+            col_cpy = col_cpy[np.isfinite(col_cpy)]
+        except TypeError:
+            import pdb; pdb.set_trace()
         cmin = np.min(col_cpy)
         cmax = np.max(col_cpy)
         y_pos = 0
@@ -268,18 +253,25 @@ def gen_cell_colors(T, sorted_views, sorted_cols, sorted_clusters, sorted_rows,
     return cell_colors
 
 
-def draw_state(bdb, table_name, modelno,
+def draw_state(bdb, table_name, generator_name, modelno,
                ax=None, border_width=3, row_label_col=None, short_names=True,
                hilight_rows=[], hilight_rows_colors=None,
                hilight_cols=[], hilight_cols_colors=None,
                separator_color='red', separator_width=4,
-               blank_state=False, nan_color=(1., 0., 0., 1.)):
-
-    table_id = bayeslite.bayesdb_table_id(bdb, table_name)
-
-    theta = bayeslite.core.bayesdb_model(bdb, table_id, modelno)
-    T = [row for row in bayeslite.core.bayesdb_data(bdb, 1)]
-    M_c = bayeslite.core.bayesdb_metadata(bdb, table_id)
+               blank_state=False, nan_color=(1., 0., 0., 1.),
+               view_labels=None,
+               row_legend_loc=1, row_legend_title='Row key',
+               col_legend_loc=4, col_legend_title='Column key',
+               descriptions_in_legend=True, legend_wrap_threshold=20,
+               legend=True,
+               legend_fontsize='medium',
+               view_label_fontsize='large'
+               ):
+    theta = get_metadata(bdb, generator_name, modelno)
+    M_c = get_M_c(bdb, generator_name)
+    # idx_to_name doesn't use an int idx, but a string idx because crosscat. Yep.
+    ordered_columns = [M_c['idx_to_name'][str(idx)] for idx in sorted(M_c['name_to_idx'].values())]
+    T = get_data_as_list(bdb, table_name, column_list=ordered_columns)
     X_L = theta['X_L']
     X_D = theta['X_D']
 
@@ -293,9 +285,23 @@ def draw_state(bdb, table_name, modelno,
         sorted_views, sorted_clusters, sorted_cols, sorted_rows = gen_blank_sort(num_rows, num_cols)
         column_partition = [0]*num_cols
 
-    # set colormap to 50% gray
+    if view_labels is not None:
+        if not isinstance(view_labels, list):
+            raise TypeError("view_labels must be a list")
+        if len(view_labels) != len(sorted_views):
+            view_labels += ['']*(len(sorted_rows)-len(view_labels))
+    else:
+        view_labels = ['View ' + str(i) for i in range(num_rows)]
+
+    if hilight_cols_colors is None:
+        hilight_cols_colors = []
+
+    if hilight_rows_colors is None:
+        hilight_rows_colors = []
+
+    # set colormap to 50% gray (should probably give the user control over this)
     cmap = NO_CMAP
-    T = np.array(T)
+    T = convert_t_do_numerical(T, M_c)
 
     num_views = len(sorted_cols)
     X = np.zeros((num_rows, num_cols+num_views*border_width))
@@ -311,8 +317,11 @@ def draw_state(bdb, table_name, modelno,
             raise TypeError("If row_label_col is a list, it must have an entry for each row")
         row_labels = [str(label) for label in row_label_col]
     elif isinstance(row_label_col, str):
+        # FIXME: This is not going to work until BayesDB stops removing key and
+        # ingore columns from the data
+        raise NotImplementedError
         label_col_idx = M_c['name_to_idx'][row_label_col]
-        label = [str(T[row, label_col_idx]) for row in range(num_rows)]
+        row_labels = [str(T[row, label_col_idx]) for row in range(num_rows)]
     else:
         raise TypeError("I don't know what to do with a {} "
                         "row_label_col".format(type(row_label_col)))
@@ -350,24 +359,37 @@ def draw_state(bdb, table_name, modelno,
     for v, view in enumerate(sorted_views):
         view_x_labels = [M_c['idx_to_name'][str(col)] for col in sorted_cols[view]]
         if short_names:
-            view_x_tick_labels = get_short_names(bdb, table_id, view_x_labels)
+            view_x_tick_labels = get_shortnames(bdb, table_name, view_x_labels)
         else:
             view_x_tick_labels = view_x_labels
 
         y_tick_labels = []
 
-        for i, vxtl in enumerate(view_x_labels):
-            if vxtl in hilight_cols:
-                edgecolor = col_hl_colors[vxtl]
-                x_a = len(x_tick_labels) + i - .5
-                ax.add_patch(Rectangle((x_a, -.5), 1, num_rows, facecolor="none",
-                                       edgecolor=edgecolor, lw=2, zorder=10))
-
-        x_tick_labels += view_x_tick_labels + [' ']*border_width
+        # x_tick_labels += view_x_tick_labels + [' ']*border_width
         x_labels += view_x_labels + ['_']*border_width
         num_cols_view = len(sorted_cols[view])
         sbplt_start = col_count+v*border_width
         sbplt_end = col_count+num_cols_view+v*border_width
+
+        for i, vxtl in enumerate(view_x_labels):
+            if vxtl in hilight_cols:
+                edgecolor = col_hl_colors[vxtl]
+                x_a = sbplt_start+i-.5
+                ax.add_patch(Rectangle((x_a, -.5), 1, num_rows, facecolor="none",
+                                       edgecolor=edgecolor, lw=2, zorder=10))
+                fontcolor = edgecolor
+                fontsize = 'medium'
+            else:
+                fontcolor = '#333333'
+                fontsize = 'x-small'
+            font_kws = dict(color=fontcolor, fontsize=fontsize, rotation=90, va='top',
+                            ha='center')
+            ax.text(sbplt_start+i+.5, num_rows+.5, view_x_tick_labels[i], font_kws) 
+
+        view_label_x = (sbplt_start+sbplt_end)/2.
+        view_label_y = -2.5
+        font_kws = dict(ha='center', fontsize=view_label_fontsize, weight='bold')
+        ax.text(view_label_x, view_label_y, view_labels[v], font_kws)
 
         y = 0
         for cluster in sorted_clusters[view]:
@@ -391,16 +413,43 @@ def draw_state(bdb, table_name, modelno,
         for i, row in enumerate(range(num_rows-1, -1, -1)):
             if y_tick_labels[i] in hilight_rows:
                 fontcolor = row_hl_colors[y_tick_labels[i]]
-                fontsize = 12
+                fontsize = 'medium'
                 fontweight = 'bold'
+                zorder = 10
             else:
-                fontsize = 8
+                fontsize = 'x-small'
                 fontcolor = '#333333'
                 fontweight = 'light'
+                zorder = 5
 
             ax.text(sbplt_start-1, i+.5, str(y_tick_labels[i]), ha='right', fontsize=fontsize,
-                    color=fontcolor, weight=fontweight)
+                    color=fontcolor, weight=fontweight, zorder=zorder)
         col_count += num_cols_view
+
+    # generate row legend
+    # Use matplotlib artists to generate a list of colored lines
+    # TODO: Refactor legend generator into its own function
+    if legend:
+        if len(hilight_rows) > 0:
+            row_legend = gen_collapsed_legend_from_dict(
+                row_hl_colors, loc=row_legend_loc, title=row_legend_title,
+                fontsize=legend_fontsize, wrap_threshold=legend_wrap_threshold)
+            ax.add_artist(row_legend)
+
+        if len(hilight_cols) > 0:
+            col_legend_labels = get_shortnames(bdb, table_name, hilight_cols)
+            if descriptions_in_legend:
+                from textwrap import wrap
+                for i, col_id in enumerate(hilight_cols):
+                    col_legend_labels[i] += ': ' + get_descriptions(bdb, table_name, [col_id])[0]
+                    col_legend_labels[i] = col_legend_labels[i]
+
+            col_legend = gen_collapsed_legend_from_dict(
+                dict(zip(col_legend_labels, hilight_cols_colors)),
+                loc=col_legend_loc, title=col_legend_title, fontsize=legend_fontsize,
+                wrap_threshold=legend_wrap_threshold)
+
+            ax.add_artist(col_legend)
 
     ax.tick_params(**{
         'axis': 'both',
@@ -415,7 +464,7 @@ def draw_state(bdb, table_name, modelno,
     ax.set_yticks(range(num_rows))
     ax.set_xticks(range(num_cols+num_views*border_width))
     ax.tick_params(axis='x', colors='white')
-    ax.set_xticklabels(x_tick_labels, rotation=90, color='black', fontsize=9)
+    # ax.set_xticklabels(x_tick_labels, rotation=90, color='black', fontsize=9)
     ax.set_yticklabels(['']*num_rows)
     ax.tick_params(axis='y', colors='white')
     ax.grid(b=False)
@@ -443,6 +492,7 @@ if __name__ == "__main__":
     nan_prop = .25
 
     table_name = 'plottest'
+    generator_name = 'plottest_cc'
 
     # generate some clustered data
     ccmd = du.generate_clean_state(rng_seed, num_clusters, num_cols, num_rows, num_splits)
@@ -456,11 +506,11 @@ if __name__ == "__main__":
     input_df = pd.DataFrame(T, columns=['col_%i' % i for i in range(num_cols)])
 
     client = facade.BayesDBClient.from_pandas('plttest.bdb', table_name, input_df)
-    client('initialize 4 models for {}'.format(table_name))
-    client('analyze {} for 10 iterations wait'.format(table_name))
+    client('initialize 4 models for {}'.format(generator_name))
+    client('analyze {} for 10 iterations wait'.format(generator_name))
 
     plt.figure(facecolor='white', tight_layout=False)
-    ax = draw_state(client.bdb, 'plottest', 0, separator_width=1,
+    ax = draw_state(client.bdb, 'plottest', 'plottest_cc', 0, separator_width=1,
                     separator_color=(0., 0., 1., 1.), short_names=False,
                     nan_color=(1, .15, .25, 1.))
-    plt.show()
+    plt.savefig('state.png')

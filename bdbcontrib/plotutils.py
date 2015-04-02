@@ -1,7 +1,8 @@
 
 # pylint: disable=E1103
 
-import bayeslite
+import bdbcontrib.crosscat_utils as ccu
+
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 import seaborn as sns
@@ -15,18 +16,12 @@ MODEL_TO_TYPE_LOOKUP = {
 }
 
 
-def get_bayesdb_col_type(bdb, table_name, column_name, df_column):
+def get_bayesdb_col_type(column_name, df_column, bdb=None, generator_name=None):
     """
     If column_name is a column label (not a short name!) then the modeltype of the column will be
     returned otherwise we guess.
     """
-    table_id = bayeslite.core.bayesdb_table_id(bdb, table_name)
-    theta = bayeslite.core.bayesdb_metadata(bdb, table_id)
-    try:
-        col_idx = theta['name_to_idx'][column_name]
-        return MODEL_TO_TYPE_LOOKUP[theta['column_metadata'][col_idx]['modeltype']]
-    except KeyError:
-        # FIXME: Not a table column; must use heurtistic
+    def guess_column_type(df_column):
         pd_type = df_column.dtype
         if pd_type is str:
             return 'categorical'
@@ -35,12 +30,22 @@ def get_bayesdb_col_type(bdb, table_name, column_name, df_column):
                 return 'categorical'
             else:
                 return 'numerical'
-    except Exception as err:
-        print "Unexpected exception: {}".format(err)
-        raise err
+
+    if bdb is not None and generator_name is not None:
+        theta = ccu.get_M_c(bdb, generator_name)
+        try:
+            col_idx = theta['name_to_idx'][column_name]
+            return MODEL_TO_TYPE_LOOKUP[theta['column_metadata'][col_idx]['modeltype']]
+        except KeyError:
+            return guess_column_type(df_column)
+        except Exception as err:
+            print "Unexpected exception: {}".format(err)
+            raise err
+    else:
+        return guess_column_type(df_column)
 
 
-def conv_categorical_vals_to_numeric(bdb, bdb_table_name, data_srs):
+def conv_categorical_vals_to_numeric(data_srs, bdb=None, generator_name=None):
     # TODO: get real valuemap from btable
     unique_vals = sorted(data_srs.unique().tolist())
     lookup = dict(zip(unique_vals, range(len(unique_vals))))
@@ -51,35 +56,38 @@ def conv_categorical_vals_to_numeric(bdb, bdb_table_name, data_srs):
 
 
 # FIXME: STUB
-def prep_plot_df(bdb, table_name, data_df, var_names, vartypes):
+def prep_plot_df(data_df, var_names):
     return data_df[list(var_names)]
 
 
-def do_hist(bdb, table_name, data_srs, ax=None, dtype=None):
+def do_hist(data_srs, ax=None, dtype=None, bdb=None, generator_name=None):
     if dtype is None:
-        dtype = get_bayesdb_col_type(bdb, table_name, data_srs.columns[0], data_srs)
+        dtype = get_bayesdb_col_type(data_srs.columns[0], data_srs, bdb=bdb,
+                                     generator_name=generator_name)
 
     if ax is None:
         ax = plt.gca()
 
     if dtype == 'categorical':
-        vals, uvals, _ = conv_categorical_vals_to_numeric(bdb, table_name, data_srs)
+        vals, uvals, _ = conv_categorical_vals_to_numeric(data_srs, bdb=bdb,
+                                                          generator_name=generator_name)
         ax.hist(vals, bins=len(uvals))
         ax.set_xticks(range(len(uvals)))
         ax.set_xticklabels(uvals)
-        # data_srs.hist(ax=ax, bins=range(len(data_srs.unique())+1), width=1)
     else:
         sns.distplot(data_srs, kde=True, ax=ax)
 
     return ax
 
 
-def do_heatmap(bdb, table_name, plot_df, vartypes, ax=None):
+def do_heatmap(plot_df, vartypes, ax=None, bdb=None, generator_name=None):
     if ax is None:
         ax = plt.gca()
 
-    vals_x, uvals_x, _ = conv_categorical_vals_to_numeric(bdb, table_name, plot_df.ix[:, 0])
-    vals_y, uvals_y, _ = conv_categorical_vals_to_numeric(bdb, table_name, plot_df.ix[:, 1])
+    vals_x, uvals_x, _ = conv_categorical_vals_to_numeric(plot_df.ix[:, 0],
+                                                          bdb=bdb, generator_name=generator_name)
+    vals_y, uvals_y, _ = conv_categorical_vals_to_numeric(plot_df.ix[:, 1],
+                                                          bdb=bdb, generator_name=generator_name)
 
     bins_x = len(uvals_x)
     bins_y = len(uvals_y)
@@ -96,7 +104,7 @@ def do_heatmap(bdb, table_name, plot_df, vartypes, ax=None):
     return ax
 
 
-def do_violinplot(bdb, table_name, plot_df, vartypes, ax=None):
+def do_violinplot(plot_df, vartypes, ax=None, bdb=None, generator_name=None):
     if ax is None:
         ax = plt.gca()
     assert vartypes[0] != vartypes[1]
@@ -109,7 +117,8 @@ def do_violinplot(bdb, table_name, plot_df, vartypes, ax=None):
         groupby = plot_df.columns[1]
         vals = plot_df.columns[0]
 
-    _, unique_vals, _ = conv_categorical_vals_to_numeric(bdb, table_name, plot_df[groupby])
+    _, unique_vals, _ = conv_categorical_vals_to_numeric(plot_df[groupby],
+                                                         bdb=bdb, generator_name=generator_name)
 
     sns.violinplot(plot_df[vals], groupby=plot_df[groupby], order=unique_vals, names=unique_vals,
                    vert=vert, ax=ax, positions=0)
@@ -125,7 +134,7 @@ def do_violinplot(bdb, table_name, plot_df, vartypes, ax=None):
     return ax
 
 
-def do_kdeplot(bdb, table_name, plot_df, vartypes, ax=None):
+def do_kdeplot(plot_df, vartypes, ax=None, bdb=None, generator_name=None):
     # XXX: kdeplot is not a good choice for small amounts of data because
     # it uses a kernel density estimator to crease a smooth heatmap. On the
     # other hadnd, scatter plots are uniformative given lots of data---the
@@ -147,12 +156,12 @@ DO_PLOT_FUNC[hash(('numerical', 'categorical',))] = do_violinplot
 DO_PLOT_FUNC[hash(('numerical', 'numerical',))] = do_kdeplot
 
 
-def do_pair_plot(bdb, table_name, plot_df, vartypes, ax=None):
+def do_pair_plot(plot_df, vartypes, ax=None, bdb=None, generator_name=None):
     # determine plot_types
     if ax is None:
         ax = plt.gca()
 
-    ax = DO_PLOT_FUNC[hash(vartypes)](bdb, table_name, plot_df, vartypes, ax=ax)
+    ax = DO_PLOT_FUNC[hash(vartypes)](plot_df, vartypes, ax=ax, bdb=bdb, generator_name=bdb)
     return ax
 
 
@@ -191,7 +200,7 @@ def zmatrix(data_df, clustermap_kws=None):
 
 
 # TODO: bdb, and table_name should be optional arguments
-def pairplot(bdb, table_name, df, use_shortname=False):
+def pairplot(df, bdb=None, generator_name=None, use_shortname=False):
     """
     Plots the columns in data_df in a facet grid.
     - categorical-categorical pairs are displayed as a heatmap
@@ -215,20 +224,24 @@ def pairplot(bdb, table_name, df, use_shortname=False):
     xmaxs = np.ones((n_vars, n_vars))*float('-Inf')
     ymins = np.ones((n_vars, n_vars))*float('Inf')
     ymaxs = np.ones((n_vars, n_vars))*float('-Inf')
+
     for x_pos, var_name_x in enumerate(data_df.columns):
-        var_x_type = get_bayesdb_col_type(bdb, table_name, var_name_x, data_df[var_name_x])
+        var_x_type = get_bayesdb_col_type(var_name_x, data_df[var_name_x],
+                                          bdb=bdb, generator_name=generator_name)
         for y_pos, var_name_y in enumerate(data_df.columns):
-            var_y_type = get_bayesdb_col_type(bdb, table_name, var_name_y, data_df[var_name_y])
+            var_y_type = get_bayesdb_col_type(var_name_y, data_df[var_name_y],
+                                              bdb=bdb, generator_name=generator_name)
 
             ax = plt.subplot(plt_grid[y_pos, x_pos])
 
             if x_pos == y_pos:
-                ax = do_hist(bdb, table_name, data_df[var_name_x], dtype=var_x_type, ax=ax)
+                ax = do_hist(data_df[var_name_x], dtype=var_x_type, ax=ax,
+                             bdb=bdb, generator_name=generator_name)
             else:
                 varnames = (var_name_x, var_name_y,)
                 vartypes = (var_x_type, var_y_type,)
-                plot_df = prep_plot_df(bdb, table_name, data_df, varnames, vartypes)
-                ax = do_pair_plot(bdb, table_name, plot_df, vartypes, ax=ax)
+                plot_df = prep_plot_df(data_df, varnames)
+                ax = do_pair_plot(plot_df, vartypes, ax=ax, bdb=bdb, generator_name=generator_name)
 
                 ymins[y_pos, x_pos] = ax.get_ylim()[0]
                 ymaxs[y_pos, x_pos] = ax.get_ylim()[1]
@@ -280,16 +293,17 @@ if __name__ == '__main__':
     filename = 'plottest.csv'
     df.to_csv(filename)
 
-    cc_client = facade.BayesDBCrossCat.from_csv('plttest.bdb', 'plottest', filename)
+    cc_client = facade.BayesDBClient.from_csv('plttest.bdb', 'plottest', filename)
     df = cc_client('SELECT one_n, zero_5, five_c, four_8 FROM plottest').as_df()
 
     plt.figure(tight_layout=True, facecolor='white')
-    pairplot(cc_client.bdb, 'plottest', df, use_shortname=False)
+    pairplot(df, bdb=cc_client.bdb, generator_name='plottest_cc', use_shortname=False)
     plt.show()
 
     df = cc_client('SELECT three_n + one_n, three_n * one_n,'
                    ' zero_5 || four_8 FROM plottest').as_df()
 
     plt.figure(tight_layout=True, facecolor='white')
-    pairplot(cc_client.bdb, 'plottest', df, use_shortname=False)
+    # pairplot(df, bdb=cc_client.bdb, generator_name='plottest_cc', use_shortname=False)
+    pairplot(df,  use_shortname=False)
     plt.show()
