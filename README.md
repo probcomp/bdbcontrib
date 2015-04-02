@@ -1,6 +1,6 @@
 # `bdbcontrib`
 
-A set of convenience utilities for BayesDB (SQLite backend)
+A set of utilities for bayesdb. 
 
 **Requires**
 
@@ -9,69 +9,55 @@ A set of convenience utilities for BayesDB (SQLite backend)
 - Pandas
 - numpy
 
-## CrossCat wrapper
+## Installing
+Clone the repo and add it to your `PYTHONPATH`
 
- ```python
-import bdbcontrib.facade
-
-# load data from csv
-client = facade.BayesDBClient.from_csv('my_database.bdb', 'my_table', 'data.csv', 
-                                        csv_code_filename='codebook.csv')
-
-# Intialize and analyze models
-client('INITIALIZE 10 MODELS FOR my_table')
-client('ANALYZE my_table FOR 100 ITERATIONS WAIT')
-```
-
-Do a query and get the results as a pandas DataFrame
-``` python
-df = client('SELECT column_0 from my_table').as_df()
-```
-
-Render a vizualization of a given crosscat state, hilighting the `age` column in blue
-``` python
-import matplotlib.pyplot as plt
-client.drawstate('my_table', 0, hilight_cols=['age'], hilight_cols_colors=['blue'] )
-plt.show()
- ```
-
-## Plotting
-`pairplot` works similarly to `seaborn.pairplot` but handles combinations of data types better. Pairwise combinations of data types are plotted as follows:
-
-- Numerical-Numerical: **Scatter with KDE overlay**
-- Categorical-Numerical: **Violin plot**
-- Categorical-Categorical: **Heatmap**
+## Use
 
 
-### Example `pairplot`
-Plot data straight from the table:
+### Shell utilities
+To make ensure that the contrib is automatically loaded by the shell, you will need to `.hook` `contrib.py`. To do so add the following to your `~/.bayesliterc` file
 
-```python
-# ...continued from above
-import bdbcontrib.plotutils as pu
+    .hook /absolute/path/to/contrib.py
 
-df = client('SELECT col_1, col_2, col_3, col_4 from my_table').as_df()
-pu.pairplot(client.bdb, 'my_table', df)
-plt.show()
-```
+Otherwise you can load then on startup
 
-Plot something arbitrary
-```python
-# ...continued from above
-df = client('SELECT col_1 + col_2, col_3 || col_4, col_5, "Ward Cleaver" from my_table')
-pu.pairplot(client.bdb, 'my_table', df)
-plt.show()
-```
+    $ bayeslite -f path/to/contrib.py
 
-### Example `zmatrix`
+or hook them from within the shell
 
-```python
-df = client('ESTIMATE PAIRWISE DEPENDENCE PROBABILITY FROM my_table').as_df()
+    bayeslite> .hook path/to/contrib.py
 
-# kwargs sent to seaborn.clustermap
-clustermap_kws = {
-    'linewidths': 0,
-    'cmap': 'PuBu'
-}
-pu.zmatrix(df, clustermap_kws)
-```
+#### `.zmatrix`
+
+    .zmatrix <pairwise query> [-f|--filename path/to/file.png]
+
+To draw a z-matrix:
+
+    bayeslite> .zmatrix ESTIMATE PAIRWISE <something> FROM <generator>
+
+To save a z-matrix to a file
+
+    bayeslite> .zmatrix ESTIMATE PAIRWISE <something> FROM <generator> -f my_zmatrix.png
+    bayeslite> .zmatrix ESTIMATE PAIRWISE <something> FROM <generator> --filename my_zmatrix.png
+
+
+#### .pairplot
+Draws or saves a pariplot of an arbitrary BQL query
+
+    .pairplot <query> [-f|--filename path/to/file.png]
+
+To draw 
+
+    bayeslite> .pairplot SELECT col1, col2, col3 FROM table
+
+To save as file
+
+    bayeslite> .pairplot SELECT col1, col2, col3 FROM table -f my_pairplot.png
+    bayeslite> .pairplot SELECT col1, col2, col3 FROM table --filename my_pairplot.png
+
+
+#### .ccstate
+Draws a crosscat state
+
+    .ccstate <generator> <modelno> [filename.png]
