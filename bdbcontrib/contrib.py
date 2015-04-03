@@ -11,7 +11,9 @@ import matplotlib.pyplot as plt
 
 @bayesdb_shell_cmd('zmatrix')
 def zmatrix(self, argin):
-    '''<filename.png>
+    '''Creates a z-matrix from the bql query.
+    <filename.png>
+
     Creates a z-matrix from the bql query. If no filename is specified, will
     attempt to draw.
 
@@ -61,8 +63,8 @@ def pairplot(self, argin):
 # TODO: better name
 @bayesdb_shell_cmd('ccstate')
 def draw_crosscat_state(self, argin):
-    ''' <generator> <modelno> <filename.png>
-    Draws the crosscat state
+    '''Draws the crosscat state
+    <generator> <modelno> <filename.png>
     '''
 
     args = argin.split()
