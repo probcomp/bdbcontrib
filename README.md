@@ -21,7 +21,7 @@ To make ensure that the contrib is automatically loaded by the shell, you will n
 
     .hook /absolute/path/to/contrib.py
 
-Otherwise you can load then on startup
+Otherwise you can load them on startup
 
     $ bayeslite -f path/to/contrib.py
 
