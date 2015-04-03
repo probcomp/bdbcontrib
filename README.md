@@ -2,6 +2,8 @@
 
 A set of utilities for bayesdb. 
 
+
+## Installing
 **Requires**
 
 - Matplotlib
@@ -9,7 +11,6 @@ A set of utilities for bayesdb.
 - Pandas
 - numpy
 
-## Installing
 Clone the repo and add it to your `PYTHONPATH`
 
 ## Use
@@ -28,7 +29,7 @@ or hook them from within the shell
 
     bayeslite> .hook path/to/contrib.py
 
-#### `.zmatrix`
+#### .zmatrix
 
     .zmatrix <pairwise query> [-f|--filename path/to/file.png]
 
