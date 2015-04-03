@@ -1,4 +1,4 @@
-# `bdbcontrib`
+# bdbcontrib
 
 A set of utilities for bayesdb. 
 
@@ -17,15 +17,15 @@ Clone the repo and add it to your `PYTHONPATH`
 
 
 ### Shell utilities
-To make ensure that the contrib is automatically loaded by the shell, you will need to `.hook` `contrib.py`. To do so add the following to your `~/.bayesliterc` file
+To ensure that the contrib is automatically loaded by the shell, add the following to your `~/.bayesliterc` file
 
     .hook /absolute/path/to/contrib.py
 
-Otherwise you can load them on startup
+Otherwise you can load it on startup
 
     $ bayeslite -f path/to/contrib.py
 
-or hook them from within the shell
+or hook it from within the shell
 
     bayeslite> .hook path/to/contrib.py
 
