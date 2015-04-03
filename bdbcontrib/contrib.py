@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 @bayesdb_shell_cmd('zmatrix')
 def zmatrix(self, argin):
     '''Creates a z-matrix from the bql query.
-    <filename.png>
+    <pairwise bql query> [options]
 
     Creates a z-matrix from the bql query. If no filename is specified, will
     attempt to draw.
@@ -40,6 +40,24 @@ def zmatrix(self, argin):
 
 @bayesdb_shell_cmd('pairplot')
 def pairplot(self, argin):
+    '''Plots pairs of columns in facet grid.
+    <bql query> [options]
+
+    Plots continuous-continuous pairs as scatter w/ KDE contour
+    Plots continuous-categorical pairs as violinplot
+    Plots categorical-categorical pairs as heatmap
+
+    Options:
+        -f. --filename: the output filename. If not specified, tries
+                        to draw.
+        -g, --generator: the generator name. Providing the generator
+                         name make help to plot more intelligently.
+        -s, --shortnames: Use column short names to label facets?
+
+    Example:
+    bayeslite> .pariplot SELECT foo, baz, quux + glorb FROM mytable --filename myfile.png
+    bayeslite> .pariplot ESTIMATE foo, baz FROM mytable_cc -g mytable_cc
+    '''
     parser = argparse.ArgumentParser()
     parser.add_argument('bql', type=str, nargs='+', help='BQL query')
     parser.add_argument('-f', '--filename', type=str, default=None,  help='output filename')
@@ -63,8 +81,13 @@ def pairplot(self, argin):
 # TODO: better name
 @bayesdb_shell_cmd('ccstate')
 def draw_crosscat_state(self, argin):
-    '''Draws the crosscat state
-    <generator> <modelno> <filename.png>
+    '''Draws the crosscat state.
+    <generator> <modelno> [filename.png]
+
+    If no file name is provided, will attempt to draw.
+
+    Example:
+    bayeslite> .ccstate mytable_cc 12 state_12.png
     '''
 
     args = argin.split()
