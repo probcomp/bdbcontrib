@@ -20,7 +20,7 @@ from general_utils import get_data_as_list
 import bayeslite
 
 
-NO_CMAP = mpl.colors.ListedColormap([(.5, .5, .5, 1), (.5, .5, .5, 1)])
+NO_CMAP = mpl.colors.ListedColormap([(1, 1, 1, 1), (1, 1, 1, 1)])
 
 
 def convert_t_do_numerical(T, M_c):
@@ -122,9 +122,12 @@ def cmap_color_brightness(value, base_color, vmin, vmax, nan_color=(1., 0., 0., 
     if np.isnan(value):
         return nan_color
 
-    span = vmax - vmin
-    vmin -= span
-    brightness = (value-vmin)/(span)
+    if vmin == vmax:
+        brightness = .5
+    else:
+        span = vmax - vmin
+        brightness = .25*(value-vmin)/(span)+.5
+
     color = np.array([min(c*brightness, 1.) for c in list(base_color)])
 
     color[3] = 1.
@@ -378,7 +381,7 @@ def draw_state(bdb, table_name, generator_name, modelno,
                 ax.add_patch(Rectangle((x_a, -.5), 1, num_rows, facecolor="none",
                                        edgecolor=edgecolor, lw=2, zorder=10))
                 fontcolor = edgecolor
-                fontsize = 'medium'
+                fontsize = 'x-small'
             else:
                 fontcolor = '#333333'
                 fontsize = 'x-small'
@@ -413,7 +416,7 @@ def draw_state(bdb, table_name, generator_name, modelno,
         for i, row in enumerate(range(num_rows-1, -1, -1)):
             if y_tick_labels[i] in hilight_rows:
                 fontcolor = row_hl_colors[y_tick_labels[i]]
-                fontsize = 'medium'
+                fontsize = 'x-small'
                 fontweight = 'bold'
                 zorder = 10
             else:
