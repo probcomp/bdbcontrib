@@ -62,6 +62,11 @@ def get_column_descriptive_metadata(bdb, table_name, column_names, md_field):
         '''.format(md_field)
     curs = bdb.sql_execute(bql, (table_name,))
     records = curs.fetchall()
+
+    # hack for case sensitivity problems
+    column_names = [c.upper().lower() for c in column_names]
+    records = [(r[0], r[1].upper().lower(), r[2]) for r in records]
+
     for cname in column_names:
         for record in records:
             if record[1] == cname:

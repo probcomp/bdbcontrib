@@ -17,6 +17,12 @@ def get_M_c(bdb, generator_name):
     generator_id = bayeslite.core.bayesdb_get_generator(bdb, generator_name)
     column_info = gu.get_column_info(bdb, generator_name)
     M_c = bayeslite.crosscat.create_metadata(bdb, generator_id, column_info)
+
+    # XXX: case in M_c is left alone which case in
+    # X_L['view_state'][view]['column_names'] is mutated to lowercase.
+    M_c['name_to_idx'] = dict((k.lower(), v) for k, v in M_c['name_to_idx'].iteritems())
+    M_c['idx_to_name'] = dict((k, v.lower()) for k, v in M_c['idx_to_name'].iteritems())
+
     return M_c
 
 
