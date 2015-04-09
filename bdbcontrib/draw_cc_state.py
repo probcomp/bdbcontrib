@@ -5,19 +5,16 @@ Set of plotting utilities for use wil bayesdb/crosscat
 
 import numpy as np
 from matplotlib.patches import Rectangle
-from crosscat.utils import sample_utils as su
 from matplotlib import pyplot as plt
 import matplotlib as mpl
 from textwrap import wrap
 
 from crosscat_utils import get_column_probabilities, get_row_probabilities
-from crosscat_utils import get_cols_in_view, get_rows_in_cluster 
+from crosscat_utils import get_cols_in_view, get_rows_in_cluster
 from crosscat_utils import get_metadata, get_M_c
 
 from general_utils import get_descriptions, get_shortnames
 from general_utils import get_data_as_list
-
-import bayeslite
 
 
 NO_CMAP = mpl.colors.ListedColormap([(1, 1, 1, 1), (1, 1, 1, 1)])
@@ -260,7 +257,7 @@ def draw_state(bdb, table_name, generator_name, modelno,
                ax=None, border_width=3, row_label_col=None, short_names=True,
                hilight_rows=[], hilight_rows_colors=None,
                hilight_cols=[], hilight_cols_colors=None,
-               separator_color='red', separator_width=4,
+               separator_color='black', separator_width=4,
                blank_state=False, nan_color=(1., 0., 0., 1.),
                view_labels=None,
                row_legend_loc=1, row_legend_title='Row key',
