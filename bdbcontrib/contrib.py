@@ -93,7 +93,7 @@ def draw_crosscat_state(self, argin):
     args = argin.split()
     generator_name = args[0]
     try:
-        modelno = float(args[1])
+        modelno = int(args[1])
     except TypeError:
         raise TypeError('modelno must be an integer')
 
