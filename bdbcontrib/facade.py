@@ -64,7 +64,6 @@ class BQLQueryResult(object):
 
 
 def do_query(bdb, bql_query):
-    print '--> %s' % (bql_query.strip(),)
     return BQLQueryResult(bdb, bql_query)
 
 
