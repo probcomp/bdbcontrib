@@ -123,7 +123,7 @@ def cmap_color_brightness(value, base_color, vmin, vmax, nan_color=(1., 0., 0., 
         brightness = .5
     else:
         span = vmax - vmin
-        brightness = .25*(value-vmin)/(span)+.5
+        brightness = .5*(value-vmin)/(span)+.25
 
     color = np.array([min(c*brightness, 1.) for c in list(base_color)])
 
