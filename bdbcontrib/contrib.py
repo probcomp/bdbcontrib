@@ -108,7 +108,7 @@ def draw_crosscat_state(self, argin):
         raise ValueError('Metamodel for generator %s (%s) should be crosscat' %
                          (generator_name, metamodel))
 
-    plt.figure(tight_layout=True, facecolor='white')
+    plt.figure(tight_layout=False, facecolor='white')
     draw_state(self._bdb, table_name, generator_name, modelno)
 
     if filename is None:
