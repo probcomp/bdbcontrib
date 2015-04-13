@@ -1,11 +1,8 @@
 
-import json
-import pandas as pd
 import bayeslite
 import bayeslite.crosscat
 import bayeslite.guess
 import bayeslite.read_pandas
-import bayeslite.bql as bql
 import general_utils as gu
 from bayeslite.sqlite3_util import sqlite3_quote_name as sqlquote
 from bdbcontrib import draw_cc_state
@@ -26,22 +23,12 @@ class BQLQueryResult(object):
     Attributes:
     - bql_query (str): The BQL query supplied
     """
-    def __init__(self, bdb, bql_query):
+    def __init__(self, bdb, bql_query, bindings=()):
         self.bql_query = bql_query
         self._df = None
         self._bdb = bdb
 
-        phrases = bayeslite.parse.parse_bql_string(bql_query)
-        phrase = phrases.next()
-        done = None
-        try:
-            phrases.next()
-            done = False
-        except StopIteration:
-            done = True
-        if done is not True:
-            raise ValueError('>1 phrase: %s' % (bql_query,))
-        self._cursor = bql.execute_phrase(bdb, phrase)
+        self._cursor = self._bdb.execute(bql_query, bindings)
 
     def as_df(self):
         """ Returns the query result as a dataframe."""
@@ -63,8 +50,8 @@ class BQLQueryResult(object):
         return self.as_cursor()
 
 
-def do_query(bdb, bql_query):
-    return BQLQueryResult(bdb, bql_query)
+def do_query(bdb, bql_query, bindings=()):
+    return BQLQueryResult(bdb, bql_query, bindings)
 
 
 # ``````````````````````````````````````````````````````````````````````````````````````````````````
@@ -152,4 +139,5 @@ class BayesDBClient(object):
     def drawstate(self, btable_name, generator_name, modelno, **kwargs):
         """ Render a visualization of the crosscat state of a given model """
         with self.bdb.savepoint():
-            return draw_cc_state.draw_state(self.bdb, btable_name, generator_name, modelno, **kwargs)
+            return draw_cc_state.draw_state(self.bdb, btable_name, generator_name, modelno,
+                                            **kwargs)
