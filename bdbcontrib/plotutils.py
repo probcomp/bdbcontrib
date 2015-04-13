@@ -16,6 +16,16 @@ MODEL_TO_TYPE_LOOKUP = {
 }
 
 
+def rotate_tick_labels(ax, axis='x', rotation=90):
+    if axis.lower() == 'x':
+        _, labels = ax.get_xticks()
+    elif axis.lower() == 'y':
+        _, labels = ax.get_yticks()
+    else:
+        raise ValueError('axis must b x or y')
+    plt.setp(labels, rotation=rotation)
+
+
 def get_bayesdb_col_type(column_name, df_column, bdb=None, generator_name=None):
     """
     If column_name is a column label (not a short name!) then the modeltype of the column will be
@@ -35,7 +45,14 @@ def get_bayesdb_col_type(column_name, df_column, bdb=None, generator_name=None):
         theta = ccu.get_M_c(bdb, generator_name)
         try:
             col_idx = theta['name_to_idx'][column_name]
-            return MODEL_TO_TYPE_LOOKUP[theta['column_metadata'][col_idx]['modeltype']]
+            coltype = MODEL_TO_TYPE_LOOKUP[theta['column_metadata'][col_idx]['modeltype']]
+            # XXX: Force cyclic -> numeric because there is no need to plot cyclic data any
+            # differently until we implement rose plots. See
+            # http://matplotlib.org/examples/pie_and_polar_charts/polar_bar_demo.html for an
+            # example.
+            if coltype.lower() == 'cyclic':
+                coltype = 'numerical'
+            return coltype
         except KeyError:
             return guess_column_type(df_column)
         except Exception as err:
@@ -149,6 +166,7 @@ def do_kdeplot(plot_df, vartypes, ax=None, bdb=None, generator_name=None):
     return ax
 
 
+# No support for cyclic at this time
 DO_PLOT_FUNC = dict()
 DO_PLOT_FUNC[hash(('categorical', 'categorical',))] = do_heatmap
 DO_PLOT_FUNC[hash(('categorical', 'numerical',))] = do_violinplot
@@ -220,17 +238,32 @@ def pairplot(df, bdb=None, generator_name=None, use_shortname=False):
     n_vars = data_df.shape[1]
     plt_grid = gridspec.GridSpec(n_vars, n_vars)
 
+    # if there is only one variable, just do a hist
+    if n_vars == 1:
+        ax = plt_grid[0, 0]
+        varname = data_df.columns[0]
+        vartype = get_bayesdb_col_type(varname, data_df[varname], bdb=bdb,
+                                       generator_name=generator_name)
+        do_hist(data_df[varname], dtype=vartype, ax=ax, bdb=bdb, generator_name=generator_name)
+        if vartype == 'categorical':
+            rotate_tick_labels(ax)
+        return
+
     xmins = np.ones((n_vars, n_vars))*float('Inf')
     xmaxs = np.ones((n_vars, n_vars))*float('-Inf')
     ymins = np.ones((n_vars, n_vars))*float('Inf')
     ymaxs = np.ones((n_vars, n_vars))*float('-Inf')
 
+    vartypes = []
+    for varname in data_df.columns:
+        vartype = get_bayesdb_col_type(varname, data_df[varname], bdb=bdb,
+                                       generator_name=generator_name)
+        vartypes.append(vartype)
+
     for x_pos, var_name_x in enumerate(data_df.columns):
-        var_x_type = get_bayesdb_col_type(var_name_x, data_df[var_name_x],
-                                          bdb=bdb, generator_name=generator_name)
+        var_x_type = vartypes[x_pos]
         for y_pos, var_name_y in enumerate(data_df.columns):
-            var_y_type = get_bayesdb_col_type(var_name_y, data_df[var_name_y],
-                                              bdb=bdb, generator_name=generator_name)
+            var_y_type = vartypes[y_pos]
 
             ax = plt.subplot(plt_grid[y_pos, x_pos])
 
@@ -263,6 +296,51 @@ def pairplot(df, bdb=None, generator_name=None, use_shortname=False):
             if y_pos < n_vars - 1:
                 ax.set_xlabel('')
                 ax.set_xticklabels([])
+            else:
+                if vartype[x_pos] == 'categorical':
+                    rotate_tick_labels(ax)
+
+
+def comparative_hist(df, nbins=15, normed=False):
+    ''' Comparative histogram.
+    Given a one-column pandas.DataFrame, df, plots a simple histogram. Given a
+    two-column df plots the data in columns one separated by a a dummy variable
+    assumed to be in column 2.
+    '''
+    df = df.dropna()
+
+    vartype = get_bayesdb_col_type(df.columns[0], df[df.columns[0]])
+    if vartype == 'categorical':
+        values, labels, lookup = conv_categorical_vals_to_numeric(df[df.columns[0]])
+        df.ix[:, 0] = values
+        bins = len(labels)
+        ticklabels = [0]*len(labels)
+        for key, val in lookup.iteritems():
+            ticklabels[val] = key
+    else:
+        a = min(df.ix[:, 0].values)
+        b = max(df.ix[:, 0].values)
+        support = b - a
+        interval = support/nbins
+        bins = np.linspace(a, b+interval, nbins)
+
+    colorby = None
+    if len(df.columns) > 1:
+        if len(df.columns) > 2:
+            raise ValueError("I don't know what to do with data with more than two columns")
+        colorby = df.columns[1]
+        colorby_vals = df[colorby].unique()
+
+    plt.figure(tight_layout=False, facecolor='white')
+    if colorby is None:
+        plt.hist(df.ix[:, 0].values, bins=bins, color='#383838')
+    else:
+        colors = sns.color_palette('deep', len(colorby_vals))
+        for color, cbv in zip(colors, colorby_vals):
+            subdf = df[df[colorby] == cbv]
+            plt.hist(subdf.ix[:, 0].values, bins=bins, color=color, alpha=.7,
+                     normed=normed, label=cbv)
+        plt.legend(loc=0)
 
 
 if __name__ == '__main__':

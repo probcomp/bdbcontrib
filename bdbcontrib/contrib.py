@@ -115,3 +115,34 @@ def draw_crosscat_state(self, argin):
         plt.show()
     else:
         plt.savefig(filename)
+
+
+@bayesdb_shell_cmd('hist')
+def histogram(self, argin):
+    '''plots a histogram
+    <query> [options]
+
+    If the result of query has two columns, hist uses the second column to
+    divide the data in the first column into sub-histograms.
+
+    Example (plot overlapping histograms of height for males and females)
+    bayeslite> .hist SELECT height, sex FROM humans; --normed --bin 31
+    '''
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument('bql', type=str, nargs='+', help='BQL query')
+    parser.add_argument('-f', '--filename', type=str, default=None,  help='output filename')
+    parser.add_argument('-b', '--bins', type=int, default=15,  help='number of bins')
+    parser.add_argument('--normed', action='store_true',  help='Normalize histograms?')
+    args = parser.parse_args(shlex.split(argin))
+
+    bql = " ".join(args.bql)
+
+    df = do_query(self._bdb, bql).as_df()
+    pu.comparative_hist(df, nbins=args.bins, normed=args.normed)
+    plt.title(bql)
+
+    if args.filename is None:
+        plt.show()
+    else:
+        plt.savefig(args.filename)
