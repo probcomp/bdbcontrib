@@ -13,21 +13,33 @@ A set of utilities for bayesdb.
 
 Clone the repo and add it to your `PYTHONPATH`
 
-## Use
+## Install 
+Clone the repo and add the `bdbdcontrib` path to your `PYTHONPATH`
 
+**Linux**
+```
+$ git clone https://github.com/mit-probabilistic-computing-project/bdbcontrib.git
+$ cd bdbcontrib
+$ echo export PYTHONPATH=\$PYTHONPATH:`pwd` >> ~/.bashrc
+```
 
-### Shell utilities
+**OSX**
+```
+$ git clone https://github.com/mit-probabilistic-computing-project/bdbcontrib.git
+$ cd bdbcontrib
+$ echo export PYTHONPATH=\$PYTHONPATH:`pwd` >> ~/.bash_profile
+```
+
+**Automatically hooking the contrib**
+
 To ensure that the contrib is automatically loaded by the shell, add the following to your `~/.bayesliterc` file
 
     .hook /absolute/path/to/contrib.py
 
-Otherwise you can load it on startup
 
-    $ bayeslite -f path/to/contrib.py
+## Use
 
-or hook it from within the shell
-
-    bayeslite> .hook path/to/contrib.py
+### Shell utilities
 
 #### .zmatrix
 
