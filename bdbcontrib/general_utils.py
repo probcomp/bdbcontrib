@@ -38,7 +38,8 @@ def get_data_as_list(bdb, table_name, column_list=None):
     if column_list is None:
         sql = 'SELECT * FROM {};'.format(sqlite3_quote_name(table_name))
     else:
-        sql = 'SELECT {} FROM {}'.format(', '.join(map(sqlite3_quote_name, column_list)), table_name)
+        sql = 'SELECT {} FROM {}'.format(', '.join(map(sqlite3_quote_name, column_list)),
+                                         table_name)
     cursor = bdb.sql_execute(sql)
     T = cursor_to_df(cursor).values.tolist()
     return T
