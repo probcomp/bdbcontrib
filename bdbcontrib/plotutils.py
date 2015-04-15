@@ -272,9 +272,10 @@ def pairplot(df, bdb=None, generator_name=None, use_shortname=False):
                              bdb=bdb, generator_name=generator_name)
             else:
                 varnames = (var_name_x, var_name_y,)
-                vartypes = (var_x_type, var_y_type,)
+                vartypes_pair = (var_x_type, var_y_type,)
                 plot_df = prep_plot_df(data_df, varnames)
-                ax = do_pair_plot(plot_df, vartypes, ax=ax, bdb=bdb, generator_name=generator_name)
+                ax = do_pair_plot(plot_df, vartypes_pair, ax=ax, bdb=bdb,
+                                  generator_name=generator_name)
 
                 ymins[y_pos, x_pos] = ax.get_ylim()[0]
                 ymaxs[y_pos, x_pos] = ax.get_ylim()[1]
