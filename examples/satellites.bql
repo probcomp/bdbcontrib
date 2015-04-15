@@ -1,24 +1,41 @@
 -- Satellites example
 -- Run with `bayeslite -f satellites.bql`
+
 -- Load in a .csv
 .csv satellites data/satellites.utf8.csv
+
 -- Load a codebook
 .codebook satellites data/satellites_codebook.utf8.csv
+
 -- Create a generator, initialize models, and analyze. 
-CREATE GENERATOR satellites_cc FOR satellites USING crosscat ( GUESS(*), Name IGNORE );
-INITIALIZE 8 MODELS FOR satellites_cc;
-ANALYZE satellites_cc FOR 50 ITERATIONS WAIT;
+-- Take diagnostics every other iteration
+CREATE GENERATOR satellites_cc FOR satellites
+    USING crosscat(
+        GUESS(*),
+        Name IGNORE );
 .describe columns satellites_cc
+INITIALIZE 16 MODELS FOR satellites_cc;
+ANALYZE satellites_cc FOR 50 ITERATIONS CHECKPOINT 2 ITERATION WAIT;
+
+-- check for convergence
+.chainplot logscore satellites_cc
+
 .zmatrix ESTIMATE PAIRWISE DEPENDENCE PROBABILITY FROM satellites_cc
-.pairplot SELECT Dry_mass_kg, Class_of_Orbit, Perigee_km, Period_minutes FROM satellites;
+.pairplot SELECT Dry_mass_kg, Class_of_Orbit, Perigee_km, Period_minutes FROM satellites
+
 -- find satellites with unexpected lifetimes
 CREATE TEMP TABLE predprob_life AS ESTIMATE Name, Expected_Lifetime, PREDICTIVE PROBABILITY OF Expected_Lifetime AS p_lifetime, Class_of_Orbit FROM satellites_cc;
 .pairplot SELECT Expected_Lifetime, class_of_orbit, p_lifetime FROM predprob_life
 SELECT * FROM predprob_life ORDER BY p_lifetime ASC LIMIT 20;
+
 -- find non-physical entries
 CREATE TEMP TABLE predprob_period AS ESTIMATE Name, class_of_orbit, Period_minutes, PREDICTIVE PROBABILITY OF Period_minutes AS p_period, Source_Used_for_Orbital_Data FROM satellites_cc;
 SELECT * FROM predprob_period ORDER BY p_period ASC LIMIT 20;
+
 -- which variable predict expected lifetime
-ESTIMATE COLUMNS, DEPENDENCE PROBABILITY WITH Expected_Lifetime as depprob_lifetime FROM satellites_cc ORDER BY depprob_lifetime DESC LIMIT 10 
+ESTIMATE COLUMNS DEPENDENCE PROBABILITY WITH Expected_Lifetime as depprob_lifetime
+    FROM satellites_cc
+    ORDER BY depprob_lifetime DESC LIMIT 10; 
+
 -- plot a state
 .ccstate satellites_cc 0

@@ -146,3 +146,71 @@ def histogram(self, argin):
         plt.show()
     else:
         plt.savefig(args.filename)
+
+
+@bayesdb_shell_cmd('chainplot')
+def plot_crosscat_chain_diagnostics(self, argin):
+    ''' Plots diagnostics for each model of the specified generator
+    <diagnostic> <generator> [output_filename]
+
+    Valid (crosscat) diagnostics are
+        - logscore: log score of the model
+        - num_views: the number of views in the model
+        - column_crp_alpha: CRP alpha over columns
+
+    Example:
+        bayeslite> logscore dha_cc scoreplot.png
+    '''
+
+    args = argin.split()
+    if len(args) < 2:
+        self.stdout.write("Please specify a diagnostic and a generator.\n")
+        return
+
+    import seaborn as sns
+    import bayeslite.core
+
+    diagnostic = args[0]
+    generator_name = args[1]
+    filename = None
+    if len(args) == 3:
+        filename = args[2]
+
+    valid_diagnostics = ['logscore', 'num_views', 'column_crp_alpha']
+    if diagnostic not in valid_diagnostics:
+        self.stdout('I do not know what to do with %s.\n'
+                    'Please chosse one of the following instead: %s\n'
+                    % ', '.join(valid_diagnostics))
+
+    generator_id = bayeslite.core.bayesdb_get_generator(self._bdb, generator_name)
+
+    # get model numbers. Do not rely on there to be a diagnostic for every model
+    bql = '''SELECT modelno, COUNT(modelno) FROM bayesdb_crosscat_diagnostics
+                WHERE generator_id = ?
+                GROUP BY modelno'''
+    df = do_query(self._bdb, bql, (generator_id,)).as_df()
+    models = df['modelno'].astype(int).values
+
+    plt.figure(tight_layout=True, facecolor='white', figsize=(10, 5))
+    ax = plt.gca()
+    colors = sns.color_palette("GnBu_d", len(models))
+    for i, modelno in enumerate(models):
+        bql = '''SELECT {}, iterations FROM bayesdb_crosscat_diagnostics
+                    WHERE modelno = ? AND generator_id = ?
+                    ORDER BY iterations ASC
+                '''.format(diagnostic)
+        df = do_query(self._bdb, bql, (modelno, generator_id,)).as_df()
+        plt.plot(df['iterations'].values, df[diagnostic].values, c=colors[modelno],
+                 alpha=.7, lw=2)
+
+        ax.text(df['iterations'].values[-1], df[diagnostic].values[-1],
+                str(modelno), color=colors[i])
+
+    plt.xlabel('Iteration')
+    plt.ylabel(diagnostic)
+    plt.title('%s for each model in %s' % (diagnostic, generator_name,))
+
+    if filename is None:
+        plt.show()
+    else:
+        plt.savefig(filename)
