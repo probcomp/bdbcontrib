@@ -4,7 +4,7 @@
 "Operator_Owner","Operator/owner","Operator/owner of satellite","NaN"
 "Users","Users","Type of users of satellite","NaN"
 "Purpose","Purpose","Purpose of satellite","NaN"
-"Class_of_Orbit","short_name","description","{ ""LEO"": ""Low Earth orbit"",""MEO"": ""Medium Earth orbit"",""GEO"": ""Geostationary orbit"",""Elliptical"": ""Elliptical orbit"" }"
+"Class_of_Orbit","class or orbit","description","{ ""LEO"": ""Low Earth orbit"",""MEO"": ""Medium Earth orbit"",""GEO"": ""Geostationary orbit"",""Elliptical"": ""Elliptical orbit"" }"
 "Type_of_Orbit","Orbit type","Orbit type","NaN"
 "Perigee_km","Perigee","Distance of perigee (kilometers)","NaN"
 "Apogee_km","Apogee","Distance of apogee (kilometers)","NaN"
