@@ -29,8 +29,7 @@ def zmatrix(self, argin):
 
     df = do_query(self._bdb, bql).as_df()
 
-    plt.figure(tight_layout=True, facecolor='white')
-    cm = pu.zmatrix(df)
+    cm = pu.zmatrix(df, clustermap_kws={'linewidths': 0})
 
     if args.filename is None:
         plt.show()
