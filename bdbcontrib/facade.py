@@ -54,7 +54,7 @@ def do_query(bdb, bql_query, bindings=()):
     return BQLQueryResult(bdb, bql_query, bindings)
 
 
-# ``````````````````````````````````````````````````````````````````````````````````````````````````
+# ````````````````````````````````````````````````````````````````````````````
 class BayesDBClient(object):
     """
     """
@@ -65,7 +65,8 @@ class BayesDBClient(object):
             self.engine = bayeslite.crosscat.CrosscatMetamodel(MultiprocessingEngine())
 
         if bdb_filename is None:
-            print "WARNING: bdb_filename is None, all analyses will be conducted in memory"
+            print "WARNING: bdb_filename is None, all analyses will be " \
+                  "conducted in memory"
 
         self.bdb = bayeslite.BayesDB(bdb_filename)
         bayeslite.bayesdb_register_metamodel(self.bdb,  self.engine)
@@ -75,9 +76,9 @@ class BayesDBClient(object):
         return self.query(bql_query_str)
 
     @classmethod
-    def from_csv(cls, bdb_filename, btable_name, csv_filename, codebook_filename=None,
-                 generator_name=None, no_mp=False, create=True, header=True,
-                 columns_types=None):
+    def from_csv(cls, bdb_filename, btable_name, csv_filename,
+                 codebook_filename=None, generator_name=None, no_mp=False,
+                 create=True, header=True, columns_types=None):
         """
         Initilize table using a csv file.
         """
@@ -85,7 +86,8 @@ class BayesDBClient(object):
             generator_name = btable_name + '_cc'
 
         self = cls(bdb_filename, no_mp=no_mp)
-        self.add_table_from_csv(btable_name, csv_filename, header=header, create=create)
+        self.add_table_from_csv(btable_name, csv_filename, header=header,
+                                create=create)
         self.create_generator(btable_name, generator_name, columns_types)
         if codebook_filename is not None:
             self.add_codebook_to_table(btable_name, codebook_filename)
@@ -93,9 +95,9 @@ class BayesDBClient(object):
         return self
 
     @classmethod
-    def from_pandas(cls, bdb_filename, btable_name, pandas_df, codebook_filename=None,
-                    generator_name=None, no_mp=False, create=True, header=True,
-                    column_types=None):
+    def from_pandas(cls, bdb_filename, btable_name, pandas_df,
+                    codebook_filename=None, generator_name=None, no_mp=False,
+                    create=True, header=True, column_types=None):
         """
         Initialize table using a pandas df.
         """
@@ -109,13 +111,14 @@ class BayesDBClient(object):
             self.add_codebook_to_table(btable_name, codebook_filename)
         return self
 
-    def add_table_from_csv(self, btable_name, csv_filename, header=True, create=True):
-        bayeslite.bayesdb_read_csv_file(self.bdb, btable_name, csv_filename, header=header,
-                                        create=create)
+    def add_table_from_csv(self, btable_name, csv_filename, header=True,
+                           create=True):
+        bayeslite.bayesdb_read_csv_file(self.bdb, btable_name, csv_filename,
+                                        header=header, create=create)
 
     def add_table_from_pandas(self, btable_name, pandas_df, create=True):
-        bayeslite.read_pandas.bayesdb_read_pandas_df(self.bdb, btable_name, pandas_df,
-                                                     create=create)
+        bayeslite.read_pandas.bayesdb_read_pandas_df(
+            self.bdb, btable_name, pandas_df, create=create)
 
     def create_generator(self, btable_name, generator_name, column_types=None):
         if column_types is not None:
@@ -126,11 +129,12 @@ class BayesDBClient(object):
                                          for cn, ct in column_types]) + ')'
             self.bdb.execute(bql_query)
         else:
-            bayeslite.guess.bayesdb_guess_generator(self.bdb, generator_name, btable_name,
-                                                    'crosscat')
+            bayeslite.guess.bayesdb_guess_generator(self.bdb, generator_name,
+                                                    btable_name, 'crosscat')
 
     def add_codebook_to_table(self, btable_name, codebook_filename):
-        bayeslite.bayesdb_load_codebook_csv_file(self.bdb, btable_name, codebook_filename)
+        bayeslite.bayesdb_load_codebook_csv_file(self.bdb, btable_name,
+                                                 codebook_filename)
 
     def query(self, bql_query):
         """ Do query; return BQLQueryResult """
@@ -139,5 +143,6 @@ class BayesDBClient(object):
     def drawstate(self, btable_name, generator_name, modelno, **kwargs):
         """ Render a visualization of the crosscat state of a given model """
         with self.bdb.savepoint():
-            return draw_cc_state.draw_state(self.bdb, btable_name, generator_name, modelno,
+            return draw_cc_state.draw_state(self.bdb, btable_name,
+                                            generator_name, modelno,
                                             **kwargs)

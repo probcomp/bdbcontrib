@@ -22,7 +22,8 @@ def zmatrix(self, argin):
     '''
     parser = argparse.ArgumentParser()
     parser.add_argument('bql', type=str, nargs='+', help='PAIRWISE BQL query')
-    parser.add_argument('-f', '--filename', type=str, default=None,  help='output filename')
+    parser.add_argument('-f', '--filename', type=str, default=None,
+                        help='output filename')
     args = parser.parse_args(shlex.split(argin))
 
     bql = " ".join(args.bql)
@@ -54,14 +55,18 @@ def pairplot(self, argin):
         -s, --shortnames: Use column short names to label facets?
 
     Example:
-    bayeslite> .pariplot SELECT foo, baz, quux + glorb FROM mytable --filename myfile.png
+    bayeslite> .pariplot SELECT foo, baz, quux + glorb FROM mytable
+        --filename myfile.png
     bayeslite> .pariplot ESTIMATE foo, baz FROM mytable_cc -g mytable_cc
     '''
     parser = argparse.ArgumentParser()
     parser.add_argument('bql', type=str, nargs='+', help='BQL query')
-    parser.add_argument('-f', '--filename', type=str, default=None,  help='output filename')
-    parser.add_argument('-g', '--generator', type=str, default=None,  help='Query generator name')
-    parser.add_argument('-s', '--shortnames', action='store_true',  help='Use column short names?')
+    parser.add_argument('-f', '--filename', type=str, default=None,
+                        help='output filename')
+    parser.add_argument('-g', '--generator', type=str, default=None,
+                        help='Query generator name')
+    parser.add_argument('-s', '--shortnames', action='store_true',
+                        help='Use column short names?')
     args = parser.parse_args(shlex.split(argin))
 
     bql = " ".join(args.bql)
@@ -69,7 +74,8 @@ def pairplot(self, argin):
     df = do_query(self._bdb, bql).as_df()
 
     plt.figure(tight_layout=True, facecolor='white')
-    pu.pairplot(df, bdb=self._bdb, generator_name=args.generator, use_shortname=args.shortnames)
+    pu.pairplot(df, bdb=self._bdb, generator_name=args.generator,
+                use_shortname=args.shortnames)
 
     if args.filename is None:
         plt.show()
@@ -101,7 +107,8 @@ def draw_crosscat_state(self, argin):
         filename = args[2]
 
     bql = 'SELECT tabname, metamodel FROM bayesdb_generator WHERE name = ?'
-    table_name, metamodel = do_query(self._bdb, bql, (generator_name,)).as_cursor().fetchall()[0]
+    table_name, metamodel = do_query(
+        self._bdb, bql, (generator_name,)).as_cursor().fetchall()[0]
 
     if metamodel.lower() != 'crosscat':
         raise ValueError('Metamodel for generator %s (%s) should be crosscat' %
@@ -130,9 +137,12 @@ def histogram(self, argin):
 
     parser = argparse.ArgumentParser()
     parser.add_argument('bql', type=str, nargs='+', help='BQL query')
-    parser.add_argument('-f', '--filename', type=str, default=None,  help='output filename')
-    parser.add_argument('-b', '--bins', type=int, default=15,  help='number of bins')
-    parser.add_argument('--normed', action='store_true',  help='Normalize histograms?')
+    parser.add_argument('-f', '--filename', type=str, default=None,
+                        help='output filename')
+    parser.add_argument('-b', '--bins', type=int, default=15,
+                        help='number of bins')
+    parser.add_argument('--normed', action='store_true',
+                        help='Normalize histograms?')
     args = parser.parse_args(shlex.split(argin))
 
     bql = " ".join(args.bql)
@@ -181,9 +191,11 @@ def plot_crosscat_chain_diagnostics(self, argin):
                     'Please chosse one of the following instead: %s\n'
                     % ', '.join(valid_diagnostics))
 
-    generator_id = bayeslite.core.bayesdb_get_generator(self._bdb, generator_name)
+    generator_id = bayeslite.core.bayesdb_get_generator(self._bdb,
+                                                        generator_name)
 
-    # get model numbers. Do not rely on there to be a diagnostic for every model
+    # get model numbers. Do not rely on there to be a diagnostic for every
+    # model
     bql = '''SELECT modelno, COUNT(modelno) FROM bayesdb_crosscat_diagnostics
                 WHERE generator_id = ?
                 GROUP BY modelno'''
@@ -199,8 +211,8 @@ def plot_crosscat_chain_diagnostics(self, argin):
                     ORDER BY iterations ASC
                 '''.format(diagnostic)
         df = do_query(self._bdb, bql, (modelno, generator_id,)).as_df()
-        plt.plot(df['iterations'].values, df[diagnostic].values, c=colors[modelno],
-                 alpha=.7, lw=2)
+        plt.plot(df['iterations'].values, df[diagnostic].values,
+                 c=colors[modelno], alpha=.7, lw=2)
 
         ax.text(df['iterations'].values[-1], df[diagnostic].values[-1],
                 str(modelno), color=colors[i])

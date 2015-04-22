@@ -26,10 +26,11 @@ def rotate_tick_labels(ax, axis='x', rotation=90):
     plt.setp(labels, rotation=rotation)
 
 
-def get_bayesdb_col_type(column_name, df_column, bdb=None, generator_name=None):
+def get_bayesdb_col_type(column_name, df_column, bdb=None,
+                         generator_name=None):
     """
-    If column_name is a column label (not a short name!) then the modeltype of the column will be
-    returned otherwise we guess.
+    If column_name is a column label (not a short name!) then the modeltype of
+    the column will be returned otherwise we guess.
     """
     def guess_column_type(df_column):
         pd_type = df_column.dtype
@@ -45,11 +46,12 @@ def get_bayesdb_col_type(column_name, df_column, bdb=None, generator_name=None):
         theta = ccu.get_M_c(bdb, generator_name)
         try:
             col_idx = theta['name_to_idx'][column_name]
-            coltype = MODEL_TO_TYPE_LOOKUP[theta['column_metadata'][col_idx]['modeltype']]
-            # XXX: Force cyclic -> numeric because there is no need to plot cyclic data any
-            # differently until we implement rose plots. See
-            # http://matplotlib.org/examples/pie_and_polar_charts/polar_bar_demo.html for an
-            # example.
+            modeltype = theta['column_metadata'][col_idx]['modeltype']
+            coltype = MODEL_TO_TYPE_LOOKUP[modeltype]
+            # XXX: Force cyclic -> numeric because there is no need to plot
+            # cyclic data any differently until we implement rose plots. See
+            # http://matplotlib.org/examples/pie_and_polar_charts/polar_bar_demo.html
+            # for an example.
             if coltype.lower() == 'cyclic':
                 coltype = 'numerical'
             return coltype
@@ -86,8 +88,8 @@ def do_hist(data_srs, ax=None, dtype=None, bdb=None, generator_name=None):
         ax = plt.gca()
 
     if dtype == 'categorical':
-        vals, uvals, _ = conv_categorical_vals_to_numeric(data_srs, bdb=bdb,
-                                                          generator_name=generator_name)
+        vals, uvals, _ = conv_categorical_vals_to_numeric(
+            data_srs, bdb=bdb, generator_name=generator_name)
         ax.hist(vals, bins=len(uvals))
         ax.set_xticks(range(len(uvals)))
         ax.set_xticklabels(uvals)
@@ -101,10 +103,10 @@ def do_heatmap(plot_df, vartypes, ax=None, bdb=None, generator_name=None):
     if ax is None:
         ax = plt.gca()
 
-    vals_x, uvals_x, _ = conv_categorical_vals_to_numeric(plot_df.ix[:, 0],
-                                                          bdb=bdb, generator_name=generator_name)
-    vals_y, uvals_y, _ = conv_categorical_vals_to_numeric(plot_df.ix[:, 1],
-                                                          bdb=bdb, generator_name=generator_name)
+    vals_x, uvals_x, _ = conv_categorical_vals_to_numeric(
+        plot_df.ix[:, 0], bdb=bdb, generator_name=generator_name)
+    vals_y, uvals_y, _ = conv_categorical_vals_to_numeric(
+        plot_df.ix[:, 1], bdb=bdb, generator_name=generator_name)
 
     bins_x = len(uvals_x)
     bins_y = len(uvals_y)
@@ -134,11 +136,11 @@ def do_violinplot(plot_df, vartypes, ax=None, bdb=None, generator_name=None):
         groupby = plot_df.columns[1]
         vals = plot_df.columns[0]
 
-    _, unique_vals, _ = conv_categorical_vals_to_numeric(plot_df[groupby],
-                                                         bdb=bdb, generator_name=generator_name)
+    _, unique_vals, _ = conv_categorical_vals_to_numeric(
+        plot_df[groupby], bdb=bdb, generator_name=generator_name)
 
-    sns.violinplot(plot_df[vals], groupby=plot_df[groupby], order=unique_vals, names=unique_vals,
-                   vert=vert, ax=ax, positions=0)
+    sns.violinplot(plot_df[vals], groupby=plot_df[groupby], order=unique_vals,
+                   names=unique_vals, vert=vert, ax=ax, positions=0)
     n_vals = len(plot_df[groupby].unique())
 
     if vert:
@@ -161,7 +163,8 @@ def do_kdeplot(plot_df, vartypes, ax=None, bdb=None, generator_name=None):
 
     assert plot_df.shape[1] == 2
 
-    plt.scatter(plot_df.values[:, 0], plot_df.values[:, 1], alpha=.5, color='steelblue')
+    plt.scatter(plot_df.values[:, 0], plot_df.values[:, 1], alpha=.5,
+                color='steelblue')
     sns.kdeplot(plot_df.values, ax=ax)
     return ax
 
@@ -179,7 +182,8 @@ def do_pair_plot(plot_df, vartypes, ax=None, bdb=None, generator_name=None):
     if ax is None:
         ax = plt.gca()
 
-    ax = DO_PLOT_FUNC[hash(vartypes)](plot_df, vartypes, ax=ax, bdb=bdb, generator_name=bdb)
+    ax = DO_PLOT_FUNC[hash(vartypes)](plot_df, vartypes, ax=ax, bdb=bdb,
+                                      generator_name=bdb)
     return ax
 
 
@@ -190,10 +194,11 @@ def zmatrix(data_df, clustermap_kws=None):
         - data_df (pandas.DataFrame): The result of the query in pandas form.
     Kwargs:
         - clustermap_kws (dict): kwargs for seaborn.clustermap. See seaborn
-        documentation. Of particular importance is the pivot_kws kwarg. pivot_kws
-        is a dict with entries index, column, and values that let clustermap know
-        how to reshape the data. If the query does not follow the standard
-        ESTIMATE PAIRWISE output, it may be necessary to define pivot_kws
+        documentation. Of particular importance is the pivot_kws kwarg.
+        pivot_kws is a dict with entries index, column, and values that let
+        clustermap know how to reshape the data. If the query does not follow
+        the standard ESTIMATE PAIRWISE output, it may be necessary to define
+        pivot_kws
     """
     if clustermap_kws is None:
         clustermap_kws = {}
@@ -244,7 +249,8 @@ def pairplot(df, bdb=None, generator_name=None, use_shortname=False):
         varname = data_df.columns[0]
         vartype = get_bayesdb_col_type(varname, data_df[varname], bdb=bdb,
                                        generator_name=generator_name)
-        do_hist(data_df[varname], dtype=vartype, ax=ax, bdb=bdb, generator_name=generator_name)
+        do_hist(data_df[varname], dtype=vartype, ax=ax, bdb=bdb,
+                generator_name=generator_name)
         if vartype == 'categorical':
             rotate_tick_labels(ax)
         return
@@ -312,7 +318,8 @@ def comparative_hist(df, nbins=15, normed=False):
 
     vartype = get_bayesdb_col_type(df.columns[0], df[df.columns[0]])
     if vartype == 'categorical':
-        values, labels, lookup = conv_categorical_vals_to_numeric(df[df.columns[0]])
+        values, labels, lookup = conv_categorical_vals_to_numeric(
+            df[df.columns[0]])
         df.ix[:, 0] = values
         bins = len(labels)
         ticklabels = [0]*len(labels)
@@ -328,7 +335,8 @@ def comparative_hist(df, nbins=15, normed=False):
     colorby = None
     if len(df.columns) > 1:
         if len(df.columns) > 2:
-            raise ValueError("I don't know what to do with data with more than two columns")
+            raise ValueError("I don't know what to do with data with more"
+                             "than two columns")
         colorby = df.columns[1]
         colorby_vals = df[colorby].unique()
 
@@ -355,7 +363,8 @@ if __name__ == '__main__':
     df = pd.DataFrame()
     num_rows = 400
     alphabet = ['A', 'B', 'C', 'D', 'E']
-    col_0 = np.random.choice(range(5), num_rows, p=np.array([1, .4, .3, .2, .1])/2.)
+    col_0 = np.random.choice(range(5), num_rows,
+                             p=np.array([1, .4, .3, .2, .1])/2.)
     col_1 = [np.random.randn()+x for x in col_0]
     col_0 = [alphabet[i] for i in col_0]
 
@@ -372,17 +381,19 @@ if __name__ == '__main__':
     filename = 'plottest.csv'
     df.to_csv(filename)
 
-    cc_client = facade.BayesDBClient.from_csv('plttest.bdb', 'plottest', filename)
-    df = cc_client('SELECT one_n, zero_5, five_c, four_8 FROM plottest').as_df()
+    cc_client = facade.BayesDBClient.from_csv('plttest.bdb', 'plottest',
+                                              filename)
+    df = cc_client('SELECT one_n, zero_5, five_c, four_8 FROM plottest')
+    df = df.as_df()
 
     plt.figure(tight_layout=True, facecolor='white')
-    pairplot(df, bdb=cc_client.bdb, generator_name='plottest_cc', use_shortname=False)
+    pairplot(df, bdb=cc_client.bdb, generator_name='plottest_cc',
+             use_shortname=False)
     plt.show()
 
     df = cc_client('SELECT three_n + one_n, three_n * one_n,'
                    ' zero_5 || four_8 FROM plottest').as_df()
 
     plt.figure(tight_layout=True, facecolor='white')
-    # pairplot(df, bdb=cc_client.bdb, generator_name='plottest_cc', use_shortname=False)
     pairplot(df,  use_shortname=False)
     plt.show()
