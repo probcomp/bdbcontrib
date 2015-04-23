@@ -1,6 +1,6 @@
 # bdbcontrib
 
-A set of utilities for bayesdb. 
+A set of utilities for bayesdb.
 
 
 ## Installing
@@ -13,7 +13,7 @@ A set of utilities for bayesdb.
 
 Clone the repo and add it to your `PYTHONPATH`
 
-## Install 
+## Install
 Clone the repo and add the `bdbdcontrib` path to your `PYTHONPATH`
 
 **Linux**
@@ -43,34 +43,79 @@ To ensure that the contrib is automatically loaded by the shell, add the followi
 
 #### .zmatrix
 
-    .zmatrix <pairwise query> [-f|--filename path/to/file.png]
+    .zmatrix <pairwise query> [options]
 
-To draw a z-matrix:
+**Options:**
+- `-f, --filename <str>`: save as filename.
 
-    bayeslite> .zmatrix ESTIMATE PAIRWISE <something> FROM <generator>
+Example:
 
-To save a z-matrix to a file
+    bayeslite> .zmatrix ESTIMATE PAIRWISE DEPENDENCE PROBABILITY FROM satellites_cc;
 
-    bayeslite> .zmatrix ESTIMATE PAIRWISE <something> FROM <generator> -f my_zmatrix.png
-    bayeslite> .zmatrix ESTIMATE PAIRWISE <something> FROM <generator> --filename my_zmatrix.png
-
+![zmatrix](doc/zmatrix.png)
 
 #### .pairplot
 Draws or saves a pariplot of an arbitrary BQL query
 
-    .pairplot <query> [-f|--filename path/to/file.png]
+    .pairplot <query> [options]
 
-To draw 
+**Options:**
+- `-g, --generator <str>`: the generator name (decreases guesswork with respect to which columns are
+    which data types)
+- `-f, --filename <str>`: save as filename.
+- `-s, --shortnames`: use columns shornames (requires codebook) on axis labels.
 
-    bayeslite> .pairplot SELECT col1, col2, col3 FROM table
+Example:
 
-To save as file
+    bayeslite> CREATE TEMP TABLE predprob_life AS ESTIMATE Name, Expected_Lifetime, PREDICTIVE PROBABILITY OF Expected_Lifetime AS p_lifetime, Class_of_Orbit FROM satellites_cc;
+    bayeslite> .pairplot SELECT Expected_Lifetime, class_of_orbit, p_lifetime FROM predprob_life
 
-    bayeslite> .pairplot SELECT col1, col2, col3 FROM table -f my_pairplot.png
-    bayeslite> .pairplot SELECT col1, col2, col3 FROM table --filename my_pairplot.png
-
+![.pairplot](doc/pairplot.png)
 
 #### .ccstate
 Draws a crosscat state
 
     .ccstate <generator> <modelno> [filename.png]
+
+Example:
+
+    bayeslite> .ccstate dha_cc 0
+
+![.ccstate rendering of dha](doc/ccstate_1.png)
+
+#### .hist
+Draws a histogram for a one or two-column query. The second column in a
+two-column query is assumed to be a dummy variable use to divide the data
+into categories.
+
+    .hist <query> [options]
+
+**Options:**
+- `--normed`: normalize the histogram
+- `-b, --bins <int>`: the number of bins
+- `-f, --filename <str>`: save as filename.
+
+Example (one-column query):
+
+    bayeslite> .hist SELECT MDCR_SPND_OUTP FROM dha; --normed --bins 31
+
+![histogram](doc/hist1.png)
+
+Example (two-column query):
+
+    bayeslite> .hist SELECT dry_mass_kg, Class_of_Orbit FROM satellites; -b 35 --normed
+
+![histogram](doc/hist2.png)
+
+#### .chainplot
+Plots various model diagnostics as a function of iterations. To use `.chainplot`, `ANALYZE` must
+be run with `CHEKPOINT`.
+
+    .chainplot <logscore|num_views|column_crp_alpha> <generator> [filename]
+
+Example:
+
+    bayeslite> ANALYZE satellites_cc FOR 50 ITERATIONS CHECKPOINT 2 ITERATION WAIT;
+    bayeslite> .chainplot logscore satellites_cc
+
+![logscore over iterations](doc/logscore.png)
