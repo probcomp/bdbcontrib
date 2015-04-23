@@ -30,7 +30,7 @@ def zmatrix(self, argin):
 
     df = do_query(self._bdb, bql).as_df()
 
-    cm = pu.zmatrix(df, clustermap_kws={'linewidths': 0})
+    cm = pu.zmatrix(df, clustermap_kws={'linewidths': 0, 'vmin': 0.0, 'vmax': 1.0})
 
     if args.filename is None:
         plt.show()
