@@ -68,7 +68,7 @@ class BayesDBClient(object):
             print "WARNING: bdb_filename is None, all analyses will be " \
                   "conducted in memory"
 
-        self.bdb = bayeslite.BayesDB(bdb_filename)
+        self.bdb = bayeslite.bayesdb_open(pathname=bdb_filename)
         bayeslite.bayesdb_register_metamodel(self.bdb,  self.engine)
 
     def __call__(self, bql_query_str):
