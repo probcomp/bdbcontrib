@@ -129,7 +129,8 @@ def cmap_color_brightness(value, base_color, vmin, vmax,
         brightness = .5
     else:
         span = vmax - vmin
-        brightness = .5*(value-vmin)/(span)+.25
+        # brightness = .5*(value-vmin)/(span)+.25  # low contrast
+        brightness = (value-vmin)/(span)
 
     color = np.array([min(c*brightness, 1.) for c in list(base_color)])
 
@@ -309,7 +310,7 @@ def draw_state(bdb, table_name, generator_name, modelno,
         if len(view_labels) != len(sorted_views):
             view_labels += ['']*(len(sorted_rows)-len(view_labels))
     else:
-        view_labels = ['View ' + str(i) for i in range(num_rows)]
+        view_labels = ['V ' + str(i) for i in range(num_rows)]
 
     if hilight_cols_colors is None:
         hilight_cols_colors = []
@@ -411,7 +412,7 @@ def draw_state(bdb, table_name, generator_name, modelno,
             ax.text(sbplt_start+i+.5, num_rows+.5, view_x_tick_labels[i],
                     font_kws)
 
-        view_label_x = (sbplt_start+sbplt_end)/2.
+        view_label_x = (sbplt_start+sbplt_end)/2. - .5
         view_label_y = -2.5
         font_kws = dict(ha='center',
                         fontsize=view_label_fontsize,
