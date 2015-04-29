@@ -1,7 +1,3 @@
-"""
-Set of plotting utilities for use wil bayesdb/crosscat
-"""
-# pylint: disable=E1103
 
 import numpy as np
 from matplotlib.patches import Rectangle
@@ -37,29 +33,41 @@ def convert_t_do_numerical(T, M_c):
 
 
 def sort_state(X_L, X_D, M_c, T):
-    """
+    """Sorts the metadata for visualization.
+
     Sort views from largest to smallest. W/in views, sorts columns r->l from
     highest marginal probability to lowest; and sorts categories largest to
     smallest from top to bottom. Within categories, sorts rows higest to lowest
     probability from top to bottom.
 
-    Notes:
-        - It will require initialing component models to calculate these
-        probabilities.
-    Inputs:
-        X_L:
-        X_D:
-        M_c:
-        T
-    Returns:
-        sorted_views (list): view indices from largest (most columns) to
-            smallest.
-        sorted_clusters (dict<list>) sorted_clusters[v] is a sorted list of
-            clusters in view v from largest (most rows) to smallest.
-        sorted_cols (dict<list>): sorted_columns[v] is a sorted list of
-            columns in view v from higest to lowest probability.
-        sorted_rows (dict<dict<list>>): sorted_rows[v][c] is a sorted list of
-            rows in cluster c of view v from higest to lowest probability.
+    Parameters
+    ----------
+    X_L : dict
+        CrossCat view metadata
+    X_D : list
+        CrossCat row/view/cluster partition
+    M_c : dict
+        CrossCat column metadata
+    T : list
+
+    Notes
+    -----
+    Calculating probabilites requires initializing stateless CrossCat
+    component models, which is a little exensive.
+
+    Returns
+    -------
+    sorted_views : list
+        view indices from largest (most columns) to smallest.
+    sorted_clusters : dict<list>
+        sorted_clusters[v] is a sorted list of clusters in view v from largest
+        (most rows) to smallest.
+    sorted_cols : dict<list>
+        sorted_columns[v] is a sorted list of columns in view v from higest to
+        lowest probability.
+    sorted_rows : dict<dict<list>>
+        sorted_rows[v][c] is a sorted list of rows in cluster c of view v from
+        higest to lowest probability.
     """
     num_views = len(X_L['view_state'])
 
@@ -117,8 +125,27 @@ def sort_state(X_L, X_D, M_c, T):
 
 def cmap_color_brightness(value, base_color, vmin, vmax,
                           nan_color=(1., 0., 0., 1.)):
-    """
-    Darken by value. Lighter values are higher. NaN values are red.
+    """Returns a color representing the magnitude of a value.
+
+    Higher values are represented with lighter colors. Given the a base color
+    of 50% gray, white represents the max and black represents the min.
+
+    Parameters
+    ----------
+    value : float
+        The value of a cell to convert to a color
+    base_color: tuple (r, g, b) or (r, g, b, alpha)
+        The color to which the brightness manipulation is applied
+    vmin : float
+        The minimum value of the column to which `value` belongs
+    vmax : float
+        The maximum value of the column to which `value` belongs
+    nan_color : tuple (r, g, b) or (r, g, b, alpha)
+        The color to use for NaN or missing data. Defaults to red.
+
+    Returns:
+        color : tuple (r, g, b, a)
+            The `value` color
     """
     # XXX: bayesdb_data never retruns NaN for multinomial---NaN is added
     # to value_map
@@ -141,6 +168,30 @@ def cmap_color_brightness(value, base_color, vmin, vmax,
 
 def gen_collapsed_legend_from_dict(hl_colors_dict, loc=0, title=None,
                                    fontsize='medium', wrap_threshold=1000):
+    """Creates a legend with entries grouped by color.
+
+    For example, if a plot has multiple labels associated with the same color
+    line, instead of generating a legend entry for each label, labels with the
+    same colored line will be collapsed into longer, comma-separated labels.
+
+    Parameters
+    ----------
+    hl_colors_dict : dict
+        A dict of label, color pairs. Colors can be strings e.g. 'deeppink' or
+        rgb or rgba tuples.
+    loc : matplotlib compatible
+        any matpltotlib-compbatible legend location identifier
+    title : str
+        legend title
+    fontsize : int
+        legend entry and title fontsize
+    wrap_threshold : int
+        max number of charachters before wordwrap
+
+    Returns
+    -------
+    legend : matplotlib.legend
+    """
     if not isinstance(hl_colors_dict, dict):
         raise TypeError("hl_colors_dict must be a dict")
 
@@ -170,10 +221,8 @@ def gen_collapsed_legend_from_dict(hl_colors_dict, loc=0, title=None,
 
 
 def gen_hilight_colors(hl_labels=None, hl_colors=None):
-    '''
-    Generates a hilight color lookup from labels to colors. Generates labels
-    from Set1 by default.
-    '''
+    # Generates a hilight color lookup from labels to colors. Generates labels
+    # from Set1 by default.
     if hl_labels is None:
         return {}
 
@@ -202,10 +251,9 @@ def gen_hilight_colors(hl_labels=None, hl_colors=None):
 
 
 def gen_blank_sort(num_rows, num_cols):
-    '''
-    Generates a 'blank sort' which allows state plotting of the raw data
+    """Generates a 'blank sort' which allows state plotting of the raw data
     without structure.
-    '''
+    """
     sorted_views = [0]
     sorted_clusters = {}
     sorted_clusters[0] = [0]
@@ -275,14 +323,84 @@ def draw_state(bdb, table_name, generator_name, modelno,
                hilight_cols=[], hilight_cols_colors=None,
                separator_color='black', separator_width=4,
                blank_state=False, nan_color=(1., 0., 0., 1.),
-               view_labels=None,
+               view_labels=None, view_label_fontsize='large',
+               legend=True, legend_fontsize='medium',
                row_legend_loc=1, row_legend_title='Row key',
                col_legend_loc=4, col_legend_title='Column key',
                descriptions_in_legend=True, legend_wrap_threshold=20,
-               legend=True,
-               legend_fontsize='medium',
-               view_label_fontsize='large'
                ):
+    """Creates a debugging (read: not pretty) rendering of a CrossCat state.
+
+    Parameters
+    ----------
+    bdb : bayeslite.BayesDB
+        The BayesDB object associated with the CrossCat state
+    table_name : str
+        The btable name containing the data associated with the state
+    generator_name : str
+        The CrossCat generator associated witht the state
+    modelno : int
+        The index of the model/state to draw
+    ax : matplotlib.axis
+        The axis on which to draw
+    row_label_col : str
+        The name of the column to use for row labels. Defaults to FIXME
+    short_names : bool
+        Use shortnames as column labels
+    hilight_rows : list<str>
+        A list of rows to hilight with colored rectangles.
+    hilight_rows_colors : list
+        Contains a color (str or tuple) for each entry in `hilight_rows`. If
+        not specified, unique colors for each entry are generated.
+    hilight_cols : list
+        A list of columns to hilight with colored rectangles.
+    hilight_cols_colors : list
+        Contains a color (str or tuple) for each entry in `hilight_cols`. If
+        not specified, unique colors for each entry are generated.
+    blank_state : bool
+        If True, draws an unsorted, unpartitioned state
+    view_labels : list<str>
+        Labels placed above each view. If `len(view_labels) < num_views` then
+        only the views for which there are entries are labeled.
+    view_label_fontsize : valid matplotlib `fontsize`
+        Font size used for vie labels
+    legend : bool
+        If True (defult) displays legend
+    legend_fontsize : valid matplotlib `fontsize`
+        Font size used for legend entries and titles
+    row_legend_loc : matplotlib.legend location
+        location of the row legend. For use with row hilighting
+    col_legend_loc : matplotlib.legend location
+        location of the column legend. For use with column hilighting
+
+    Returns
+    -------
+    ax : matplotlib.axis
+        The state rendering
+
+    Other Parameters
+    ----------------
+    border_width : int
+        The number of cells between views. Use larger values for longer row
+        names.
+    separator_color : str or (r, g, b) or (r, g, b, alpha) tuple
+        The color of the cluster seprator. Default is black.
+    separator_width : int
+        linewidth of the cluster separator
+    nan_color : str or (r, g, b) or (r, g, b, alpha) tuple
+        The color for missing/NaN values. Default is red.
+    row_legend_title : str
+        title of the row legend
+    col_legend_title : str
+        title of the column legend
+    legend_wrap_threshold : int
+        Max number of characters until wordrap for collapsed legends. For use
+        when multiple entries in `hilight_cols_colors` or `hilight_cols_colors`
+        contain the same color.
+    descriptions_in_legend : bool
+        If True (default), the column descriptions (requires codebook) are
+        added to the legend
+    """
     theta = get_metadata(bdb, generator_name, modelno)
     M_c = get_M_c(bdb, generator_name)
     # idx_to_name doesn't use an int idx, but a string idx because crosscat. Yep.

@@ -1,6 +1,4 @@
 
-# pylint: disable=E1103
-
 import bdbcontrib.crosscat_utils as ccu
 
 import matplotlib.pyplot as plt
@@ -28,10 +26,9 @@ def rotate_tick_labels(ax, axis='x', rotation=90):
 
 def get_bayesdb_col_type(column_name, df_column, bdb=None,
                          generator_name=None):
-    """
-    If column_name is a column label (not a short name!) then the modeltype of
-    the column will be returned otherwise we guess.
-    """
+    # If column_name is a column label (not a short name!) then the modeltype
+    # of the column will be returned otherwise we guess.
+
     def guess_column_type(df_column):
         pd_type = df_column.dtype
         if pd_type is str:
@@ -188,17 +185,22 @@ def do_pair_plot(plot_df, vartypes, ax=None, bdb=None, generator_name=None):
 
 
 def zmatrix(data_df, clustermap_kws=None):
-    """
-    Plots a clustermap from and ESTIMATE PAIRWISE query.
-    Args:
-        - data_df (pandas.DataFrame): The result of the query in pandas form.
-    Kwargs:
-        - clustermap_kws (dict): kwargs for seaborn.clustermap. See seaborn
-        documentation. Of particular importance is the pivot_kws kwarg.
-        pivot_kws is a dict with entries index, column, and values that let
-        clustermap know how to reshape the data. If the query does not follow
-        the standard ESTIMATE PAIRWISE output, it may be necessary to define
-        pivot_kws
+    """Plots a clustermap from an ESTIMATE PAIRWISE query.
+
+    Parameters:
+    -----------
+    data_df : pandas.DataFrame
+        The result of a PAIRWISE query in pandas.DataFrame.
+    clustermap_kws : dict
+        kwargs for seaborn.clustermap. See seaborn documentation. Of particular
+        importance is the `pivot_kws` kwarg. `pivot_kws` is a dict with entries
+        index, column, and values that let clustermap know how to reshape the
+        data. If the query does not follow the standard ESTIMATE PAIRWISE
+        output, it may be necessary to define `pivot_kws`.
+
+    Returns
+    -------
+    seaborn.clustermap
     """
     if clustermap_kws is None:
         clustermap_kws = {}
@@ -224,13 +226,35 @@ def zmatrix(data_df, clustermap_kws=None):
 
 # TODO: bdb, and table_name should be optional arguments
 def pairplot(df, bdb=None, generator_name=None, use_shortname=False):
-    """
-    Plots the columns in data_df in a facet grid.
+    """Plots the columns in data_df in a facet grid.
+
+    Supports the following pairs:
     - categorical-categorical pairs are displayed as a heatmap
     - continuous-continuous pairs are displayed as a kdeplot
     - categorical-continuous pairs are displayed on a violin plot
-    XXX: support soon for ordered continuous combinations. It may be best to
-    plot all ordered continuous pairs as heatmap.
+
+    Parameters
+    ----------
+    df : pandas.DataFrame
+        The input data---the result of a BQL/SQL query
+    bdb : bayeslite.BayesDB (optional)
+        The BayesDB object associated with `df`. Having the BayesDB object and
+        the generator for the data allows pairplot to choose plot types.
+    generator_name : str
+        The name of generator associated with `df` and `bdb`.
+    use_shortname : bool
+        If True, use column shortnames (requires codebook) for axis lables,
+        otherwise use the column names in `df`.
+
+    Returns
+    -------
+    plt_grid : matplotlib.gridspec.GridSpec
+        A num_columns by num_columns Gridspec of pairplot axes.
+    
+    Notes
+    -----
+    Support soon for ordered continuous combinations. It may be best
+    to plot all ordered continuous pairs as heatmap.
     """
     # NOTE:Things to consider:
     # - String values are a possibility (categorical)
@@ -307,13 +331,24 @@ def pairplot(df, bdb=None, generator_name=None, use_shortname=False):
                 if vartype[x_pos] == 'categorical':
                     rotate_tick_labels(ax)
 
+    return plt_grid
+
 
 def comparative_hist(df, nbins=15, normed=False):
-    ''' Comparative histogram.
+    """Plot a histogram
+
     Given a one-column pandas.DataFrame, df, plots a simple histogram. Given a
     two-column df plots the data in columns one separated by a a dummy variable
     assumed to be in column 2.
-    '''
+
+    Parameters
+    ----------
+    nbins : int
+        Number of bins (bars)
+    normed : bool
+        If True, normalizes the the area of the histogram (or each
+        sub-histogram if df has two columns) to 1.
+    """
     df = df.dropna()
 
     vartype = get_bayesdb_col_type(df.columns[0], df[df.columns[0]])
