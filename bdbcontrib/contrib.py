@@ -168,7 +168,7 @@ def plot_crosscat_chain_diagnostics(self, argin):
         - column_crp_alpha: CRP alpha over columns
 
     Example:
-        bayeslite> logscore dha_cc scoreplot.png
+        bayeslite> .chainplot logscore dha_cc scoreplot.png
     '''
 
     args = argin.split()
