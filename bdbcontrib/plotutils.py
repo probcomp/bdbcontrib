@@ -250,7 +250,7 @@ def pairplot(df, bdb=None, generator_name=None, use_shortname=False):
     -------
     plt_grid : matplotlib.gridspec.GridSpec
         A num_columns by num_columns Gridspec of pairplot axes.
-    
+
     Notes
     -----
     Support soon for ordered continuous combinations. It may be best
@@ -383,7 +383,7 @@ def comparative_hist(df, nbins=15, normed=False):
         for color, cbv in zip(colors, colorby_vals):
             subdf = df[df[colorby] == cbv]
             plt.hist(subdf.ix[:, 0].values, bins=bins, color=color, alpha=.7,
-                     normed=normed, label=cbv)
+                     normed=normed, label=str(cbv))
         plt.legend(loc=0)
 
 
