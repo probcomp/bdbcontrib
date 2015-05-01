@@ -149,7 +149,6 @@ def histogram(self, argin):
 
     df = do_query(self._bdb, bql).as_df()
     pu.comparative_hist(df, nbins=args.bins, normed=args.normed)
-    plt.title(bql)
 
     if args.filename is None:
         plt.show()

@@ -377,14 +377,22 @@ def comparative_hist(df, nbins=15, normed=False):
 
     plt.figure(tight_layout=False, facecolor='white')
     if colorby is None:
-        plt.hist(df.ix[:, 0].values, bins=bins, color='#383838')
+        plt.hist(df.ix[:, 0].values, bins=bins, color='#383838', edgecolor='none')
+        plot_title = df.columns[0]
     else:
         colors = sns.color_palette('deep', len(colorby_vals))
         for color, cbv in zip(colors, colorby_vals):
             subdf = df[df[colorby] == cbv]
-            plt.hist(subdf.ix[:, 0].values, bins=bins, color=color, alpha=.7,
-                     normed=normed, label=str(cbv))
-        plt.legend(loc=0)
+            plt.hist(subdf.ix[:, 0].values, bins=bins, color=color, alpha=.5,
+                     edgecolor='none', normed=normed, label=str(cbv))
+        plt.legend(loc=0, title=colorby)
+        plot_title = df.columns[0] + " by " + colorby
+
+    if normed:
+        plot_title += " (normalized)"
+
+    plt.title(plot_title)
+    plt.xlabel(df.columns[0])
 
 
 if __name__ == '__main__':
