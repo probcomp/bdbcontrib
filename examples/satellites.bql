@@ -20,12 +20,12 @@ ANALYZE satellites_cc FOR 50 ITERATIONS CHECKPOINT 2 ITERATION WAIT;
 -- check for convergence
 .chainplot logscore satellites_cc
 
-.zmatrix ESTIMATE PAIRWISE DEPENDENCE PROBABILITY FROM satellites_cc
-.pairplot SELECT Dry_mass_kg, Class_of_Orbit, Perigee_km, Period_minutes FROM satellites
+.heatmap ESTIMATE PAIRWISE DEPENDENCE PROBABILITY FROM satellites_cc
+.show SELECT Dry_mass_kg, Class_of_Orbit, Perigee_km, Period_minutes FROM satellites
 
 -- find satellites with unexpected lifetimes
 CREATE TEMP TABLE predprob_life AS ESTIMATE Name, Expected_Lifetime, PREDICTIVE PROBABILITY OF Expected_Lifetime AS p_lifetime, Class_of_Orbit FROM satellites_cc;
-.pairplot SELECT Expected_Lifetime, class_of_orbit, p_lifetime FROM predprob_life
+.show SELECT Expected_Lifetime, class_of_orbit, p_lifetime FROM predprob_life
 SELECT * FROM predprob_life ORDER BY p_lifetime ASC LIMIT 20;
 
 -- find non-physical entries

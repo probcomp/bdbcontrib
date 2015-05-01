@@ -9,16 +9,16 @@ import bdbcontrib.plotutils as pu
 import matplotlib.pyplot as plt
 
 
-@bayesdb_shell_cmd('zmatrix')
+@bayesdb_shell_cmd('heatmap')
 def zmatrix(self, argin):
-    '''Creates a z-matrix from the bql query.
+    '''Creates a clustered heatmap from the bql query.
     <pairwise bql query> [options]
 
-    Creates a z-matrix from the bql query. If no filename is specified, will
-    attempt to draw.
+    Creates a clustered heatmap from the bql query. If no filename is
+    specified, will attempt to draw.
 
     Example:
-    bayeslite> .zmatrix ESTIMATE PAIRWISE DEPENDENCE PROBABILITY FROM mytable
+    bayeslite> .heatmap ESTIMATE PAIRWISE DEPENDENCE PROBABILITY FROM mytable
     '''
     parser = argparse.ArgumentParser()
     parser.add_argument('bql', type=str, nargs='+', help='PAIRWISE BQL query')
@@ -38,7 +38,7 @@ def zmatrix(self, argin):
         cm.savefig(args.filename)
 
 
-@bayesdb_shell_cmd('pairplot')
+@bayesdb_shell_cmd('show')
 def pairplot(self, argin):
     '''Plots pairs of columns in facet grid.
     <bql query> [options]
@@ -55,9 +55,9 @@ def pairplot(self, argin):
         -s, --shortnames: Use column short names to label facets?
 
     Example:
-    bayeslite> .pariplot SELECT foo, baz, quux + glorb FROM mytable
+    bayeslite> .show SELECT foo, baz, quux + glorb FROM mytable
         --filename myfile.png
-    bayeslite> .pariplot ESTIMATE foo, baz FROM mytable_cc -g mytable_cc
+    bayeslite> .show ESTIMATE foo, baz FROM mytable_cc -g mytable_cc
     '''
     parser = argparse.ArgumentParser()
     parser.add_argument('bql', type=str, nargs='+', help='BQL query')
@@ -123,7 +123,7 @@ def draw_crosscat_state(self, argin):
         plt.savefig(filename)
 
 
-@bayesdb_shell_cmd('hist')
+@bayesdb_shell_cmd('histogram')
 def histogram(self, argin):
     '''plots a histogram
     <query> [options]
@@ -132,7 +132,7 @@ def histogram(self, argin):
     divide the data in the first column into sub-histograms.
 
     Example (plot overlapping histograms of height for males and females)
-    bayeslite> .hist SELECT height, sex FROM humans; --normed --bin 31
+    bayeslite> .histogram SELECT height, sex FROM humans; --normed --bin 31
     '''
 
     parser = argparse.ArgumentParser()

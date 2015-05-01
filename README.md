@@ -41,23 +41,23 @@ To ensure that the contrib is automatically loaded by the shell, add the followi
 
 ### Shell utilities
 
-#### .zmatrix
+#### .heatmap
 
-    .zmatrix <pairwise query> [options]
+    .heatmap <pairwise query> [options]
 
 **Options:**
 - `-f, --filename <str>`: save as filename.
 
 Example:
 
-    bayeslite> .zmatrix ESTIMATE PAIRWISE DEPENDENCE PROBABILITY FROM satellites_cc;
+    bayeslite> .heatmap ESTIMATE PAIRWISE DEPENDENCE PROBABILITY FROM satellites_cc;
 
-![zmatrix](doc/zmatrix.png)
+![.heatmap](doc.heatmap.png)
 
-#### .pairplot
-Draws or saves a pariplot of an arbitrary BQL query
+#### .show
+Draws or saves a plot of an arbitrary BQL query
 
-    .pairplot <query> [options]
+    .show <query> [options]
 
 **Options:**
 - `-g, --generator <str>`: the generator name (decreases guesswork with respect to which columns are
@@ -68,9 +68,9 @@ Draws or saves a pariplot of an arbitrary BQL query
 Example:
 
     bayeslite> CREATE TEMP TABLE predprob_life AS ESTIMATE Name, Expected_Lifetime, PREDICTIVE PROBABILITY OF Expected_Lifetime AS p_lifetime, Class_of_Orbit FROM satellites_cc;
-    bayeslite> .pairplot SELECT Expected_Lifetime, class_of_orbit, p_lifetime FROM predprob_life
+    bayeslite> .show SELECT Expected_Lifetime, class_of_orbit, p_lifetime FROM predprob_life
 
-![.pairplot](doc/pairplot.png)
+![.show](doc.show.png)
 
 #### .ccstate
 Draws a crosscat state
@@ -83,12 +83,12 @@ Example:
 
 ![.ccstate rendering of dha](doc/ccstate_1.png)
 
-#### .hist
+#### .histogram
 Draws a histogram for a one or two-column query. The second column in a
 two-column query is assumed to be a dummy variable use to divide the data
 into categories.
 
-    .hist <query> [options]
+    .histogram <query> [options]
 
 **Options:**
 - `--normed`: normalize the histogram
@@ -97,13 +97,13 @@ into categories.
 
 Example (one-column query):
 
-    bayeslite> .hist SELECT MDCR_SPND_OUTP FROM dha; --normed --bins 31
+    bayeslite> .histogram SELECT MDCR_SPND_OUTP FROM dha; --normed --bins 31
 
 ![histogram](doc/hist1.png)
 
 Example (two-column query):
 
-    bayeslite> .hist SELECT dry_mass_kg, Class_of_Orbit FROM satellites; -b 35 --normed
+    bayeslite> .histogram SELECT dry_mass_kg, Class_of_Orbit FROM satellites; -b 35 --normed
 
 ![histogram](doc/hist2.png)
 
