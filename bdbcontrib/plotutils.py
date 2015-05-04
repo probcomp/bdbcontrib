@@ -76,13 +76,21 @@ def prep_plot_df(data_df, var_names):
     return data_df[list(var_names)]
 
 
-def do_hist(data_srs, ax=None, dtype=None, bdb=None, generator_name=None):
+def do_hist(data_srs, **kwargs):
+    ax = kwargs.get('ax', None)
+    bdb = kwargs.get('bdb', None)
+    dtype = kwargs.get('dtype', None)
+    generator_name = kwargs.get('generator_name', None)
+    no_contour = kwargs.get('no_contour', None)
+
     if dtype is None:
         dtype = get_bayesdb_col_type(data_srs.columns[0], data_srs, bdb=bdb,
                                      generator_name=generator_name)
 
     if ax is None:
         ax = plt.gca()
+
+    data_srs = data_srs.dropna()
 
     if dtype == 'categorical':
         vals, uvals, _ = conv_categorical_vals_to_numeric(
@@ -91,12 +99,18 @@ def do_hist(data_srs, ax=None, dtype=None, bdb=None, generator_name=None):
         ax.set_xticks(range(len(uvals)))
         ax.set_xticklabels(uvals)
     else:
-        sns.distplot(data_srs, kde=True, ax=ax)
+        do_kde = not no_contour
+        sns.distplot(data_srs, kde=do_kde, ax=ax)
 
     return ax
 
 
-def do_heatmap(plot_df, vartypes, ax=None, bdb=None, generator_name=None):
+def do_heatmap(plot_df, vartypes, **kwargs):
+    ax = kwargs.get('ax', None)
+    bdb = kwargs.get('bdb', None)
+    generator_name = kwargs.get('generator_name', None)
+
+    plot_df = plot_df.dropna()
     if ax is None:
         ax = plt.gca()
 
@@ -120,7 +134,14 @@ def do_heatmap(plot_df, vartypes, ax=None, bdb=None, generator_name=None):
     return ax
 
 
-def do_violinplot(plot_df, vartypes, ax=None, bdb=None, generator_name=None):
+def do_violinplot(plot_df, vartypes, **kwargs):
+    ax = kwargs.get('ax', None)
+    bdb = kwargs.get('bdb', None)
+    generator_name = kwargs.get('generator_name', None)
+    # colors = kwargs.get('colors', None)
+    # dummy = kwargs.get('dummy', False)
+
+    plot_df = plot_df.dropna()
     if ax is None:
         ax = plt.gca()
     assert vartypes[0] != vartypes[1]
@@ -150,19 +171,44 @@ def do_violinplot(plot_df, vartypes, ax=None, bdb=None, generator_name=None):
     return ax
 
 
-def do_kdeplot(plot_df, vartypes, ax=None, bdb=None, generator_name=None):
+def do_kdeplot(plot_df, vartypes, **kwargs):
     # XXX: kdeplot is not a good choice for small amounts of data because
     # it uses a kernel density estimator to crease a smooth heatmap. On the
     # other hadnd, scatter plots are uniformative given lots of data---the
     # points get jumbled up. We may just want to set a threshold (N=100)?
+
+    ax = kwargs.get('ax', None)
+    no_contour = kwargs.get('no_contour', False)
+    colors = kwargs.get('colors', None)
+    dummy = kwargs.get('dummy', False)
+    show_missing = kwargs.get('show_missing', False)
+
     if ax is None:
         ax = plt.gca()
 
-    assert plot_df.shape[1] == 2
+    xlim = [plot_df.ix[:, 0].min(), plot_df.ix[:, 0].max()]
+    ylim = [plot_df.ix[:, 1].min(), plot_df.ix[:, 1].max()]
 
-    plt.scatter(plot_df.values[:, 0], plot_df.values[:, 1], alpha=.5,
-                color='steelblue')
-    sns.kdeplot(plot_df.values, ax=ax)
+    assert plot_df.shape[1] == 2 + dummy
+    null_rows = plot_df[plot_df.isnull().any(axis=1)]
+    df = plot_df.dropna()
+
+    if not dummy:
+        plt.scatter(df.values[:, 0], df.values[:, 1], alpha=.5,
+                    color='steelblue')
+        # plot nulls
+        if show_missing:
+            nacol_x = null_rows.ix[:, 0].dropna()
+            for x in nacol_x.values:
+                plt.plot([x, x], ylim, color='crimson', alpha=.2, lw=1)
+            nacol_y = null_rows.ix[:, 1].dropna()
+            for y in nacol_y.values:
+                plt.plot(xlim, [y, y], color='crimson', alpha=.2, lw=1)
+    else:
+        assert isinstance(colors, dict)
+
+    if not no_contour:
+        sns.kdeplot(df.values, ax=ax)
     return ax
 
 
@@ -174,13 +220,12 @@ DO_PLOT_FUNC[hash(('numerical', 'categorical',))] = do_violinplot
 DO_PLOT_FUNC[hash(('numerical', 'numerical',))] = do_kdeplot
 
 
-def do_pair_plot(plot_df, vartypes, ax=None, bdb=None, generator_name=None):
+def do_pair_plot(plot_df, vartypes, **kwargs):
     # determine plot_types
-    if ax is None:
-        ax = plt.gca()
+    if kwargs.get('ax', None) is None:
+        kwargs['ax'] = plt.gca()
 
-    ax = DO_PLOT_FUNC[hash(vartypes)](plot_df, vartypes, ax=ax, bdb=bdb,
-                                      generator_name=bdb)
+    ax = DO_PLOT_FUNC[hash(vartypes)](plot_df, vartypes, **kwargs)
     return ax
 
 
@@ -225,7 +270,8 @@ def zmatrix(data_df, clustermap_kws=None):
 
 
 # TODO: bdb, and table_name should be optional arguments
-def pairplot(df, bdb=None, generator_name=None, use_shortname=False):
+def pairplot(df, bdb=None, generator_name=None, use_shortname=False,
+             no_contour=False, hue=None, show_missing=False):
     """Plots the columns in data_df in a facet grid.
 
     Supports the following pairs:
@@ -245,6 +291,12 @@ def pairplot(df, bdb=None, generator_name=None, use_shortname=False):
     use_shortname : bool
         If True, use column shortnames (requires codebook) for axis lables,
         otherwise use the column names in `df`.
+    no_contour : bool
+        If False (default), KDE contours are plotted on top of scatter plots
+        and histograms.
+    show_missing : bool
+        If True, rows with one missing value are plotted as lines on scatter
+        plots.
 
     Returns
     -------
@@ -262,7 +314,8 @@ def pairplot(df, bdb=None, generator_name=None, use_shortname=False):
     #   as shortname?
     # where to handle dropping NaNs? Missing values may be informative.
 
-    data_df = df.dropna()
+    # data_df = df.dropna()
+    data_df = df
 
     n_vars = data_df.shape[1]
     plt_grid = gridspec.GridSpec(n_vars, n_vars)
@@ -274,7 +327,7 @@ def pairplot(df, bdb=None, generator_name=None, use_shortname=False):
         vartype = get_bayesdb_col_type(varname, data_df[varname], bdb=bdb,
                                        generator_name=generator_name)
         do_hist(data_df[varname], dtype=vartype, ax=ax, bdb=bdb,
-                generator_name=generator_name)
+                generator_name=generator_name, no_contour=no_contour)
         if vartype == 'categorical':
             rotate_tick_labels(ax)
         return
@@ -299,13 +352,16 @@ def pairplot(df, bdb=None, generator_name=None, use_shortname=False):
 
             if x_pos == y_pos:
                 ax = do_hist(data_df[var_name_x], dtype=var_x_type, ax=ax,
-                             bdb=bdb, generator_name=generator_name)
+                             bdb=bdb, generator_name=generator_name,
+                             no_contour=no_contour)
             else:
                 varnames = (var_name_x, var_name_y,)
                 vartypes_pair = (var_x_type, var_y_type,)
                 plot_df = prep_plot_df(data_df, varnames)
                 ax = do_pair_plot(plot_df, vartypes_pair, ax=ax, bdb=bdb,
-                                  generator_name=generator_name)
+                                  generator_name=generator_name,
+                                  no_contour=no_contour,
+                                  show_missing=show_missing)
 
                 ymins[y_pos, x_pos] = ax.get_ylim()[0]
                 ymaxs[y_pos, x_pos] = ax.get_ylim()[1]

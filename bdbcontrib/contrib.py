@@ -53,6 +53,8 @@ def pairplot(self, argin):
         -g, --generator: the generator name. Providing the generator
                          name make help to plot more intelligently.
         -s, --shortnames: Use column short names to label facets?
+        -m, --show-missing: Plot missing values in scatter plots as lines.
+        --no-contours: Turn off contours.
 
     Example:
     bayeslite> .show SELECT foo, baz, quux + glorb FROM mytable
@@ -67,6 +69,12 @@ def pairplot(self, argin):
                         help='Query generator name')
     parser.add_argument('-s', '--shortnames', action='store_true',
                         help='Use column short names?')
+    parser.add_argument('--no-contour', action='store_true',
+                        help='Turn off countours (KDE).')
+    parser.add_argument('-m', '--show-missing', action='store_true',
+                        help='Plot missing values in scatterplot.')
+    parser.add_argument('--hue', type=str, default=None,
+                        help='Name of column to use as a dummy variable.')
     args = parser.parse_args(shlex.split(argin))
 
     bql = " ".join(args.bql)
@@ -75,7 +83,8 @@ def pairplot(self, argin):
 
     plt.figure(tight_layout=True, facecolor='white')
     pu.pairplot(df, bdb=self._bdb, generator_name=args.generator,
-                use_shortname=args.shortnames)
+                use_shortname=args.shortnames, no_contour=args.no_contour,
+                hue=args.hue, show_missing=args.show_missing)
 
     if args.filename is None:
         plt.show()
