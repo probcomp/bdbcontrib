@@ -55,6 +55,7 @@ def pairplot(self, argin):
         -s, --shortnames: Use column short names to label facets?
         -m, --show-missing: Plot missing values in scatter plots as lines.
         --no-contours: Turn off contours.
+        --colorby: The name of a column to use as a dummy variable for color.
 
     Example:
     bayeslite> .show SELECT foo, baz, quux + glorb FROM mytable
@@ -73,7 +74,7 @@ def pairplot(self, argin):
                         help='Turn off countours (KDE).')
     parser.add_argument('-m', '--show-missing', action='store_true',
                         help='Plot missing values in scatterplot.')
-    parser.add_argument('--hue', type=str, default=None,
+    parser.add_argument('--colorby', type=str, default=None,
                         help='Name of column to use as a dummy variable.')
     args = parser.parse_args(shlex.split(argin))
 
@@ -84,7 +85,7 @@ def pairplot(self, argin):
     plt.figure(tight_layout=True, facecolor='white')
     pu.pairplot(df, bdb=self._bdb, generator_name=args.generator,
                 use_shortname=args.shortnames, no_contour=args.no_contour,
-                hue=args.hue, show_missing=args.show_missing)
+                colorby=args.colorby, show_missing=args.show_missing)
 
     if args.filename is None:
         plt.show()
