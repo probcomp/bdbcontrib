@@ -3,7 +3,6 @@ import numpy as np
 from matplotlib.patches import Rectangle
 from matplotlib import pyplot as plt
 import matplotlib as mpl
-from textwrap import wrap
 
 from crosscat_utils import get_column_probabilities, get_row_probabilities
 from crosscat_utils import get_cols_in_view, get_rows_in_cluster
@@ -11,6 +10,8 @@ from crosscat_utils import get_metadata, get_M_c
 
 from general_utils import get_descriptions, get_shortnames
 from general_utils import get_data_as_list
+
+from bdbcontrib import plotutils as pu
 
 
 NO_CMAP = mpl.colors.ListedColormap([(1, 1, 1, 1), (1, 1, 1, 1)])
@@ -164,60 +165,6 @@ def cmap_color_brightness(value, base_color, vmin, vmax,
     color[3] = 1.
 
     return color
-
-
-def gen_collapsed_legend_from_dict(hl_colors_dict, loc=0, title=None,
-                                   fontsize='medium', wrap_threshold=1000):
-    """Creates a legend with entries grouped by color.
-
-    For example, if a plot has multiple labels associated with the same color
-    line, instead of generating a legend entry for each label, labels with the
-    same colored line will be collapsed into longer, comma-separated labels.
-
-    Parameters
-    ----------
-    hl_colors_dict : dict
-        A dict of label, color pairs. Colors can be strings e.g. 'deeppink' or
-        rgb or rgba tuples.
-    loc : matplotlib compatible
-        any matpltotlib-compbatible legend location identifier
-    title : str
-        legend title
-    fontsize : int
-        legend entry and title fontsize
-    wrap_threshold : int
-        max number of charachters before wordwrap
-
-    Returns
-    -------
-    legend : matplotlib.legend
-    """
-    if not isinstance(hl_colors_dict, dict):
-        raise TypeError("hl_colors_dict must be a dict")
-
-    colors = list(set(hl_colors_dict.values()))
-    collapsed_dict = dict(zip(colors, [[] for i in range(len(colors))]))
-
-    for color in colors:
-        collapsed_dict[color] == []
-
-    for label, color in hl_colors_dict.iteritems():
-        collapsed_dict[color].append(label)
-
-    for color in collapsed_dict.keys():
-        collapsed_dict[color] = "\n".join(wrap(", ".join(
-            sorted(collapsed_dict[color])), wrap_threshold))
-
-    legend_artists = []
-    legend_labels = []
-    for color, label in collapsed_dict.iteritems():
-        legend_artists.append(plt.Line2D((0, 1), (0, 0), color=color, lw=3))
-        legend_labels.append(label)
-
-    legend = plt.legend(legend_artists, legend_labels, loc=loc, title=title,
-                        fontsize=fontsize)
-
-    return legend
 
 
 def gen_hilight_colors(hl_labels=None, hl_colors=None):
@@ -580,7 +527,7 @@ def draw_state(bdb, table_name, generator_name, modelno,
     # TODO: Refactor legend generator into its own function
     if legend:
         if len(hilight_rows) > 0:
-            row_legend = gen_collapsed_legend_from_dict(
+            row_legend = pu.gen_collapsed_legend_from_dict(
                 row_hl_colors, loc=row_legend_loc, title=row_legend_title,
                 fontsize=legend_fontsize, wrap_threshold=legend_wrap_threshold)
             ax.add_artist(row_legend)
@@ -593,7 +540,7 @@ def draw_state(bdb, table_name, generator_name, modelno,
                         bdb, table_name, [col_id])[0]
                     col_legend_labels[i] = col_legend_labels[i]
 
-            col_legend = gen_collapsed_legend_from_dict(
+            col_legend = pu.gen_collapsed_legend_from_dict(
                 dict(zip(col_legend_labels, hilight_cols_colors)),
                 loc=col_legend_loc, title=col_legend_title,
                 fontsize=legend_fontsize, wrap_threshold=legend_wrap_threshold)
