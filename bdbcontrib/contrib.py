@@ -1,5 +1,6 @@
 import shlex
 import argparse
+import math
 
 from bdbcontrib.facade import do_query
 from bdbcontrib.draw_cc_state import draw_state
@@ -8,6 +9,15 @@ from bayeslite.shell.hook import bayesdb_shell_cmd
 import bdbcontrib.utils as utils
 import bdbcontrib.plotutils as pu
 import matplotlib.pyplot as plt
+
+
+@bayesdb_shell_cmd('register_bql_math_functions')
+def register_bql_math(self, args):
+    '''Adds basic math functions to BQL'''
+    self._bdb.sqlite3.create_function('exp', 1, math.exp)
+    self._bdb.sqlite3.create_function('sqrt', 1, math.sqrt)
+    self._bdb.sqlite3.create_function('pow', 2, pow)
+    self._bdb.sqlite3.create_function('log', 1, math.log)
 
 
 @bayesdb_shell_cmd('nullify')
