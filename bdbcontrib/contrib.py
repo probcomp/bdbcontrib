@@ -5,8 +5,24 @@ from bdbcontrib.facade import do_query
 from bdbcontrib.draw_cc_state import draw_state
 from bayeslite.shell.hook import bayesdb_shell_cmd
 
+import bdbcontrib.utils as utils
 import bdbcontrib.plotutils as pu
 import matplotlib.pyplot as plt
+
+
+@bayesdb_shell_cmd('nullify')
+def nullify(self, argin):
+    '''Replaces a user specified missing value with NULL
+    <table> <value>
+
+    Example:
+    bayeslite> .nullify mytable NaN
+    bayeslite> .nullify mytable ''
+    '''
+    args = argin.split()
+    table = args[0]
+    value = args[1]
+    utils.nullify(self._bdb, table, value)
 
 
 @bayesdb_shell_cmd('heatmap')
@@ -24,13 +40,16 @@ def zmatrix(self, argin):
     parser.add_argument('bql', type=str, nargs='+', help='PAIRWISE BQL query')
     parser.add_argument('-f', '--filename', type=str, default=None,
                         help='output filename')
+    parser.add_argument('--vmin', type=float, default=None)
+    parser.add_argument('--vmax', type=float, default=None)
+
     args = parser.parse_args(shlex.split(argin))
 
     bql = " ".join(args.bql)
 
     df = do_query(self._bdb, bql).as_df()
-
-    cm = pu.zmatrix(df, clustermap_kws={'linewidths': 0, 'vmin': 0.0, 'vmax': 1.0})
+    clustermap_kws = {'linewidths': 0, 'vmin': args.vmin, 'vmax': args.vmax}
+    cm = pu.zmatrix(df, clustermap_kws=clustermap_kws)
 
     if args.filename is None:
         plt.show()
