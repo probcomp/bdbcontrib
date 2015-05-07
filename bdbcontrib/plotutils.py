@@ -552,7 +552,8 @@ def comparative_hist(df, nbins=15, normed=False):
 
     plt.figure(tight_layout=False, facecolor='white')
     if colorby is None:
-        plt.hist(df.ix[:, 0].values, bins=bins, color='#383838', edgecolor='none')
+        plt.hist(df.ix[:, 0].values, bins=bins, color='#383838',
+                 edgecolor='none', normed=normed)
         plot_title = df.columns[0]
     else:
         colors = sns.color_palette('deep', len(colorby_vals))
