@@ -53,7 +53,7 @@ Example:
 
     bayeslite> .heatmap ESTIMATE PAIRWISE DEPENDENCE PROBABILITY FROM satellites_cc;
 
-![.heatmap](doc.heatmap.png)
+![.heatmap](doc/zmatrix.png)
 
 #### .show
 Draws or saves a plot of an arbitrary BQL query
