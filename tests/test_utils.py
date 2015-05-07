@@ -89,3 +89,52 @@ def test_nullify_no_missing(data, value, num_nulls_expected):
         c = bdb.execute('SELECT COUNT(*) FROM t WHERE four IS NULL;')
         assert c.fetchall()[0][0] == num_nulls_expected[3]
     temp.close()
+
+
+def test_is_plotting_command():
+    cmd1 = '.heatmap ESTIMATE PAIRWISE DEPENDENCE PROBABILITY FROM t; -f z.png'
+    cmd2 = '.show SELECT a, b FROM t LIMIT 10; --no-contour'
+    cmd3 = '.histogram SELECT a FROM t;'
+    cmd4 = '.help histogram'
+    cmd5 = 'SELECT a FROM t;'
+    cmd6 = '-- .show is a plotting function'
+
+    assert utils.is_plotting_command(cmd1)
+    assert utils.is_plotting_command(cmd2)
+    assert utils.is_plotting_command(cmd3)
+    assert not utils.is_plotting_command(cmd4)
+    assert not utils.is_plotting_command(cmd5)
+    assert not utils.is_plotting_command(cmd6)
+
+
+def test_clean_cmd_filename():
+    output_dir = 'foo/baz'
+    fignum = 0
+
+    cmd1 = '.histogram SELECT a FROM t;'
+    cmd2 = '.histogram SELECT a FROM t; -f pic.png'
+    cmd1_expected = '.histogram SELECT a FROM t; --filename foo/baz/fig_0.png'
+
+    cmd1_ud, _ = utils.clean_cmd_filename(cmd1, fignum, output_dir)
+    assert cmd1_ud == cmd1_expected
+    with pytest.raises(ValueError):
+        utils.clean_cmd_filename(cmd2, fignum, output_dir)
+    with pytest.raises(ValueError):
+        utils.clean_cmd_filename(cmd1_expected, fignum, output_dir)
+
+
+def test_is_comment():
+    assert not utils.is_comment('.heatmap ESTIMATE PAIRWISE FOO;')
+    assert utils.is_comment('-- is a comment')
+    assert utils.is_comment('--is a comment')
+    assert utils.is_comment('---is a comment')
+
+    # XXX: There is no support for inline comments in BQL scripts
+    assert not utils.is_comment(' -- not a comment')
+    assert not utils.is_comment('.show SELECT a, b FROM t; --no-contour')
+
+
+def test_is_dot_command():
+    assert not utils.is_dot_command('-- .show SELECT a, b FROM t;')
+    assert not utils.is_dot_command('SELECT ".show" FROM t;')
+    assert utils.is_dot_command('.show SELECT a, b FROM t;')

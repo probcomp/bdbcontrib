@@ -1,6 +1,8 @@
 import shlex
 import argparse
 import math
+import os
+import markdown2
 
 from bdbcontrib.facade import do_query
 from bdbcontrib.draw_cc_state import draw_state
@@ -18,6 +20,63 @@ def register_bql_math(self, args):
     self._bdb.sqlite3.create_function('sqrt', 1, math.sqrt)
     self._bdb.sqlite3.create_function('pow', 2, pow)
     self._bdb.sqlite3.create_function('log', 1, math.log)
+
+
+@bayesdb_shell_cmd('readtohtml')
+def render_bql_as_html(self, argin):
+    '''Reads a bql file and outputs to html and markdown.
+    <bql_file> <output_directory>
+
+    Example:
+    bayeslite> .readtohtml myscript.bql analyses/myanalsis
+    '''
+    args = argin.split()
+    bql_file = args[0]
+    output_dir = args[1]
+
+    # If you want something spicier, feel free to edit.
+    head = '''
+    <html>
+    <head>
+    <title>{}</title>
+    <style>
+    * {font-family: helvetical, arial;
+       color: #333}
+    h1, h2, h3, h4, h5, h6 {font-weight: 300}
+    pre, code {font-family: monaco, monospace;
+               font-size: 12;
+               background-color: #efefef;}
+    pre {padding: 2em; overflow: scroll}
+    html {margin-left: auto;
+          margin-right: auto;
+          padding-top: 3em;
+          max-width: 960px;}
+    img {margin-right: auto; margin-left: auto; max-width: 100%;}
+    @media print{
+        * {font-size: 70%}
+        img {max-width: 65%}
+        pre, code{font-size: 70%;}
+        pre{border: 1px solid #aaa;}
+    }
+    </style></head>
+    '''.format(bql_file)
+
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+
+    with open(bql_file) as f:
+        mdstr = utils.mdread(f, output_dir, self)
+
+    html = head + markdown2.markdown(mdstr) + '</html>'
+
+    htmlfilename = os.path.splitext(os.path.basename(bql_file))[0]
+    htmlfilename = os.path.join(output_dir, htmlfilename + '.html')
+    with open(htmlfilename, 'w') as f:
+        f.write(html)
+
+    # Because you want to know when it's done:
+    self.stdout.write(utils.unicorn())
+    self.stdout.write("Output saved to %s\n" % (output_dir,))
 
 
 @bayesdb_shell_cmd('nullify')
@@ -58,13 +117,14 @@ def zmatrix(self, argin):
     bql = " ".join(args.bql)
 
     df = do_query(self._bdb, bql).as_df()
+    c = round(df.shape[0]/3.0)
     clustermap_kws = {'linewidths': 0, 'vmin': args.vmin, 'vmax': args.vmax}
     cm = pu.zmatrix(df, clustermap_kws=clustermap_kws)
 
     if args.filename is None:
         plt.show()
     else:
-        cm.savefig(args.filename)
+        cm.savefig(args.filename, figsize=(c, c))
 
 
 @bayesdb_shell_cmd('show')
@@ -110,8 +170,9 @@ def pairplot(self, argin):
     bql = " ".join(args.bql)
 
     df = do_query(self._bdb, bql).as_df()
+    c = len(df.columns)*2.5
 
-    plt.figure(tight_layout=True, facecolor='white')
+    plt.figure(tight_layout=True, facecolor='white', figsize=(c, c))
     pu.pairplot(df, bdb=self._bdb, generator_name=args.generator,
                 use_shortname=args.shortnames, no_contour=args.no_contour,
                 colorby=args.colorby, show_missing=args.show_missing)

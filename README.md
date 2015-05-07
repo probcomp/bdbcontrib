@@ -10,6 +10,7 @@ A set of utilities for bayesdb.
 - Seaborn
 - Pandas
 - numpy
+- markdown2 (for `.readtohtml`)
 
 Clone the repo and add it to your `PYTHONPATH`
 
