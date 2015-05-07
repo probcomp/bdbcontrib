@@ -71,7 +71,7 @@ Example:
     bayeslite> CREATE TEMP TABLE predprob_life AS ESTIMATE Name, Expected_Lifetime, PREDICTIVE PROBABILITY OF Expected_Lifetime AS p_lifetime, Class_of_Orbit FROM satellites_cc;
     bayeslite> .show SELECT Expected_Lifetime, class_of_orbit, p_lifetime FROM predprob_life
 
-![.show](doc.show.png)
+![.show](doc/pairplot.png)
 
 #### .ccstate
 Draws a crosscat state
