@@ -2,6 +2,7 @@ import shlex
 import argparse
 import math
 import os
+import shutil
 import markdown2
 
 from bdbcontrib.facade import do_query
@@ -10,7 +11,14 @@ from bayeslite.shell.hook import bayesdb_shell_cmd
 
 import bdbcontrib.utils as utils
 import bdbcontrib.plotutils as pu
+import matplotlib
+matplotlib.rcParams.update({'figure.autolayout': True})
 import matplotlib.pyplot as plt
+import seaborn as sns
+
+
+ROOTDIR = os.path.dirname(os.path.abspath(__file__))
+READTOHTML_CSS = os.path.join(ROOTDIR, 'readtohtml.css')
 
 
 @bayesdb_shell_cmd('register_bql_math_functions')
@@ -34,32 +42,12 @@ def render_bql_as_html(self, argin):
     bql_file = args[0]
     output_dir = args[1]
 
-    # If you want something spicier, feel free to edit.
     head = '''
     <html>
-    <head>
-    <title>{}</title>
-    <style>
-    * {font-family: helvetical, arial;
-       color: #333}
-    h1, h2, h3, h4, h5, h6 {font-weight: 300}
-    pre, code {font-family: monaco, monospace;
-               font-size: 12;
-               background-color: #efefef;}
-    pre {padding: 2em; overflow: scroll}
-    html {margin-left: auto;
-          margin-right: auto;
-          padding-top: 3em;
-          max-width: 960px;}
-    img {margin-right: auto; margin-left: auto; max-width: 100%;}
-    @media print{
-        * {font-size: 70%}
-        img {max-width: 65%}
-        pre, code{font-size: 70%;}
-        pre{border: 1px solid #aaa;}
-    }
-    </style></head>
-    '''.format(bql_file)
+        <head>
+            <link rel="stylesheet" type="text/css" href="style.css">
+        </head>
+    '''
 
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
@@ -73,6 +61,7 @@ def render_bql_as_html(self, argin):
     htmlfilename = os.path.join(output_dir, htmlfilename + '.html')
     with open(htmlfilename, 'w') as f:
         f.write(html)
+    shutil.copyfile(READTOHTML_CSS, os.path.join(output_dir, 'style.css'))
 
     # Because you want to know when it's done:
     self.stdout.write(utils.unicorn())
@@ -111,20 +100,46 @@ def zmatrix(self, argin):
                         help='output filename')
     parser.add_argument('--vmin', type=float, default=None)
     parser.add_argument('--vmax', type=float, default=None)
+    parser.add_argument('--last-sort', action='store_true')
 
     args = parser.parse_args(shlex.split(argin))
 
     bql = " ".join(args.bql)
 
     df = do_query(self._bdb, bql).as_df()
-    c = round(df.shape[0]/3.0)
+    c = (df.shape[0]**.5)/4.0
     clustermap_kws = {'linewidths': 0, 'vmin': args.vmin, 'vmax': args.vmax}
-    cm = pu.zmatrix(df, clustermap_kws=clustermap_kws)
+
+    row_ordering = None
+    col_ordering = None
+    if args.last_sort:
+        if not hasattr(self, 'hookvars'):
+            raise AttributeError('No prior use if heatmap found.')
+        else:
+            row_ordering = self.hookvars.get('heatmap_row_ordering', None)
+            col_ordering = self.hookvars.get('heatmap_col_ordering', None)
+            if row_ordering is None or col_ordering is None:
+                raise AttributeError('No prior use if heatmap found.')
+
+        plt.figure(facecolor='white', figsize=(c, .8*c))
+    res = pu.zmatrix(df, clustermap_kws=clustermap_kws,
+                     row_ordering=row_ordering, col_ordering=col_ordering)
+
+    # put the column and row orderings in the scope so they can be used by
+    # --last-sort
+    cm, row_ordering, col_ordering = res
+
+    self.hookvars['heatmap_row_ordering'] = row_ordering
+    self.hookvars['heatmap_col_ordering'] = col_ordering
 
     if args.filename is None:
         plt.show()
     else:
-        cm.savefig(args.filename, figsize=(c, c))
+        if args.last_sort:
+            plt.savefig(args.filename)
+        else:
+            cm.savefig(args.filename, figsize=(c, c))
+    plt.close('all')
 
 
 @bayesdb_shell_cmd('show')
@@ -170,7 +185,7 @@ def pairplot(self, argin):
     bql = " ".join(args.bql)
 
     df = do_query(self._bdb, bql).as_df()
-    c = len(df.columns)*2.5
+    c = len(df.columns)*4
 
     plt.figure(tight_layout=True, facecolor='white', figsize=(c, c))
     pu.pairplot(df, bdb=self._bdb, generator_name=args.generator,
@@ -181,6 +196,7 @@ def pairplot(self, argin):
         plt.show()
     else:
         plt.savefig(args.filename)
+    plt.close('all')
 
 
 # TODO: better name
@@ -221,6 +237,7 @@ def draw_crosscat_state(self, argin):
         plt.show()
     else:
         plt.savefig(filename)
+    plt.close('all')
 
 
 @bayesdb_shell_cmd('histogram')
@@ -254,6 +271,39 @@ def histogram(self, argin):
         plt.show()
     else:
         plt.savefig(args.filename)
+    plt.close('all')
+
+
+@bayesdb_shell_cmd('bar')
+def barplot(self, argin):
+    '''FIXME'''
+    parser = argparse.ArgumentParser()
+    parser.add_argument('bql', type=str, nargs='+', help='BQL query')
+    parser.add_argument('-f', '--filename', type=str, default=None,
+                        help='output filename')
+    args = parser.parse_args(shlex.split(argin))
+    bql = " ".join(args.bql)
+
+    df = do_query(self._bdb, bql).as_df()
+
+    c = df.shape[0]/2.0
+    plt.figure(facecolor='white', figsize=(c, 5))
+    plt.bar([x-.5 for x in range(df.shape[0])], df.ix[:, 1].values,
+            color='#333333', edgecolor='#333333')
+
+    ax = plt.gca()
+    ax.set_xticks(range(df.shape[0]))
+    ax.set_xticklabels(df.ix[:, 0].values, rotation=90)
+    plt.xlim([-1, c-.5])
+    plt.ylabel(df.columns[1])
+    plt.xlabel(df.columns[0])
+    plt.title(bql)
+
+    if args.filename is None:
+        plt.show()
+    else:
+        plt.savefig(args.filename)
+    plt.close('all')
 
 
 @bayesdb_shell_cmd('chainplot')
@@ -275,7 +325,6 @@ def plot_crosscat_chain_diagnostics(self, argin):
         self.stdout.write("Please specify a diagnostic and a generator.\n")
         return
 
-    import seaborn as sns
     import bayeslite.core
 
     diagnostic = args[0]
@@ -324,3 +373,4 @@ def plot_crosscat_chain_diagnostics(self, argin):
         plt.show()
     else:
         plt.savefig(filename)
+    plt.close('all')
