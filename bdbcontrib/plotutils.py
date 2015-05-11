@@ -308,7 +308,8 @@ def do_pair_plot(plot_df, vartypes, **kwargs):
     return ax
 
 
-def zmatrix(data_df, clustermap_kws=None):
+def zmatrix(data_df, clustermap_kws=None, row_ordering=None,
+            col_ordering=None):
     """Plots a clustermap from an ESTIMATE PAIRWISE query.
 
     Parameters:
@@ -334,6 +335,7 @@ def zmatrix(data_df, clustermap_kws=None):
         # fom a standard estimate pairwise query, which outputs columns
         # (table_id, col0, col1, value). The indices are indexed from the back
         # because it will also handle the no-table_id case
+        data_df.columns = [' '*i for i in  range(1, len(data_df.columns))] + ['value']
         pivot_kws = {
             'index': data_df.columns[-3],
             'columns': data_df.columns[-2],
@@ -345,7 +347,18 @@ def zmatrix(data_df, clustermap_kws=None):
         # Choose a soothing blue colormap
         clustermap_kws['cmap'] = 'PuBu'
 
-    return sns.clustermap(data_df, **clustermap_kws)
+    if row_ordering is not None and col_ordering is not None:
+        index = clustermap_kws['pivot_kws']['index']
+        columns = clustermap_kws['pivot_kws']['columns']
+        values = clustermap_kws['pivot_kws']['values']
+        df = data_df.pivot(index, columns, values)
+        df = df.ix[:, col_ordering]
+        df = df.ix[row_ordering, :]
+        del clustermap_kws['pivot_kws']
+        return sns.heatmap(df, **clustermap_kws), row_ordering, col_ordering
+    else:
+        cm = sns.clustermap(data_df, **clustermap_kws)
+        return cm, cm.dendrogram_row.reordered_ind, cm.dendrogram_row.reordered_ind
 
 
 # TODO: bdb, and table_name should be optional arguments
