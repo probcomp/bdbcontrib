@@ -5,7 +5,9 @@ from cStringIO import StringIO
 import string
 import os
 
-PLOTTING_COMMANDS = ['.heatmap', '.histogram', '.show']
+PLOTTING_COMMANDS = ['.heatmap', '.histogram', '.show', '.bar']
+BPROMPT = 'bayeslite> '
+CPROMPT = '      ...> '
 
 
 def is_dot_command(line):
@@ -145,16 +147,17 @@ def mdread(f, output_dir, shell):
         if cont:
             if linetype == 'code':
                 cmd += ' ' + line.strip()
-                mdstr += '\n' + '    ' + line
+                mdstr += '\n' + '    ' + CPROMPT + line
         else:
             if last_type == 'code':
+                mdstr += '\n'
                 cmd, mdstr, fignum = exec_and_cap_cmd(cmd, fignum, shell,
                                                       mdstr, output_dir)
             if linetype == 'comment':
                 mdstr += line[3:].rstrip() + '\n'
             elif linetype == 'code':
                 cmd = line
-                mdstr += '\n    ' + line
+                mdstr += '\n    ' + BPROMPT + line
                 if i == len(lines)-1:
                     last_cmd, mdstr, fignum = exec_and_cap_cmd(
                         cmd, fignum, shell, mdstr, output_dir)
