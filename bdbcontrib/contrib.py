@@ -21,6 +21,12 @@ ROOTDIR = os.path.dirname(os.path.abspath(__file__))
 READTOHTML_CSS = os.path.join(ROOTDIR, 'readtohtml.css')
 
 
+# Kludgey workaround for idiotic Python argparse module which exits
+# the process on argument parsing failure.  We override the exit
+# method of ArgumentParser so that it raises an exception instead of
+# exiting the process, which we then catch around parser.parse_args()
+# in order to report the message and return to the command loop.
+
 class ArgparseError(Exception):
     def __init__(self, status, message):
         self.status = status
