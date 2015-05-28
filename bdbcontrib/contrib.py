@@ -14,11 +14,22 @@ import bdbcontrib.plotutils as pu
 import matplotlib
 matplotlib.rcParams.update({'figure.autolayout': True})
 import matplotlib.pyplot as plt
-import seaborn as sns
+# import seaborn as sns
 
 
 ROOTDIR = os.path.dirname(os.path.abspath(__file__))
 READTOHTML_CSS = os.path.join(ROOTDIR, 'readtohtml.css')
+
+
+class ArgparseError(Exception):
+    def __init__(self, status, message):
+        self.status = status
+        self.message = message
+
+
+class ArgumentParser(argparse.ArgumentParser):
+    def exit(self, status=0, message=None):
+        raise ArgparseError(status, message)
 
 
 @bayesdb_shell_cmd('register_bql_math_functions')
@@ -94,7 +105,7 @@ def zmatrix(self, argin):
     Example:
     bayeslite> .heatmap ESTIMATE PAIRWISE DEPENDENCE PROBABILITY FROM mytable
     '''
-    parser = argparse.ArgumentParser()
+    parser = ArgumentParser(prog='.heatmap')
     parser.add_argument('bql', type=str, nargs='+', help='PAIRWISE BQL query')
     parser.add_argument('-f', '--filename', type=str, default=None,
                         help='output filename')
@@ -102,7 +113,11 @@ def zmatrix(self, argin):
     parser.add_argument('--vmax', type=float, default=None)
     parser.add_argument('--last-sort', action='store_true')
 
-    args = parser.parse_args(shlex.split(argin))
+    try:
+        args = parser.parse_args(shlex.split(argin))
+    except ArgparseError as e:
+        self.stdout.write('%s' % (e.message,))
+        return
 
     bql = " ".join(args.bql)
 
@@ -166,7 +181,7 @@ def pairplot(self, argin):
         --filename myfile.png
     bayeslite> .show ESTIMATE foo, baz FROM mytable_cc -g mytable_cc
     '''
-    parser = argparse.ArgumentParser()
+    parser = ArgumentParser(prog='.show')
     parser.add_argument('bql', type=str, nargs='+', help='BQL query')
     parser.add_argument('-f', '--filename', type=str, default=None,
                         help='output filename')
@@ -180,7 +195,11 @@ def pairplot(self, argin):
                         help='Plot missing values in scatterplot.')
     parser.add_argument('--colorby', type=str, default=None,
                         help='Name of column to use as a dummy variable.')
-    args = parser.parse_args(shlex.split(argin))
+    try:
+        args = parser.parse_args(shlex.split(argin))
+    except ArgparseError as e:
+        self.stdout.write('%s' % (e.message,))
+        return
 
     bql = " ".join(args.bql)
 
@@ -252,7 +271,7 @@ def histogram(self, argin):
     bayeslite> .histogram SELECT height, sex FROM humans; --normed --bin 31
     '''
 
-    parser = argparse.ArgumentParser()
+    parser = ArgumentParser(prog='.histogram')
     parser.add_argument('bql', type=str, nargs='+', help='BQL query')
     parser.add_argument('-f', '--filename', type=str, default=None,
                         help='output filename')
@@ -260,7 +279,11 @@ def histogram(self, argin):
                         help='number of bins')
     parser.add_argument('--normed', action='store_true',
                         help='Normalize histograms?')
-    args = parser.parse_args(shlex.split(argin))
+    try:
+        args = parser.parse_args(shlex.split(argin))
+    except ArgparseError as e:
+        self.stdout.write('%s' % (e.message,))
+        return
 
     bql = " ".join(args.bql)
 
@@ -277,11 +300,15 @@ def histogram(self, argin):
 @bayesdb_shell_cmd('bar')
 def barplot(self, argin):
     '''FIXME'''
-    parser = argparse.ArgumentParser()
+    parser = ArgumentParser('.bar')
     parser.add_argument('bql', type=str, nargs='+', help='BQL query')
     parser.add_argument('-f', '--filename', type=str, default=None,
                         help='output filename')
-    args = parser.parse_args(shlex.split(argin))
+    try:
+        args = parser.parse_args(shlex.split(argin))
+    except ArgparseError as e:
+        self.stdout.write('%s' % (e.message,))
+        return
     bql = " ".join(args.bql)
 
     df = do_query(self._bdb, bql).as_df()
