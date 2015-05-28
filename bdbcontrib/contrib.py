@@ -14,7 +14,7 @@ import bdbcontrib.plotutils as pu
 import matplotlib
 matplotlib.rcParams.update({'figure.autolayout': True})
 import matplotlib.pyplot as plt
-# import seaborn as sns
+import seaborn as sns
 
 
 ROOTDIR = os.path.dirname(os.path.abspath(__file__))
