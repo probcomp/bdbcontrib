@@ -1,17 +1,12 @@
 import bayeslite.core
 import shlex
 import argparse
-import math
-import os
-import shutil
 import textwrap
-import markdown2
 
 from bdbcontrib.facade import do_query
 from bdbcontrib.draw_cc_state import draw_state
 from bayeslite.shell.hook import bayesdb_shell_cmd
 
-import bdbcontrib.utils as utils
 import bdbcontrib.plotutils as pu
 import matplotlib
 matplotlib.rcParams.update({'figure.autolayout': True})
@@ -19,16 +14,11 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 
-ROOTDIR = os.path.dirname(os.path.abspath(__file__))
-READTOHTML_CSS = os.path.join(ROOTDIR, 'readtohtml.css')
-
-
 # Kludgey workaround for idiotic Python argparse module which exits
 # the process on argument parsing failure.  We override the exit
 # method of ArgumentParser so that it raises an exception instead of
 # exiting the process, which we then catch around parser.parse_args()
 # in order to report the message and return to the command loop.
-
 class ArgparseError(Exception):
     def __init__(self, status, message):
         self.status = status
@@ -38,15 +28,6 @@ class ArgparseError(Exception):
 class ArgumentParser(argparse.ArgumentParser):
     def exit(self, status=0, message=None):
         raise ArgparseError(status, message)
-
-
-@bayesdb_shell_cmd('register_bql_math_functions')
-def register_bql_math(self, args):
-    '''Adds basic math functions to BQL'''
-    self._bdb.sqlite3.create_function('exp', 1, math.exp)
-    self._bdb.sqlite3.create_function('sqrt', 1, math.sqrt)
-    self._bdb.sqlite3.create_function('pow', 2, pow)
-    self._bdb.sqlite3.create_function('log', 1, math.log)
 
 
 @bayesdb_shell_cmd('mihist')
@@ -97,59 +78,6 @@ def mutual_information_hist_over_models(self, argin):
     else:
         plt.savefig(args.filename)
     plt.close('all')
-
-
-@bayesdb_shell_cmd('readtohtml')
-def render_bql_as_html(self, argin):
-    '''Reads a bql file and outputs to html and markdown.
-    <bql_file> <output_directory>
-
-    Example:
-    bayeslite> .readtohtml myscript.bql analyses/myanalsis
-    '''
-    args = argin.split()
-    bql_file = args[0]
-    output_dir = args[1]
-
-    head = '''
-    <html>
-        <head>
-            <link rel="stylesheet" type="text/css" href="style.css">
-        </head>
-    '''
-
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
-
-    with open(bql_file) as f:
-        mdstr = utils.mdread(f, output_dir, self)
-
-    html = head + markdown2.markdown(mdstr) + '</html>'
-
-    htmlfilename = os.path.splitext(os.path.basename(bql_file))[0]
-    htmlfilename = os.path.join(output_dir, htmlfilename + '.html')
-    with open(htmlfilename, 'w') as f:
-        f.write(html)
-    shutil.copyfile(READTOHTML_CSS, os.path.join(output_dir, 'style.css'))
-
-    # Because you want to know when it's done:
-    self.stdout.write(utils.unicorn())
-    self.stdout.write("Output saved to %s\n" % (output_dir,))
-
-
-@bayesdb_shell_cmd('nullify')
-def nullify(self, argin):
-    '''Replaces a user specified missing value with NULL
-    <table> <value>
-
-    Example:
-    bayeslite> .nullify mytable NaN
-    bayeslite> .nullify mytable ''
-    '''
-    args = argin.split()
-    table = args[0]
-    value = args[1]
-    utils.nullify(self._bdb, table, value)
 
 
 @bayesdb_shell_cmd('heatmap')
