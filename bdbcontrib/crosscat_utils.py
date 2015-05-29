@@ -1,7 +1,7 @@
 import numpy as np
 import json
 import bayeslite.core
-from bdbcontrib import general_utils as gu
+from bdbcontrib import bql_utils as bu
 from crosscat.utils import sample_utils as su
 
 
@@ -16,7 +16,7 @@ def get_rows_in_cluster(X_D, view, cluster):
 
 def get_M_c(bdb, generator_name):
     generator_id = bayeslite.core.bayesdb_get_generator(bdb, generator_name)
-    column_info = gu.get_column_info(bdb, generator_name)
+    column_info = bu.get_column_info(bdb, generator_name)
     M_c = bayeslite.crosscat.create_metadata(bdb, generator_id, column_info)
     return M_c
 

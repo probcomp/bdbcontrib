@@ -8,8 +8,8 @@ from crosscat_utils import get_column_probabilities, get_row_probabilities
 from crosscat_utils import get_cols_in_view, get_rows_in_cluster
 from crosscat_utils import get_metadata, get_M_c
 
-from general_utils import get_descriptions, get_shortnames
-from general_utils import get_data_as_list
+from bql_utils import get_descriptions, get_shortnames
+from bql_utils import get_data_as_list
 
 from bdbcontrib import plotutils as pu
 

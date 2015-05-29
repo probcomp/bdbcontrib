@@ -1,4 +1,4 @@
-from bdbcontrib import utils
+from bdbcontrib import general_utils as utils
 import bayeslite
 import tempfile
 import pytest

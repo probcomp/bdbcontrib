@@ -3,7 +3,8 @@ import bayeslite
 import bayeslite.crosscat
 import bayeslite.guess
 import bayeslite.read_pandas
-import general_utils as gu
+import bql_utils as bu
+
 from bayeslite.sqlite3_util import sqlite3_quote_name as sqlquote
 from bdbcontrib import draw_cc_state
 from crosscat.LocalEngine import LocalEngine
@@ -35,7 +36,7 @@ class BQLQueryResult(object):
 
         if self._df is None:
             with self._bdb.savepoint():
-                self._df = gu.cursor_to_df(self._cursor)
+                self._df = bu.cursor_to_df(self._cursor)
         return self._df
 
     def as_cursor(self):
