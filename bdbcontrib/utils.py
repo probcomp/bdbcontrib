@@ -5,7 +5,9 @@ from cStringIO import StringIO
 import string
 import os
 
-PLOTTING_COMMANDS = ['.heatmap', '.histogram', '.show', '.bar']
+PLOTTING_COMMANDS = ['.heatmap', '.histogram', '.show',
+                     '.chainplot', '.ccstate', '.bar',
+                     '.mihist']
 BPROMPT = 'bayeslite> '
 CPROMPT = '      ...> '
 

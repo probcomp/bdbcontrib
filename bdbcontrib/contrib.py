@@ -1,8 +1,10 @@
+import bayeslite.core
 import shlex
 import argparse
 import math
 import os
 import shutil
+import textwrap
 import markdown2
 
 from bdbcontrib.facade import do_query
@@ -28,6 +30,56 @@ def register_bql_math(self, args):
     self._bdb.sqlite3.create_function('sqrt', 1, math.sqrt)
     self._bdb.sqlite3.create_function('pow', 2, pow)
     self._bdb.sqlite3.create_function('log', 1, math.log)
+
+
+@bayesdb_shell_cmd('mihist')
+def mutual_information_hist_over_models(self, argin):
+    '''Plots a histogram of mutual information between two columns over models.
+    <generator> <col1> <col2> [options]
+    '''
+    parser = argparse.ArgumentParser()
+    parser.add_argument('generator', type=str, help='generator name')
+    parser.add_argument('col1', type=str, help='first column')
+    parser.add_argument('col2', type=str, help='second column')
+    parser.add_argument('-f', '--filename', type=str, default=None,
+                        help='output filename')
+    parser.add_argument('-n', '--num-samples', type=int, default=1000)
+    parser.add_argument('-b', '--bins', type=int, default=15,
+                        help='number of bins')
+
+    args = parser.parse_args(shlex.split(argin))
+
+    bql = '''
+    SELECT COUNT(modelno) FROM bayesdb_generator_model
+        WHERE generator_id = ?
+    '''
+    generator_id = bayeslite.core.bayesdb_get_generator(self._bdb, args.generator)
+    c = self._bdb.execute(bql, (generator_id,))
+    num_models = c.fetchall()[0][0]
+
+    plt.figure(figsize=(6, 6), facecolor='white')
+
+    mis = []
+    for modelno in range(num_models):
+        bql = '''
+        ESTIMATE MUTUAL INFORMATION OF {} WITH {} USING {} SAMPLES FROM {}
+            USING MODEL {}
+            LIMIT 1;
+        '''.format(args.col1, args.col2, args.num_samples, args.generator,
+                   modelno)
+        c = self._bdb.execute(bql)
+        mi = c.fetchall()[0][0]
+        mis.append(mi)
+    plt.hist(mis, args.bins, normed=True)
+    plt.xlabel('Mutual Information')
+    plt.ylabel('Density')
+    plt.title('Mutual information of {} with {}'.format(args.col1, args.col2))
+
+    if args.filename is None:
+        plt.show()
+    else:
+        plt.savefig(args.filename)
+    plt.close('all')
 
 
 @bayesdb_shell_cmd('readtohtml')
@@ -276,7 +328,12 @@ def histogram(self, argin):
 
 @bayesdb_shell_cmd('bar')
 def barplot(self, argin):
-    '''FIXME'''
+    '''bar plot of a two-column query
+    <query> [options]
+
+    Uses the first column of the query as the bar names and the second column
+    as the bar heights. Ignores other columns.
+    '''
     parser = argparse.ArgumentParser()
     parser.add_argument('bql', type=str, nargs='+', help='BQL query')
     parser.add_argument('-f', '--filename', type=str, default=None,
@@ -297,7 +354,7 @@ def barplot(self, argin):
     plt.xlim([-1, c-.5])
     plt.ylabel(df.columns[1])
     plt.xlabel(df.columns[0])
-    plt.title(bql)
+    plt.title('\n    '.join(textwrap.wrap(bql, 80)))
 
     if args.filename is None:
         plt.show()
