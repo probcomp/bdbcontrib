@@ -23,6 +23,23 @@ ROOTDIR = os.path.dirname(os.path.abspath(__file__))
 READTOHTML_CSS = os.path.join(ROOTDIR, 'readtohtml.css')
 
 
+# Kludgey workaround for idiotic Python argparse module which exits
+# the process on argument parsing failure.  We override the exit
+# method of ArgumentParser so that it raises an exception instead of
+# exiting the process, which we then catch around parser.parse_args()
+# in order to report the message and return to the command loop.
+
+class ArgparseError(Exception):
+    def __init__(self, status, message):
+        self.status = status
+        self.message = message
+
+
+class ArgumentParser(argparse.ArgumentParser):
+    def exit(self, status=0, message=None):
+        raise ArgparseError(status, message)
+
+
 @bayesdb_shell_cmd('register_bql_math_functions')
 def register_bql_math(self, args):
     '''Adds basic math functions to BQL'''
@@ -146,7 +163,7 @@ def zmatrix(self, argin):
     Example:
     bayeslite> .heatmap ESTIMATE PAIRWISE DEPENDENCE PROBABILITY FROM mytable
     '''
-    parser = argparse.ArgumentParser()
+    parser = ArgumentParser(prog='.heatmap')
     parser.add_argument('bql', type=str, nargs='+', help='PAIRWISE BQL query')
     parser.add_argument('-f', '--filename', type=str, default=None,
                         help='output filename')
@@ -154,7 +171,11 @@ def zmatrix(self, argin):
     parser.add_argument('--vmax', type=float, default=None)
     parser.add_argument('--last-sort', action='store_true')
 
-    args = parser.parse_args(shlex.split(argin))
+    try:
+        args = parser.parse_args(shlex.split(argin))
+    except ArgparseError as e:
+        self.stdout.write('%s' % (e.message,))
+        return
 
     bql = " ".join(args.bql)
 
@@ -218,7 +239,7 @@ def pairplot(self, argin):
         --filename myfile.png
     bayeslite> .show ESTIMATE foo, baz FROM mytable_cc -g mytable_cc
     '''
-    parser = argparse.ArgumentParser()
+    parser = ArgumentParser(prog='.show')
     parser.add_argument('bql', type=str, nargs='+', help='BQL query')
     parser.add_argument('-f', '--filename', type=str, default=None,
                         help='output filename')
@@ -232,7 +253,11 @@ def pairplot(self, argin):
                         help='Plot missing values in scatterplot.')
     parser.add_argument('--colorby', type=str, default=None,
                         help='Name of column to use as a dummy variable.')
-    args = parser.parse_args(shlex.split(argin))
+    try:
+        args = parser.parse_args(shlex.split(argin))
+    except ArgparseError as e:
+        self.stdout.write('%s' % (e.message,))
+        return
 
     bql = " ".join(args.bql)
 
@@ -304,7 +329,7 @@ def histogram(self, argin):
     bayeslite> .histogram SELECT height, sex FROM humans; --normed --bin 31
     '''
 
-    parser = argparse.ArgumentParser()
+    parser = ArgumentParser(prog='.histogram')
     parser.add_argument('bql', type=str, nargs='+', help='BQL query')
     parser.add_argument('-f', '--filename', type=str, default=None,
                         help='output filename')
@@ -312,7 +337,11 @@ def histogram(self, argin):
                         help='number of bins')
     parser.add_argument('--normed', action='store_true',
                         help='Normalize histograms?')
-    args = parser.parse_args(shlex.split(argin))
+    try:
+        args = parser.parse_args(shlex.split(argin))
+    except ArgparseError as e:
+        self.stdout.write('%s' % (e.message,))
+        return
 
     bql = " ".join(args.bql)
 
@@ -334,11 +363,15 @@ def barplot(self, argin):
     Uses the first column of the query as the bar names and the second column
     as the bar heights. Ignores other columns.
     '''
-    parser = argparse.ArgumentParser()
+    parser = ArgumentParser('.bar')
     parser.add_argument('bql', type=str, nargs='+', help='BQL query')
     parser.add_argument('-f', '--filename', type=str, default=None,
                         help='output filename')
-    args = parser.parse_args(shlex.split(argin))
+    try:
+        args = parser.parse_args(shlex.split(argin))
+    except ArgparseError as e:
+        self.stdout.write('%s' % (e.message,))
+        return
     bql = " ".join(args.bql)
 
     df = do_query(self._bdb, bql).as_df()
