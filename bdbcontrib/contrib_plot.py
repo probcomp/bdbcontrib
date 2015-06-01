@@ -35,7 +35,7 @@ def mutual_information_hist_over_models(self, argin):
     '''Plots a histogram of mutual information between two columns over models.
     <generator> <col1> <col2> [options]
     '''
-    parser = argparse.ArgumentParser()
+    parser = ArgumentParser()
     parser.add_argument('generator', type=str, help='generator name')
     parser.add_argument('col1', type=str, help='first column')
     parser.add_argument('col2', type=str, help='second column')
@@ -45,7 +45,11 @@ def mutual_information_hist_over_models(self, argin):
     parser.add_argument('-b', '--bins', type=int, default=15,
                         help='number of bins')
 
-    args = parser.parse_args(shlex.split(argin))
+    try:
+        args = parser.parse_args(shlex.split(argin))
+    except ArgparseError as e:
+        self.stdout.write('%s' % (e.message,))
+        return
 
     bql = '''
     SELECT COUNT(modelno) FROM bayesdb_generator_model
