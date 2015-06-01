@@ -35,7 +35,7 @@ def mutual_information_hist_over_models(self, argin):
     '''Plots a histogram of mutual information between two columns over models.
     <generator> <col1> <col2> [options]
     '''
-    parser = ArgumentParser()
+    parser = ArgumentParser(prog='.mihist')
     parser.add_argument('generator', type=str, help='generator name')
     parser.add_argument('col1', type=str, help='first column')
     parser.add_argument('col2', type=str, help='second column')
