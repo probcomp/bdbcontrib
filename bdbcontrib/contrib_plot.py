@@ -295,7 +295,7 @@ def barplot(self, argin):
     Uses the first column of the query as the bar names and the second column
     as the bar heights. Ignores other columns.
     '''
-    parser = ArgumentParser('.bar')
+    parser = ArgumentParser(prog='.bar')
     parser.add_argument('bql', type=str, nargs='+', help='BQL query')
     parser.add_argument('-f', '--filename', type=str, default=None,
                         help='output filename')
