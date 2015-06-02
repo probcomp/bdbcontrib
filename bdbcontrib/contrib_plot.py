@@ -316,7 +316,7 @@ def barplot(self, argin):
     ax = plt.gca()
     ax.set_xticks(range(df.shape[0]))
     ax.set_xticklabels(df.ix[:, 0].values, rotation=90)
-    plt.xlim([-1, c-.5])
+    plt.xlim([-1, df.shape[0]-.5])
     plt.ylabel(df.columns[1])
     plt.xlabel(df.columns[0])
     plt.title('\n    '.join(textwrap.wrap(bql, 80)))
