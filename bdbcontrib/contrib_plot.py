@@ -212,12 +212,13 @@ def pairplot(self, argin):
 @bayesdb_shell_cmd('ccstate')
 def draw_crosscat_state(self, argin):
     '''Draws the crosscat state.
-    <generator> <modelno> [filename.png]
+    <generator> <modelno> [options]
 
-    If no file name is provided, will attempt to draw.
+    Options:
+        -f. --filename: the output filename. If not specified, tries to draw.
 
     Example:
-    bayeslite> .ccstate mytable_cc 12 state_12.png
+    bayeslite> .ccstate mytable_cc 12 -f state_12.png
     '''
     parser = ArgumentParser(prog='.ccstate')
     parser.add_argument('generator', type=str, help='Generator')

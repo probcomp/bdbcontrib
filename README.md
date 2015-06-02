@@ -84,7 +84,10 @@ Example:
 #### .ccstate
 Draws a crosscat state
 
-    .ccstate <generator> <modelno> [filename.png]
+    .ccstate <generator> <modelno> [options]
+
+**Options:**
+- `-f, --filename <str>`: save as filename.
 
 Example:
 
