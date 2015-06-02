@@ -50,7 +50,9 @@ def get_row_probabilities(X_L, X_D, M_c, T, view):
         cluster_idx = X_D[view][row]
         for col in cols_in_view:
             x = T[row][col]
-            if isinstance(x, float):
+            if x is None:
+                continue
+            elif isinstance(x, float):
                 if np.isnan(x):
                     continue
             else:

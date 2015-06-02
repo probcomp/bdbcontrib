@@ -24,6 +24,8 @@ def convert_t_do_numerical(T, M_c):
             continue
         for row in range(len(T)):
             val = T[row][colno]
+            if val is None:
+                continue
             if isinstance(val, float):
                 if np.isnan(val):
                     continue
@@ -150,7 +152,7 @@ def cmap_color_brightness(value, base_color, vmin, vmax,
     """
     # XXX: bayesdb_data never retruns NaN for multinomial---NaN is added
     # to value_map
-    if np.isnan(value):
+    if value is None or np.isnan(value):
         return nan_color
 
     if vmin == vmax:
@@ -247,7 +249,8 @@ def gen_cell_colors(T, sorted_views, sorted_cols, sorted_clusters, sorted_rows,
             continue
 
         view = column_partition[col]
-        col_cpy = np.copy(T[:, col])
+        col_cpy = np.array([[x] if x is not None else [float('NaN')]
+                            for x in T[:, col]])
         col_cpy = col_cpy[np.isfinite(col_cpy)]
         cmin = np.min(col_cpy)
         cmax = np.max(col_cpy)
@@ -404,7 +407,7 @@ def draw_state(bdb, table_name, generator_name, modelno,
         row_labels = [str(label) for label in row_label_col]
     elif isinstance(row_label_col, str):
         # FIXME: This is not going to work until BayesDB stops removing key and
-        # ingore columns from the data
+        # ignore columns from the data
         raise NotImplementedError
         label_col_idx = M_c['name_to_idx'][row_label_col]
         row_labels = [str(T[row, label_col_idx]) for row in range(num_rows)]

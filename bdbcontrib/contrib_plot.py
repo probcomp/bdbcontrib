@@ -219,33 +219,35 @@ def draw_crosscat_state(self, argin):
     Example:
     bayeslite> .ccstate mytable_cc 12 state_12.png
     '''
-
-    args = argin.split()
-    generator_name = args[0]
+    parser = ArgumentParser(prog='.ccstate')
+    parser.add_argument('generator', type=str, help='Generator')
+    parser.add_argument('modelno', type=int, help='Model number to plot.')
+    parser.add_argument('-f', '--filename', type=str, default=None,
+                        help='output filename')
+    parser.add_argument('-r', '--row-label-col', type=str, default=None,
+                        help='The name of the column to use for row labels.')
     try:
-        modelno = int(args[1])
-    except TypeError:
-        raise TypeError('modelno must be an integer')
-
-    filename = None
-    if len(args) == 3:
-        filename = args[2]
+        args = parser.parse_args(shlex.split(argin))
+    except ArgparseError as e:
+        self.stdout.write('%s' % (e.message,))
+        return
 
     bql = 'SELECT tabname, metamodel FROM bayesdb_generator WHERE name = ?'
     table_name, metamodel = do_query(
-        self._bdb, bql, (generator_name,)).as_cursor().fetchall()[0]
+        self._bdb, bql, (args.generator,)).as_cursor().fetchall()[0]
 
     if metamodel.lower() != 'crosscat':
         raise ValueError('Metamodel for generator %s (%s) should be crosscat' %
-                         (generator_name, metamodel))
+                         (args.generator, metamodel))
 
     plt.figure(tight_layout=False, facecolor='white')
-    draw_state(self._bdb, table_name, generator_name, modelno)
+    draw_state(self._bdb, table_name, args.generator, args.modelno,
+               row_label_col=args.row_label_col)
 
-    if filename is None:
+    if args.filename is None:
         plt.show()
     else:
-        plt.savefig(filename)
+        plt.savefig(args.filename)
     plt.close('all')
 
 
