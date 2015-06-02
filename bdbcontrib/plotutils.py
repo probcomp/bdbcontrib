@@ -453,12 +453,15 @@ def pairplot(df, bdb=None, generator_name=None, use_shortname=False,
                                        generator_name=generator_name)
         vartypes.append(vartype)
 
+    # store each axes; reaccessing ax with plt.subplot(plt_grid[a,b]) may overwrite the ax
+    axes = [ [] for _ in xrange(len(all_varnames)) ]
     for x_pos, var_name_x in enumerate(all_varnames):
         var_x_type = vartypes[x_pos]
         for y_pos, var_name_y in enumerate(all_varnames):
             var_y_type = vartypes[y_pos]
 
             ax = plt.subplot(plt_grid[y_pos, x_pos])
+            axes[y_pos].append(ax)
 
             if x_pos == y_pos:
                 varnames = [var_name_x]
@@ -489,7 +492,7 @@ def pairplot(df, bdb=None, generator_name=None, use_shortname=False,
 
     for x_pos in range(n_vars):
         for y_pos in range(n_vars):
-            ax = plt.subplot(plt_grid[y_pos, x_pos])
+            ax = axes[y_pos][x_pos]
             ax.set_xlim([np.min(xmins[:, x_pos]), np.max(xmaxs[:, x_pos])])
             if x_pos != y_pos:
                 ax.set_ylim([np.min(ymins[y_pos, :]), np.max(ymaxs[y_pos, :])])
@@ -504,8 +507,8 @@ def pairplot(df, bdb=None, generator_name=None, use_shortname=False,
                     rotate_tick_labels(ax)
 
     # fix the top-left histogram y-axis ticks and labels
-    ax_tl = plt.subplot(plt_grid[0, 0])
-    ax_tn = plt.subplot(plt_grid[0, 1])
+    ax_tl = axes[0][0]
+    ax_tn = axes[0][1]
     atl, btl = ax_tl.get_ylim()
     atn, btn = ax_tn.get_ylim()
     tnticks = ax_tn.get_yticks()
