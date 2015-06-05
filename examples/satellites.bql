@@ -1,4 +1,4 @@
--- Satellites example
+-- # Satellites example
 -- Run with `.read satellites.bql -v`
 -- Exit the shell with ^D (CTRL + D)
 
@@ -12,10 +12,10 @@
 .nullify satellites NaN
 
 -- Create a generator, initialize models, and analyze. 
--- Take diagnostics every other iteration
+-- Take diagnostics every other iteration.
 -- Please note that this example is designed to run in a reasonable amount of
 -- time. As a consequence, the results of this analysis are likely unstable. In
--- practice many more model would be run for many more iterations.
+-- practice many more models would be analyzed for many more iterations.
 CREATE GENERATOR satellites_cc FOR satellites
     USING crosscat(
         GUESS(*),
@@ -25,7 +25,7 @@ INITIALIZE 16 MODELS FOR satellites_cc;
 ANALYZE satellites_cc FOR 4 MINUTES CHECKPOINT 2 ITERATION WAIT;
 
 
--- A simple diagnostic read out. Kentucky windage for convergence.
+-- A simple diagnostic read out.
 .chainplot logscore satellites_cc
 
 -- Display the probability of dependence for each pair of columns
@@ -34,39 +34,44 @@ ANALYZE satellites_cc FOR 4 MINUTES CHECKPOINT 2 ITERATION WAIT;
 -- Show pairwise relations among some columns
 .show 'SELECT Dry_mass_kg, Class_of_Orbit, Perigee_km, Period_minutes FROM satellites' --no-contour
 
--- find satellites with unexpected lifetimes
+-- Identify satellites with unexpected lifetimes
 CREATE TEMP TABLE predprob_life AS
 	ESTIMATE Name, Expected_Lifetime, PREDICTIVE PROBABILITY OF Expected_Lifetime 
 		AS p_lifetime, Class_of_Orbit
 		FROM satellites_cc
 		WHERE Expected_Lifetime IS NOT NULL;
+
 .show 'SELECT Expected_Lifetime, class_of_orbit, p_lifetime FROM predprob_life' --no-contour
+
 SELECT * FROM predprob_life ORDER BY p_lifetime ASC LIMIT 20;
 
--- find non-physical entries
+-- Identify non-physical entries. A satellite's period should be easily
+-- determined by its other orbital properties (perigee, apogee; orbit class),
+-- perhaps less easily for elliptical orbits.
 CREATE TEMP TABLE predprob_period
 	AS ESTIMATE Name, class_of_orbit, Period_minutes, PREDICTIVE PROBABILITY OF Period_minutes 
 		AS p_period, Source_Used_for_Orbital_Data
 		FROM satellites_cc
 		WHERE Period_minutes IS NOT NULL;
+
 SELECT * FROM predprob_period ORDER BY p_period ASC LIMIT 20;
 
--- which variable predict expected lifetime
+-- Which variable predict expected lifetime---which are the main predictors?
 ESTIMATE COLUMNS DEPENDENCE PROBABILITY WITH Expected_Lifetime as depprob_lifetime
     FROM satellites_cc
     ORDER BY depprob_lifetime DESC LIMIT 10; 
 
--- What if I saw a satellites in GEO with dry mass X. What is it's purpose and
--- who launched it?
+-- What if one observed a satellites in geosynchronous orbit with a dry mass of
+-- 5000kg. What is it's purpose and who launched it?
 CREATE TEMP TABLE sat_purpose AS 
     SIMULATE Country_of_operator, Purpose FROM satellites_cc
         GIVEN Class_of_orbit = GEO, Dry_mass_kg = 5000
         LIMIT 1000;
 
--- see which country-purpose combination is most probable
--- we'll concatenate the values of the first two columns into a single
--- coutry-purpose columns and then see which country-purpose combination
--- occurs most often
+-- To determine which country-purpose combination is most probable
+-- we will concatenate the values of the first two columns into a single
+-- country-purpose columns and then use SQLite's COUNT function to calculate
+-- the frequencies.
 SELECT country_of_operator || "--" || purpose as "Country-Purpose", 
         count("Country-Purpose") as frequency
     FROM sat_purpose
@@ -78,15 +83,29 @@ SELECT country_of_operator || "--" || purpose as "Country-Purpose",
 -- INFER and CONFIDENCE for period givn GEO and Ellipitcal orbits. Confidence
 -- for elliptical orbits should be lower because GEO orbits have a set period.
 CREATE TEMP TABLE infer_geo AS
-    INFER EXPLICIT period_minutes, PREDICT period_minutes as period_pred CONFIDENCE period_conf
+    INFER EXPLICIT Name, period_minutes, PREDICT period_minutes as period_pred CONFIDENCE period_conf
         FROM satellites_cc
         WHERE Class_of_Orbit = GEO;
 
 CREATE TEMP TABLE infer_elliptical AS
-    INFER EXPLICIT period_minutes, PREDICT Period_minutes as period_pred CONFIDENCE period_conf
+    INFER EXPLICIT Name, period_minutes, PREDICT Period_minutes as period_pred CONFIDENCE period_conf
         FROM satellites_cc
         WHERE Class_of_Orbit = Elliptical;
 
-SELECT * FROM infer_geo ORDER BY period_conf DESC LIMIT 20;
+-- We prepare the data for plotting by stacking (UNION) the two tables on top
+-- of each other and creating a marker variable for Class_of_orbit.
+.sql CREATE TEMP TABLE orbit_conf AS  SELECT period_conf, "GEO" AS type FROM infer_geo
+    UNION
+    SELECT period_conf, "ELLIPTICAL" AS type FROM infer_elliptical;
 
-SELECT * FROM infer_elliptical ORDER BY period_conf DESC LIMIT 20;
+-- graphical display
+.histogram 'SELECT * FROM orbit_conf;' --bins 31 --normed
+
+-- SQL table display
+SELECT period_minutes, period_pred, period_conf FROM infer_geo
+    ORDER BY period_conf DESC
+    LIMIT 20;
+
+SELECT period_minutes, period_pred, period_conf FROM infer_elliptical
+    ORDER BY period_conf DESC
+    LIMIT 20;
