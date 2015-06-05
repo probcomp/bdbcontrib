@@ -81,12 +81,17 @@ Draws or saves a plot of an arbitrary BQL query
 
 Example:
 
-    bayeslite> CREATE TEMP TABLE predprob_life AS ESTIMATE Name, Expected_Lifetime, PREDICTIVE PROBABILITY OF Expected_Lifetime AS p_lifetime, Class_of_Orbit FROM satellites_cc;
-    bayeslite> .show SELECT Expected_Lifetime, class_of_orbit, p_lifetime FROM predprob_life
+    bayeslite> CREATE TEMP TABLE predprob_life AS
+          ...>     ESTIMATE Name, Expected_Lifetime,
+          ...>         PREDICTIVE PROBABILITY OF Expected_Lifetime AS p_lifetime, Class_of_Orbit
+          ...>     FROM satellites_cc;
+    bayeslite> .show SELECT Expected_Lifetime, dry_mass_kg, class_of_orbit, p_lifetime FROM predprob_life 
 
 ![.show](doc/pairplot.png)
 
-    bayeslite> .show 'SELECT Expected_Lifetime, class_of_orbit, p_lifetime FROM predprob_life' -m --no-contour --colorby class_of_orbit
+    bayeslite> .show 'SELECT Expected_Lifetime, dry_mass_kg, class_of_orbit, p_lifetime FROM predprob_life' -m --no-contour --colorby Class_of_orbit
+
+![.show](doc/pairplot2.png)
 
 #### .ccstate
 Draws a crosscat state
