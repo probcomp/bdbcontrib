@@ -344,19 +344,21 @@ def plot_crosscat_chain_diagnostics(self, argin):
     Example:
         bayeslite> .chainplot logscore dha_cc scoreplot.png
     '''
-
-    args = argin.split()
-    if len(args) < 2:
-        self.stdout.write("Please specify a diagnostic and a generator.\n")
+    parser = ArgumentParser(prog='.bar')
+    parser.add_argument('diagnostic', type=str, help='diagnostic name')
+    parser.add_argument('generator', type=str, help='generator name')
+    parser.add_argument('-f', '--filename', type=str, default=None,
+                        help='output filename')
+    try:
+        args = parser.parse_args(shlex.split(argin))
+    except ArgparseError as e:
+        self.stdout.write('%s' % (e.message,))
         return
 
     import bayeslite.core
 
-    diagnostic = args[0]
-    generator_name = args[1]
-    filename = None
-    if len(args) == 3:
-        filename = args[2]
+    diagnostic = args.diagnostic
+    generator_name = args.generator
 
     valid_diagnostics = ['logscore', 'num_views', 'column_crp_alpha']
     if diagnostic not in valid_diagnostics:
@@ -394,8 +396,8 @@ def plot_crosscat_chain_diagnostics(self, argin):
     plt.ylabel(diagnostic)
     plt.title('%s for each model in %s' % (diagnostic, generator_name,))
 
-    if filename is None:
+    if args.filename is None:
         plt.show()
     else:
-        plt.savefig(filename)
+        plt.savefig(args.filename)
     plt.close('all')
