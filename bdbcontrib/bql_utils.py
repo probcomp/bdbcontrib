@@ -76,8 +76,6 @@ def get_column_descriptive_metadata(bdb, table_name, column_names, md_field):
                 sname = record[2]
                 if sname is None:
                     sname = cname
-                    print 'Warning: No {} found for {}. Using \
-                           column name.'.format(md_field, cname)
                 short_names.append(sname)
                 break
 
