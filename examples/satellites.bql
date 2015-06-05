@@ -1,28 +1,38 @@
 -- Satellites example
--- Run with `bayeslite -f satellites.bql`
+-- Run with `.read satellites.bql -v`
+-- Exit the shell with ^D (CTRL + D)
 
 -- Load in a .csv
 .csv satellites data/satellites.utf8.csv
 
 -- Load a codebook
 .codebook satellites data/satellites_codebook.utf8.csv
+
+-- Convert NaN values to SQL null so that we can use `WHERE foo IS NULL`
 .nullify satellites NaN
 
 -- Create a generator, initialize models, and analyze. 
 -- Take diagnostics every other iteration
+-- Please note that this example is designed to run in a reasonable amount of
+-- time. As a consequence, the results of this analysis are likely unstable. In
+-- practice many more model would be run for many more iterations.
 CREATE GENERATOR satellites_cc FOR satellites
     USING crosscat(
         GUESS(*),
         Name IGNORE );
 .describe columns satellites_cc
-INITIALIZE 8 MODELS FOR satellites_cc;
-ANALYZE satellites_cc FOR 50 ITERATIONS CHECKPOINT 2 ITERATION WAIT;
+INITIALIZE 16 MODELS FOR satellites_cc;
+ANALYZE satellites_cc FOR 4 MINUTES CHECKPOINT 2 ITERATION WAIT;
 
--- check for convergence
--- .chainplot logscore satellites_cc
 
+-- A simple diagnostic read out. Kentucky windage for convergence.
+.chainplot logscore satellites_cc
+
+-- Display the probability of dependence for each pair of columns
 .heatmap ESTIMATE PAIRWISE DEPENDENCE PROBABILITY FROM satellites_cc
-.show SELECT Dry_mass_kg, Class_of_Orbit, Perigee_km, Period_minutes FROM satellites
+
+-- Show pairwise relations among some columns
+.show 'SELECT Dry_mass_kg, Class_of_Orbit, Perigee_km, Period_minutes FROM satellites' --no-contour
 
 -- find satellites with unexpected lifetimes
 CREATE TEMP TABLE predprob_life AS
@@ -30,7 +40,7 @@ CREATE TEMP TABLE predprob_life AS
 		AS p_lifetime, Class_of_Orbit
 		FROM satellites_cc
 		WHERE Expected_Lifetime IS NOT NULL;
-.show SELECT Expected_Lifetime, class_of_orbit, p_lifetime FROM predprob_life
+.show 'SELECT Expected_Lifetime, class_of_orbit, p_lifetime FROM predprob_life' --no-contour
 SELECT * FROM predprob_life ORDER BY p_lifetime ASC LIMIT 20;
 
 -- find non-physical entries
@@ -46,5 +56,37 @@ ESTIMATE COLUMNS DEPENDENCE PROBABILITY WITH Expected_Lifetime as depprob_lifeti
     FROM satellites_cc
     ORDER BY depprob_lifetime DESC LIMIT 10; 
 
--- plot a state
--- .ccstate satellites_cc 0
+-- What if I saw a satellites in GEO with dry mass X. What is it's purpose and
+-- who launched it?
+CREATE TEMP TABLE sat_purpose AS 
+    SIMULATE Country_of_operator, Purpose FROM satellites_cc
+        GIVEN Class_of_orbit = GEO, Dry_mass_kg = 5000
+        LIMIT 1000;
+
+-- see which country-purpose combination is most probable
+-- we'll concatenate the values of the first two columns into a single
+-- coutry-purpose columns and then see which country-purpose combination
+-- occurs most often
+SELECT country_of_operator || "--" || purpose as "Country-Purpose", 
+        count("Country-Purpose") as frequency
+    FROM sat_purpose
+    Group BY "Country-Purpose"
+    ORDER BY frequency DESC
+    LIMIT 10;
+
+
+-- INFER and CONFIDENCE for period givn GEO and Ellipitcal orbits. Confidence
+-- for elliptical orbits should be lower because GEO orbits have a set period.
+CREATE TEMP TABLE infer_geo AS
+    INFER EXPLICIT period_minutes, PREDICT period_minutes as period_pred CONFIDENCE period_conf
+        FROM satellites_cc
+        WHERE Class_of_Orbit = GEO;
+
+CREATE TEMP TABLE infer_elliptical AS
+    INFER EXPLICIT period_minutes, PREDICT Period_minutes as period_pred CONFIDENCE period_conf
+        FROM satellites_cc
+        WHERE Class_of_Orbit = Elliptical;
+
+SELECT * FROM infer_geo ORDER BY period_conf DESC LIMIT 20;
+
+SELECT * FROM infer_elliptical ORDER BY period_conf DESC LIMIT 20;
