@@ -163,8 +163,8 @@ def pairplot(self, argin):
                          name make help to plot more intelligently.
         -s, --shortnames: Use column short names to label facets?
         -m, --show-missing: Plot missing values in scatter plots as lines.
-        --no-contours: Turn off contours.
-        --colorby: The name of a column to use as a dummy variable for color.
+        --no-contour: Turn off contours.
+        --colorby: The name of a column to use as a marker variable for color.
 
     Example:
     bayeslite> .show SELECT foo, baz, quux + glorb FROM mytable

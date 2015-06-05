@@ -50,6 +50,8 @@ adds additional math functions to BQL.
 
 ### Shell utilities
 
+All contrib commands have documentation avalible using the `.help` commands. E.g., `.help show`.
+
 #### .heatmap
 
     .heatmap <pairwise query> [options]
@@ -73,6 +75,9 @@ Draws or saves a plot of an arbitrary BQL query
     which data types)
 - `-f, --filename <str>`: save as filename.
 - `-s, --shortnames`: use columns shornames (requires codebook) on axis labels.
+- `-m, --show-missing`: Plot partial missing values as lines across their missing dimension.
+- `--no-countour`: Turn of contours.
+- `--colorby`: The name of a columns to use as a marker variable for color.
 
 Example:
 
@@ -80,6 +85,8 @@ Example:
     bayeslite> .show SELECT Expected_Lifetime, class_of_orbit, p_lifetime FROM predprob_life
 
 ![.show](doc/pairplot.png)
+
+    bayeslite> .show 'SELECT Expected_Lifetime, class_of_orbit, p_lifetime FROM predprob_life' -m --no-contour --colorby class_of_orbit
 
 #### .ccstate
 Draws a crosscat state
