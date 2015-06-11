@@ -50,7 +50,7 @@ adds additional math functions to BQL.
 
 ### Shell utilities
 
-All contrib commands have documentation avalible using the `.help` commands. E.g., `.help show`.
+All contrib commands have documentation available using the `.help` commands. E.g., `.help show`.
 
 #### .heatmap
 
@@ -74,7 +74,7 @@ Draws or saves a plot of an arbitrary BQL query
 - `-g, --generator <str>`: the generator name (decreases guesswork with respect to which columns are
     which data types)
 - `-f, --filename <str>`: save as filename.
-- `-s, --shortnames`: use columns shornames (requires codebook) on axis labels.
+- `-s, --shortnames`: use columns short names (requires codebook) on axis labels.
 - `-m, --show-missing`: Plot partial missing values as lines across their missing dimension.
 - `--no-countour`: Turn of contours.
 - `--colorby`: The name of a columns to use as a marker variable for color.
@@ -130,6 +130,22 @@ Example (two-column query):
     bayeslite> .histogram SELECT dry_mass_kg, Class_of_Orbit FROM satellites; -b 35 --normed
 
 ![histogram](doc/hist2.png)
+
+#### .bar
+Bar plot of a two-column query. The first column of the query is used as the
+bar labels; the second column of the query is used as the bar heights. All
+other columns in the query are ignored.
+
+    .bar <query> [options]
+
+**Options:**
+- `-f, --filename <str>`: save as filename.
+
+Example
+
+    bayeslite> .bar 'SELECT Name, perigee_km FROM satellites ORDER BY Expected_Lifetime DESC;'
+
+![Bar plot of perigee sorted by lifetime](doc/bar.png)
 
 #### .chainplot
 Plots various model diagnostics as a function of iterations. To use `.chainplot`, `ANALYZE` must
