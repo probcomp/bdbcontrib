@@ -11,6 +11,8 @@ A set of utilities for bayesdb.
 - Pandas
 - numpy
 - markdown2 (for `.readtohtml`)
+- sphinx (for documentation)
+- numpydoc (for documentation)
 
 Clone the repo and add it to your `PYTHONPATH`
 
@@ -44,6 +46,18 @@ loaded by the shell, add the following to your `~/.bayesliterc` file
 
 which hooks the contrib files and calls `.register_bql_math_functions`, which
 adds additional math functions to BQL.
+
+## Documentation
+
+The python documentation is built using [sphinx](http://sphinx-doc.org/) and
+[numpydoc](https://pypi.python.org/pypi/numpydoc).
+
+```
+$ cd doc && make html
+```
+
+Documentation for the shell can be found below and by using the `.help`
+command from within the shell.
 
 
 ## Use
