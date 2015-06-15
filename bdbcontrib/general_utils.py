@@ -3,7 +3,9 @@ from bayeslite.sqlite3_util import sqlite3_quote_name as quote
 
 from cStringIO import StringIO
 import string
+import sys
 import os
+import warnings
 
 PLOTTING_COMMANDS = ['.heatmap', '.histogram', '.show',
                      '.chainplot', '.ccstate', '.bar',
@@ -76,18 +78,27 @@ def clean_cmd_filename(cmd, fignum, output_dir):
 
 
 def exec_and_cap_cmd(cmd, fignum, shell, mdstr, output_dir):
+    assertion_failed = False
     plotting_cmd = is_plotting_command(cmd)
     if plotting_cmd:
         cmd, figfile = clean_cmd_filename(cmd, fignum, output_dir)
         fignum += 1
     # do the comand and grab the output, and close the code markup
     output = do_and_cap(shell, cmd)
+
+    # XXX: really hacky, bad, way to check whether an .assert has failed. I
+    # originally wanted to use warnings.simplefilter to turn the # .assert
+    # warning into an exception and to catch them, but it was hijacking the
+    # shell's stdout (I don't know why). So now I have to use stdout..
+    if 'Warning: Assertion' in output:
+        assertion_failed = True
+
     output = '\n'.join(['    ' + s for s in output.split('\n')])
     mdstr += '\n' + output
     if plotting_cmd:
         mdstr += "\n![{}]({})\n".format(cmd, figfile)
     cmd = ''
-    return cmd, mdstr, fignum
+    return cmd, mdstr, fignum, assertion_failed
 
 
 def mdread(f, output_dir, shell):
@@ -96,6 +107,9 @@ def mdread(f, output_dir, shell):
     Captures text and figure output and saves all code and image assets to
     a directory. Using `mdread` requires some special care on behalf of the
     user. See `writing a BQL script`.
+
+    Catches assertions from .assert shell command. Will stop execution if an
+    assertion fails.
 
     Parameters
     ----------
@@ -110,6 +124,8 @@ def mdread(f, output_dir, shell):
     -------
     mdstr : string
         A string of markdown
+    err : bool
+        True if an assertion (.assert) was raised.
 
     Notes
     -----
@@ -121,6 +137,7 @@ def mdread(f, output_dir, shell):
         raise TypeError('f should be a file.')
     lines = f.read().split('\n')
 
+    err = False
     cont = False
     cmd = ''
     mdstr = ''
@@ -129,7 +146,7 @@ def mdread(f, output_dir, shell):
 
     # XXX: The first three chracters are stripped from comments, because it is
     # assumed that a space immediately follows '--'. I should probably change
-    # this is future.
+    # this in the future.
     line = lines[0]
     last_type = get_line_type(line)
     if last_type == 'code':
@@ -140,7 +157,7 @@ def mdread(f, output_dir, shell):
         mdstr += line[3:].rstrip() + '\n'
     else:
         mdstr += line
-
+    warnings.simplefilter('error')
     for i, line in enumerate(lines[1:]):
         linetype = get_line_type(line)
         cont = is_continuation(line)
@@ -153,28 +170,37 @@ def mdread(f, output_dir, shell):
         else:
             if last_type == 'code':
                 mdstr += '\n'
-                cmd, mdstr, fignum = exec_and_cap_cmd(cmd, fignum, shell,
-                                                      mdstr, output_dir)
+                cmd, mdstr, fignum, err = exec_and_cap_cmd(cmd, fignum, shell,
+                                                           mdstr, output_dir)
+                if err:
+                    return mdstr, err
+
             if linetype == 'comment':
                 mdstr += line[3:].rstrip() + '\n'
             elif linetype == 'code':
                 cmd = line
                 mdstr += '\n    ' + BPROMPT + line
                 if i == len(lines)-1:
-                    last_cmd, mdstr, fignum = exec_and_cap_cmd(
+                    last_cmd, mdstr, fignum, err = exec_and_cap_cmd(
                         cmd, fignum, shell, mdstr, output_dir)
+
+                    if err:
+                        return mdstr, err
             else:
                 mdstr += '\n'
         last_type = linetype
 
     if last_type == 'code' and cont:
-        last_cmd, mdstr, fignum = exec_and_cap_cmd(cmd, fignum, shell, mdstr,
-                                                   output_dir)
+        last_cmd, mdstr, fignum, err = exec_and_cap_cmd(cmd, fignum, shell,
+                                                        mdstr, output_dir)
+        if err:
+            return mdstr, err
 
+    warnings.resetwarnings()
     with open(os.path.join(output_dir, 'README.md'), 'w') as f:
         f.write(mdstr)
 
-    return mdstr
+    return mdstr, err
 
 
 def nullify(bdb, table, value):

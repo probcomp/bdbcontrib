@@ -33,7 +33,7 @@ def render_bql_as_html(self, argin):
         os.makedirs(output_dir)
 
     with open(bql_file) as f:
-        mdstr = utils.mdread(f, output_dir, self)
+        mdstr, err = utils.mdread(f, output_dir, self)
 
     html = head + markdown2.markdown(mdstr) + '</html>'
 
@@ -43,8 +43,11 @@ def render_bql_as_html(self, argin):
         f.write(html)
     shutil.copyfile(READTOHTML_CSS, os.path.join(output_dir, 'style.css'))
 
-    # Because you want to know when it's done:
-    self.stdout.write(utils.unicorn())
+    if err:
+        self.stdout.write('The build failed. Check output for details.\n')
+    else:
+        self.stdout.write(utils.unicorn())
+
     self.stdout.write("Output saved to %s\n" % (output_dir,))
 
 
