@@ -224,7 +224,8 @@ def do_violinplot(plot_df, vartypes, **kwargs):
         plot_df[groupby], bdb=bdb, generator_name=generator_name)
 
     sns.violinplot(plot_df[vals], groupby=plot_df[groupby], order=unique_vals,
-                   names=unique_vals, vert=vert, ax=ax, positions=0)
+                   names=unique_vals, vert=vert, ax=ax, positions=0,
+                   color='SteelBlue')
     n_vals = len(plot_df[groupby].unique())
 
     if vert:
