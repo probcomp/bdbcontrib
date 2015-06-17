@@ -1,87 +1,284 @@
--- # Satellites example
+-- # Satellites turorial
+-- ```
 -- Run with `.read satellites.bql -v`
 -- Exit the shell with ^D (CTRL + D)
+-- ```
 
--- Load in a .csv
+-- In this example we will explore the core functionality of BayesDB by using
+-- BayesDB to explore and analyze some real data. The data we will use is the
+-- Union of Concerned Scientists' Satellites data (retrieved FIXME: Date).
+-- The data is a catalogue of satellites. Each row of the data represents a
+-- satellite and each column is a feature of that satellite---dry mass, orbit
+-- type, launch date, perigee, etc.
+
+-- ## Creating a table
+-- The first thing to do it to load our data. The data are in .csv format with
+-- a header of the column names. To load data in the shell, we use the `.csv`
+-- command followed by what we want the table to be named---we'll call it
+-- satellites---followed by the path to the csv.
+
 .csv satellites data/satellites.utf8.csv
 
--- Load a codebook
+-- Now that we have a table, we can ask SQLite for some information about the
+-- table using SQLite pragma. To access SQL- or SQLite-specific functionality
+-- we use the `.sql` command followed by the SQL code we wish to execute. We
+-- use the `table_info(<table>)` pragma.
+
+.sql pragma table_info(satellites)
+
+-- Of course, we can select data just as we would in SQL in BQL:
+
+SELECT Name, dry_mass_kg FROM satellites LIMIT 10;
+
+-- Something we might want to do is provide extra information to improve the
+-- interpretability of the data. We can add a .csv of metadata called a
+-- codebook. The codebook has four columns: the column name (`name`), a
+-- human-readable short name (`shortname`), a long description (`description`),
+-- and a value map for categorical variables (`value_map`; check the source for
+-- an example). To add a codebook, use `.codebook` command followed by the
+-- table to associate the codebook with, followed by the path to the codebook.
+
 .codebook satellites data/satellites_codebook.utf8.csv
 
--- Convert NaN values to SQL null so that we can use `WHERE foo IS NULL`
-.nullify satellites NaN
+-- Finally, we need to tell BayesDB which values to treat as missing, `NULL`.
+-- Different datasets use different markers for missing data, this dataset uses
+-- `NaN`. To convert all instances of `NaN` to SQL `NULL`, we use the
+-- `.nullify` command, followed by the table, followed by the value to convert.
 
--- Create a generator, initialize models, and analyze. 
--- Take diagnostics every other iteration.
--- Please note that this example is designed to run in a reasonable amount of
--- time. As a consequence, the results of this analysis are likely unstable. In
--- practice many more models would be analyzed for many more iterations.
+.nullify satellites NaN
+SELECT Name, dry_mass_kg FROM satellites LIMIT 10;
+
+-- We see that the `NaN` entires have been replaced with `None`, which is the
+-- way python represents SQL `NULL`.
+
+-- ## Generating models of the data
+-- Before we can as BayesDB any questions we need to create a generator. A
+-- generator specifies the model that we want to impose on the data. Here, we
+-- will use the default generator, crosscat. 
+
+-- To create a generator we use the keywords `CREATE GENERATOR <name> FROM <table> USING <metamodel> ( [arguments] )`.
+
 CREATE GENERATOR satellites_cc FOR satellites
     USING crosscat(
         GUESS(*),
         Name IGNORE );
+
+-- We created a generator named `satellites_cc` for our `satellites` table using
+-- the crosscat metamodel. Inside the parenthesis, we provide the crosscat with
+-- a little information about how we would like the columns in our table to be
+-- modeled. `GUESS(*)` means that we would like crosscat to guess the
+-- statistical data type of each column, e.g., `NUMERICAL` or `CATEGORICAL`;
+-- `Name IGNORE` means that we would like crosscat to ignore the Name column
+-- during analyses and not to assign it a statistical data type.
+
+-- We can see how well the system guess the types of our columns by using the
+-- `.describe command.
+
 .describe columns satellites_cc
+
+-- The next step is to tell BayesDB how many instances of crosscat we would
+-- like to use. These instances are referred to as models, and answers from
+-- BayesDB are the result of averaging across models. We will arbitratily
+-- choose 16 models.
+
 INITIALIZE 16 MODELS FOR satellites_cc;
+
+-- Now we ask BayesDB to use `ANALYZE` our data using the instances of
+-- crosscat we have just initialized. We will `ANALYZE` for four minutes
+-- (though in practice, you will most certainly want to analyze for longer).
+-- We will also ask BayesDB to stop every two `ANALYZE` steps to take some
+-- diagnostic information that will help us later to decide whether we have
+-- done enough analysis on enough models (but do not worry about this quite
+-- yet).
+
 ANALYZE satellites_cc FOR 4 MINUTES CHECKPOINT 2 ITERATION WAIT;
 
 
--- A simple diagnostic read out.
-.chainplot logscore satellites_cc
 
--- Display the probability of dependence for each pair of columns
-.heatmap ESTIMATE PAIRWISE DEPENDENCE PROBABILITY FROM satellites_cc
+-- ## Characterizing dependence between variables
 
--- Show pairwise relations among some columns
-.show 'SELECT Dry_mass_kg, Class_of_Orbit, Perigee_km, Period_minutes FROM satellites' --no-contour
+-- Now that the analyses are finished, we can being to ask BayesDB questions
+-- about the implications of the data. Often the first question we want to ask,
+-- especially if we are relatively clueless about the data, is which columns are
+-- most likely dependent on each other. To ask for the probability of
+-- dependence (`DEPENDENCE PROBABILITY`) between all the pairs of columns, we
+-- use the `ESTIMATE PAIRWISE` command; and because we don not want to look at
+-- at a very long table, we will visualize it in a heatmap using the `.heatmap`
+-- command. The `--vmin` and `--vmax` arguments specify the min and max values
+-- each cell in the heatmap can assume.
 
--- Identify satellites with unexpected lifetimes
-CREATE TEMP TABLE predprob_life AS
-	ESTIMATE Name, Expected_Lifetime, PREDICTIVE PROBABILITY OF Expected_Lifetime 
-		AS p_lifetime, Class_of_Orbit
-		FROM satellites_cc
-		WHERE Expected_Lifetime IS NOT NULL;
+.heatmap 'ESTIMATE PAIRWISE DEPENDENCE PROBABILITY FROM satellites_cc' --vmin 0 --vmax 1
 
-.show 'SELECT Expected_Lifetime, class_of_orbit, p_lifetime FROM predprob_life' --no-contour
-
-SELECT * FROM predprob_life ORDER BY p_lifetime ASC LIMIT 20;
-
--- Identify non-physical entries. A satellite's period should be easily
--- determined by its other orbital properties (perigee, apogee; orbit class),
--- perhaps less easily for elliptical orbits.
-CREATE TEMP TABLE predprob_period
-	AS ESTIMATE Name, class_of_orbit, Period_minutes, PREDICTIVE PROBABILITY OF Period_minutes 
-		AS p_period, Source_Used_for_Orbital_Data
-		FROM satellites_cc
-		WHERE Period_minutes IS NOT NULL;
-
-SELECT * FROM predprob_period ORDER BY p_period ASC LIMIT 20;
+-- Each cell in the heatmap represents the dependence probability between a
+-- pair of columns. Darker cells represent higher dependence probability. The 
+-- dendrogram is primarily for visualization, but clusters columns roughly into
+-- dependent groups. Note which groups of columns have the highest dependence
+-- probability. Do you notice any patterns? Many of the variable in this table
+-- are nearly deterministic, given the laws of physics. For example, we can
+-- determine a satellite's orbital period (the amount of time an orbit takes)
+-- form its perigee (lowest altitude of the orbit) and apogee (highest altitude
+-- of the orbit).
 
 -- Which variable predict expected lifetime---which are the main predictors?
 ESTIMATE COLUMNS DEPENDENCE PROBABILITY WITH Expected_Lifetime as depprob_lifetime
     FROM satellites_cc
     ORDER BY depprob_lifetime DESC LIMIT 10; 
 
--- What if one observed a satellites in geosynchronous orbit with a dry mass of
--- 5000kg. What is it's purpose and who launched it?
+
+
+-- ## Identify satellites with unexpected lifetimes
+
+-- We can use bayesdb to identify anomalous values in our table. An anomalous
+-- is different from an outlier. An anomalous value is an observed value that
+-- has a low probability under the inferred model; and outlier is defined
+-- simply as having an extreme value. We can visualize this idea by visualizing
+-- a scatter plot of data and their predictive probability functions
+-- (`PREDICTIVE PROBABILITY`). We use the `ESTIMATE` keyword rather than
+-- `SELECT` because we are asking questions of the generator. We also
+-- specify that we only want the probabilities of non-null values using a 
+-- `WHERE` clause (the predictive probability of `NULL` is `NULL`).
+
+-- **FIXME:** Note that not using `TEMP TABLE` is going to make this really
+-- slow...
+
+.show 'ESTIMATE Expected_Lifetime, PREDICTIVE PROBABILITY OF Expected_Lifetime 
+           AS f_lifetime
+           FROM satellites_cc
+           WHERE Expected_Lifetime IS NOT NULL' --no-contour
+
+-- Note that there are plenty of non-extreme values that have low probabilities.
+-- Let us get a list of the 10 most anomalous satellites by sorting by
+-- `f_lifetime` in ascending (`ASC`) order.
+
+ESTIMATE Name, Expected_Lifetime, PREDICTIVE PROBABILITY OF Expected_Lifetime 
+    AS f_lifetime
+    FROM satellites_cc
+    WHERE Expected_Lifetime IS NOT NULL 
+    ORDER BY f_lifetime ASC
+    LIMIT 10;
+
+-- Recall earlier that we mentioned that some of the relations are governed by
+-- the laws of physics and are thus nearly deterministic? We can use this
+-- determinism coupled with our notion of anomalousness to search the table for
+-- data-entry errors. A geosynchronous orbit should take 24 hours
+-- (1440 minutes). Let us display the anomalous values for satellites in
+-- geosynchronous orbit.
+
+ESTIMATE Name, class_of_orbit, Period_minutes,
+        PREDICTIVE PROBABILITY OF Period_minutes AS f_period
+    FROM satellites_cc
+    WHERE class_of_orbit IS GEO
+        AND Period_minutes IS NOT NULL
+    ORDER BY f_period ASC
+    LIMIT 20;
+
+-- We see a couple of oddities. There satellites with 24-minutes periods. It
+-- appears that these entries are in hours rather than minutes. The are other
+-- entries that be have too-short period that appear to be decimal errors.
+
+-- **NOTE:** We have reported these errors to the database maintainers.
+
+
+
+-- ## Simulating entries
+
+-- Suppose that we saw a satellite in geosynchrous orbit with  a mass of
+-- 500kg, who launched it, and what is it for? We can ask BayesDB to simulate
+-- this scenario for us. We will do this in two queries. In the first, we will
+-- create a temporary table (`TEMP TABLE`) consisting of simulated data using
+-- the `SIMULATE` keyword (see Notes for more info about temp tables); in the
+-- second, we will concatenate and organize the data for easy reading.
+
+-- We `SIMULATE` country and purpose `GIVEN` that we have observed the class of
+-- orbit and the dry mass 1000 times. We specify the number of points to
+-- simulate using `LIMIT`
+
 CREATE TEMP TABLE sat_purpose AS 
     SIMULATE Country_of_operator, Purpose FROM satellites_cc
-        GIVEN Class_of_orbit = GEO, Dry_mass_kg = 5000
+        GIVEN Class_of_orbit = GEO, Dry_mass_kg = 500
         LIMIT 1000;
+
+-- Note that everything after the `AS` is a perfectly valid query. `CREATE
+-- TEMP TABLE sat_purpose AS` saves the result of the query that follows it
+-- into a table called `sat_purpose` which we can refer to later. Temporary
+-- tables are destroyed when the session is closed.
 
 -- To determine which country-purpose combination is most probable
 -- we will concatenate the values of the first two columns into a single
--- country-purpose columns and then use SQLite's COUNT function to calculate
--- the frequencies.
+-- country-purpose columns using the `||` operator, and then use SQLite's
+-- `COUNT` function to calculate the frequencies. Let us look at the top 10
+-- most frequent user-purpose combinations.
+
 SELECT country_of_operator || "--" || purpose as "Country-Purpose", 
-        count("Country-Purpose") as frequency
+        COUNT("Country-Purpose") as frequency
     FROM sat_purpose
     Group BY "Country-Purpose"
     ORDER BY frequency DESC
     LIMIT 10;
 
+-- We can visualize this data using the `.bar` command
+.bar 'SELECT country_of_operator || "--" || purpose as "Country-Purpose", 
+              COUNT("Country-Purpose") as frequency
+          FROM sat_purpose
+          Group BY "Country-Purpose"
+          ORDER BY frequency DESC
+          LIMIT 20;'
 
--- INFER and CONFIDENCE for period givn GEO and Ellipitcal orbits. Confidence
--- for elliptical orbits should be lower because GEO orbits have a set period.
+-- ## Inferring values
+-- Inferring is like imputing. `INFER` produces a summary value for a missing
+-- (`NULL`) entry. If we use the `EXPLICIT` keyword, we can re-infer present
+-- values. 
+
+-- We shall impute missing values of mass. First, let us see how many values
+-- are missing.
+
+SELECT COUNT(dry_mass_ks) FROM satellites WHERE dry_mass_kg IS NULL;
+
+-- Nearly half the values of dry mass are missing! We can visualize missing
+-- values in pairs of continuous columns using the `.show` command with the
+-- `-m` or `--show-missing` option. 
+
+.show 'SELECT dry_mass_kg, launch_mass_kg FROM satellites;' --no-contour -m
+
+-- Missing values are represented as lines along their missing dimension. This
+-- way, we can see which values of the missing dimensions are more likely by
+-- observing where the lines intersect with the existing data points.
+
+-- We will use the `INFER` command to impute missing values for geosynchronous
+-- satellites.
+
+.show 'INFER dry_mass_kg, launch_mass_kg WITH CONFIDENCE 0 FROM satellites_cc
+           WHERE Class_of_Orbit = GEO;' --no-contour -m
+
+-- No more missing values. Notice the `WITH CONFIDENCE` clause. This tells
+-- bayesdb to impute entries only if we are confident to a certain degree.
+-- `WITH CONFIDENCE 0` will then impute all values regardless; if we asked for
+-- confidence of .6 fewer entries (or perhaps none at all) would be filled in.
+
+-- BayesDB's notion of `CONFIDENCE` is unlike confidence in standard
+-- statistics. Whereas in standard statistics 'confidence' is typically paired
+-- with the word 'interval' to describe some region of probability mass, 
+-- `CONFIDENCE` in BayesDB is a measure of inter-model agreement; that is, 
+-- `CONFIDENCE` is the probability that among the models, there is a unimodal
+-- summary of the value we wish to impute given all other entries in that
+-- entry's row. To illustrate confidence, let us re-infer the period of
+-- satellites of different orbit classes. Recall that the period of a
+-- satellite in a circular orbit can be very accurately determined by the
+-- altitude of its orbit. Geosynchronous (`Class_of_Orbit = "GEO"`) satellites
+-- have a fixed altitude (perigee = apogee) and a fixed period (~24 hours),
+-- whereas satellites in elliptical orbits have variable altitudes and period.
+
+.show 'SELECT period_minutes, perigee_km, apogee_km, Class_of_orbit 
+           FROM satellites;' --no-contour --colorby Class_of_Orbit
+
+-- Intuitively, we would imagine that we would have less confidence in
+-- predicting the periods of satellites in elliptical orbits. We can visualize
+-- this by asking BayesDB to re-predict existing values and returning the
+-- confidence of those predictions. We will create two temporary tables from
+-- the predicted periods and prediction confidences for satellites in
+-- geosynchronous and elliptical orbits. We will then stack the tables using
+-- UNION and compare the histograms of the confidences.
+
 CREATE TEMP TABLE infer_geo AS
     INFER EXPLICIT Name, period_minutes, PREDICT period_minutes as period_pred CONFIDENCE period_conf
         FROM satellites_cc
@@ -92,20 +289,16 @@ CREATE TEMP TABLE infer_elliptical AS
         FROM satellites_cc
         WHERE Class_of_Orbit = Elliptical;
 
--- We prepare the data for plotting by stacking (UNION) the two tables on top
--- of each other and creating a marker variable for Class_of_orbit.
-.sql CREATE TEMP TABLE orbit_conf AS  SELECT period_conf, "GEO" AS type FROM infer_geo
-    UNION
-    SELECT period_conf, "ELLIPTICAL" AS type FROM infer_elliptical;
+-- We take the union of the two tables while creating an `orbit_type`marker
+-- variable for Class_of_orbit.
 
--- graphical display
+.sql CREATE TEMP TABLE orbit_conf AS  SELECT period_conf, "GEO" AS orbit_type FROM infer_geo
+    UNION
+    SELECT period_conf, "ELLIPTICAL" AS orbit_type FROM infer_elliptical;
+
 .histogram 'SELECT * FROM orbit_conf;' --bins 31 --normed
 
--- SQL table display
-SELECT period_minutes, period_pred, period_conf FROM infer_geo
-    ORDER BY period_conf DESC
-    LIMIT 20;
+-- We see that the prediction confidences for elliptical orbits are generally
+-- lower than those for geosynchronous orbits.
 
-SELECT period_minutes, period_pred, period_conf FROM infer_elliptical
-    ORDER BY period_conf DESC
-    LIMIT 20;
+--
