@@ -359,7 +359,8 @@ def zmatrix(data_df, clustermap_kws=None, row_ordering=None,
         return sns.heatmap(df, **clustermap_kws), row_ordering, col_ordering
     else:
         cm = sns.clustermap(data_df, **clustermap_kws)
-        return cm, cm.dendrogram_row.reordered_ind, cm.dendrogram_row.reordered_ind
+        return (cm, cm.dendrogram_row.reordered_ind,
+                cm.dendrogram_row.reordered_ind,)
 
 
 # TODO: bdb, and table_name should be optional arguments
@@ -417,6 +418,7 @@ def pairplot(df, bdb=None, generator_name=None, use_shortname=False,
     if colorby is not None:
         n_colorby = 0
         for colname in data_df.columns:
+            # XXX: This is not guaranteed to work on all Unicode characters.
             if colorby.lower() == colname.lower():
                 n_colorby += 1
                 colorby = colname
@@ -464,7 +466,8 @@ def pairplot(df, bdb=None, generator_name=None, use_shortname=False,
                                        generator_name=generator_name)
         vartypes.append(vartype)
 
-    # store each axes; reaccessing ax with plt.subplot(plt_grid[a,b]) may overwrite the ax
+    # store each axes; reaccessing ax with plt.subplot(plt_grid[a,b]) may
+    # overwrite the ax
     axes = [ [] for _ in xrange(len(all_varnames)) ]
     for x_pos, var_name_x in enumerate(all_varnames):
         var_x_type = vartypes[x_pos]
