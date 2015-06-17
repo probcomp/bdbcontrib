@@ -415,6 +415,16 @@ def pairplot(df, bdb=None, generator_name=None, use_shortname=False,
 
     colors = None
     if colorby is not None:
+        n_colorby = 0
+        for colname in data_df.columns:
+            if colorby.lower() == colname.lower():
+                n_colorby += 1
+                colorby = colname
+        if n_colorby == 0:
+            raise ValueError('colorby column, {}, not found.'.format(colorby))
+        elif n_colorby > 1:
+            raise ValueError('Multiple columns named, {}.'.format(colorby))
+
         dummy = data_df[colorby].dropna()
         dvals = np.sort(dummy.unique())
         ndvals = len(dvals)
