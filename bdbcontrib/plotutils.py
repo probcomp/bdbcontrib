@@ -497,11 +497,19 @@ def pairplot(df, bdb=None, generator_name=None, use_shortname=False,
             if x_pos != y_pos:
                 ax.set_ylim([np.min(ymins[y_pos, :]), np.max(ymaxs[y_pos, :])])
             if x_pos > 0:
-                ax.set_ylabel('')
-                ax.set_yticklabels([])
+                if x_pos == n_vars - 1:
+                    ax.yaxis.tick_right()
+                    ax.yaxis.set_label_position('right')
+                else:
+                    ax.set_ylabel('')
+                    ax.set_yticklabels([])
             if y_pos < n_vars - 1:
-                ax.set_xlabel('')
-                ax.set_xticklabels([])
+                if y_pos == 0:
+                    ax.xaxis.tick_top()
+                    ax.xaxis.set_label_position('top')
+                else:
+                    ax.set_xlabel('')
+                    ax.set_xticklabels([])
             else:
                 if vartype[x_pos] == 'categorical':
                     rotate_tick_labels(ax)
