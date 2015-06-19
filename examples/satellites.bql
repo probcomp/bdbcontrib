@@ -111,7 +111,7 @@ ANALYZE satellites_cc FOR 4 MINUTES CHECKPOINT 2 ITERATION WAIT;
 
 -- Each cell in the heatmap represents the dependence probability between a
 -- pair of columns. Darker cells represent higher dependence probability. The 
--- dendrogram is primarily for visualization, but clusters of columns roughly into
+-- dendrogram is primarily for visualization, but clusters columns roughly into
 -- dependent groups. Note which groups of columns have the highest dependence
 -- probability. Do you notice any patterns? Many of the variables in this table
 -- are nearly deterministic, given the laws of physics. For example, we can
