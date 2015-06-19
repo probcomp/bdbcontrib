@@ -128,7 +128,7 @@ ESTIMATE COLUMNS DEPENDENCE PROBABILITY WITH Expected_Lifetime as depprob_lifeti
 
 -- ## Identify satellites with unexpected lifetimes
 
--- We can use Bayesdb to identify anomalous values in our table. An anomaly
+-- We can use BayesDB to identify anomalous values in our table. An anomaly
 -- is different from an outlier. An anomalous value is an observed value that
 -- has a low probability under the inferred model; and outlier is defined
 -- simply as having an extreme value. We can visualize this idea by creating
@@ -251,7 +251,7 @@ SELECT COUNT(dry_mass_ks) FROM satellites WHERE dry_mass_kg IS NULL;
            WHERE Class_of_Orbit = GEO;' --no-contour -m
 
 -- No more missing values. Notice the `WITH CONFIDENCE` clause. This tells
--- Bayesdb to impute entries only if it is confident to a certain degree.
+-- BayesDB to impute entries only if it is confident to a certain degree.
 -- `WITH CONFIDENCE 0` will then impute all values regardless; if we asked for
 -- confidence of 0.6 fewer entries (or perhaps none at all) would be filled in.
 
