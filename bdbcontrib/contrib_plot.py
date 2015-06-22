@@ -1,3 +1,12 @@
+
+from sys import platform as _platform
+
+import matplotlib
+if _platform == 'darwin':
+    matplotlib.use('TkAgg')
+
+matplotlib.rcParams.update({'figure.autolayout': True})
+
 import bayeslite.core
 import shlex
 import argparse
@@ -8,8 +17,6 @@ from bdbcontrib.draw_cc_state import draw_state
 from bayeslite.shell.hook import bayesdb_shell_cmd
 
 import bdbcontrib.plotutils as pu
-import matplotlib
-matplotlib.rcParams.update({'figure.autolayout': True})
 import matplotlib.pyplot as plt
 import seaborn as sns
 
