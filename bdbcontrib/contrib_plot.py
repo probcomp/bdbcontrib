@@ -92,8 +92,22 @@ def zmatrix(self, argin):
     Creates a clustered heatmap from the bql query. If no filename is
     specified, will attempt to draw.
 
-    Example:
+    Options
+    -------
+    -f, --filename: str
+        Save as filename
+    --vmin: float
+        Minimun value of the colormap.
+    --vmax: float
+        Maximum value of the colormap.
+    --last-sort: flag
+        Sort the heatmap the same as the last heatmap. Used to compare heatmaps
+        generated with different metrics. Must be used after heatmap has been
+        run once on a table of the same size.
+
+    Example (compare dependence probability and mutual information):
     bayeslite> .heatmap ESTIMATE PAIRWISE DEPENDENCE PROBABILITY FROM mytable
+    bayeslite> .heatmap 'ESTIMATE PAIRWISE MUTUAL INFORMATION FROM mytable;' --last-sort
     '''
     parser = ArgumentParser(prog='.heatmap')
     parser.add_argument('bql', type=str, nargs='+', help='PAIRWISE BQL query')

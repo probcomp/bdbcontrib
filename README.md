@@ -72,6 +72,11 @@ All contrib commands have documentation available using the `.help` commands. E.
 
 **Options:**
 - `-f, --filename <str>`: save as filename.
+- `--vmin <float>`: Minimun value of the colormap.
+- `--vmax <float>`: Maximum value of the colormap.
+- `--last-sort`: Sort the heatmap the same as the last heatmap. Used to compare
+heatmaps generated with different metrics. Must be used after `.heatmap` has
+been run once on a table of the same size.
 
 Example:
 
