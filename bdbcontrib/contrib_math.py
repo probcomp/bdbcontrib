@@ -1,13 +1,10 @@
 
-from bayeslite.shell.hook import bayesdb_shell_cmd
+from bayeslite.shell.hook import bayesdb_shell_init
 import math
 
 
-@bayesdb_shell_cmd('register_bql_math_functions')
-def register_bql_math(self, args):
-    '''Adds basic math functions to BQL
-    (No arguments)
-    '''
+@bayesdb_shell_init
+def register_bql_math(self):
     self._bdb.sqlite3.create_function('exp', 1, math.exp)
     self._bdb.sqlite3.create_function('sqrt', 1, math.sqrt)
     self._bdb.sqlite3.create_function('pow', 2, pow)

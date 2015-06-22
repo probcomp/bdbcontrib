@@ -40,12 +40,8 @@ files in the usual way, or to ensure that the entire contrib is automatically
 loaded by the shell, add the following to your `~/.bayesliterc` file
 
     .hook /absolute/path/to/contrib_math.py
-    .register_bql_math_functions
     .hook /absolute/path/to/contrib_plot.py
     .hook /absolute/path/to/contrib_util.py
-
-which hooks the contrib files and calls `.register_bql_math_functions`, which
-adds additional math functions to BQL.
 
 ## Documentation
 
