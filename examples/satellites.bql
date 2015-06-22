@@ -1,4 +1,4 @@
--- # Satellites turorial
+-- # Satellites tutorial
 -- ```
 -- Run with `.read satellites.bql -v`
 -- Exit the shell with ^D (CTRL + D)
@@ -12,7 +12,7 @@
 -- type, launch date, perigee, etc.
 
 -- ## Creating a table
--- The first thing to do it to load our data. The data are in .csv format with
+-- The first thing to do is to load our data. The data are in .csv format with
 -- a header of the column names. To load data in the shell, we use the `.csv`
 -- command followed by what we want the table to be named---we'll call it
 -- satellites---followed by the path to the csv.
@@ -97,12 +97,12 @@ ANALYZE satellites_cc FOR 4 MINUTES CHECKPOINT 2 ITERATION WAIT;
 
 -- ## Characterizing dependence between variables
 
--- Now that the analyses are finished, we can being to ask BayesDB questions
+-- Now that the analyses are finished, we can begin to ask BayesDB questions
 -- about the implications of the data. Often the first question we want to ask,
 -- especially if we are relatively clueless about the data, is which columns are
 -- most likely dependent on each other. To ask for the probability of
 -- dependence (`DEPENDENCE PROBABILITY`) between all the pairs of columns, we
--- use the `ESTIMATE PAIRWISE` command; and because we don not want to look at
+-- use the `ESTIMATE PAIRWISE` command; and because we do not want to look at
 -- at a very long table, we will visualize it in a heatmap using the `.heatmap`
 -- command. The `--vmin` and `--vmax` arguments specify the min and max values
 -- each cell in the heatmap can assume.
@@ -113,13 +113,13 @@ ANALYZE satellites_cc FOR 4 MINUTES CHECKPOINT 2 ITERATION WAIT;
 -- pair of columns. Darker cells represent higher dependence probability. The 
 -- dendrogram is primarily for visualization, but clusters columns roughly into
 -- dependent groups. Note which groups of columns have the highest dependence
--- probability. Do you notice any patterns? Many of the variable in this table
+-- probability. Do you notice any patterns? Many of the variables in this table
 -- are nearly deterministic, given the laws of physics. For example, we can
 -- determine a satellite's orbital period (the amount of time an orbit takes)
 -- form its perigee (lowest altitude of the orbit) and apogee (highest altitude
 -- of the orbit).
 
--- Which variable predict expected lifetime---which are the main predictors?
+-- Which variables predict expected lifetime---which are the main predictors?
 ESTIMATE COLUMNS DEPENDENCE PROBABILITY WITH Expected_Lifetime as depprob_lifetime
     FROM satellites_cc
     ORDER BY depprob_lifetime DESC LIMIT 10; 
@@ -128,10 +128,10 @@ ESTIMATE COLUMNS DEPENDENCE PROBABILITY WITH Expected_Lifetime as depprob_lifeti
 
 -- ## Identify satellites with unexpected lifetimes
 
--- We can use bayesdb to identify anomalous values in our table. An anomalous
+-- We can use BayesDB to identify anomalous values in our table. An anomaly
 -- is different from an outlier. An anomalous value is an observed value that
 -- has a low probability under the inferred model; and outlier is defined
--- simply as having an extreme value. We can visualize this idea by visualizing
+-- simply as having an extreme value. We can visualize this idea by creating
 -- a scatter plot of data and their predictive probability functions
 -- (`PREDICTIVE PROBABILITY`). We use the `ESTIMATE` keyword rather than
 -- `SELECT` because we are asking questions of the generator. We also
@@ -172,9 +172,9 @@ ESTIMATE Name, class_of_orbit, Period_minutes,
     ORDER BY f_period ASC
     LIMIT 20;
 
--- We see a couple of oddities. There satellites with 24-minutes periods. It
--- appears that these entries are in hours rather than minutes. The are other
--- entries that be have too-short period that appear to be decimal errors.
+-- We see a couple of oddities. There are satellites with 24-minute periods. It
+-- appears that these entries are in hours rather than minutes. There are other
+-- entries that have too-short periods, which appear to be decimal errors.
 
 -- **NOTE:** We have reported these errors to the database maintainers.
 
@@ -182,16 +182,16 @@ ESTIMATE Name, class_of_orbit, Period_minutes,
 
 -- ## Simulating entries
 
--- Suppose that we saw a satellite in geosynchrous orbit with  a mass of
--- 500kg, who launched it, and what is it for? We can ask BayesDB to simulate
--- this scenario for us. We will do this in two queries. In the first, we will
--- create a temporary table (`TEMP TABLE`) consisting of simulated data using
+-- Suppose that we saw a satellite in geosynchrous orbit with a mass of
+-- 500kg; who launched it, and what is its purpose? We can ask BayesDB to simulate
+-- this scenario for us. We will do this in two queries. In the first query, we
+-- will create a temporary table (`TEMP TABLE`) consisting of simulated data using
 -- the `SIMULATE` keyword (see Notes for more info about temp tables); in the
--- second, we will concatenate and organize the data for easy reading.
+-- second query, we will concatenate and organize the data for easy reading.
 
 -- We `SIMULATE` country and purpose `GIVEN` that we have observed the class of
--- orbit and the dry mass 1000 times. We specify the number of points to
--- simulate using `LIMIT`
+-- orbit and the dry mass (1000 simulations). We specify the number of points to
+-- simulate using `LIMIT`.
 
 CREATE TEMP TABLE sat_purpose AS 
     SIMULATE Country_of_operator, Purpose FROM satellites_cc
@@ -251,9 +251,9 @@ SELECT COUNT(dry_mass_ks) FROM satellites WHERE dry_mass_kg IS NULL;
            WHERE Class_of_Orbit = GEO;' --no-contour -m
 
 -- No more missing values. Notice the `WITH CONFIDENCE` clause. This tells
--- bayesdb to impute entries only if we are confident to a certain degree.
+-- BayesDB to impute entries only if it is confident to a certain degree.
 -- `WITH CONFIDENCE 0` will then impute all values regardless; if we asked for
--- confidence of .6 fewer entries (or perhaps none at all) would be filled in.
+-- confidence of 0.6 fewer entries (or perhaps none at all) would be filled in.
 
 -- BayesDB's notion of `CONFIDENCE` is unlike confidence in standard
 -- statistics. Whereas in standard statistics 'confidence' is typically paired
@@ -266,9 +266,9 @@ SELECT COUNT(dry_mass_ks) FROM satellites WHERE dry_mass_kg IS NULL;
 -- satellite in a circular orbit can be very accurately determined by the
 -- altitude of its orbit. Geosynchronous (`Class_of_Orbit = "GEO"`) satellites
 -- have a fixed altitude (perigee = apogee) and a fixed period (~24 hours),
--- whereas satellites in elliptical orbits have variable altitudes and period.
+-- whereas satellites in elliptical orbits have variable altitudes and periods.
 
-.show 'SELECT period_minutes, perigee_km, apogee_km, Class_of_orbit 
+.show 'SELECT period_minutes, perigee_km, apogee_km, Class_of_Orbit 
            FROM satellites;' --no-contour --colorby Class_of_Orbit
 
 -- Intuitively, we would imagine that we would have less confidence in
