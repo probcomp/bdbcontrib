@@ -28,6 +28,8 @@
 
 -- Of course, we can select data just as we would in SQL in BQL:
 
+.show 'SELECT perigee_km, apogee_km, period_minutes, class_of_orbit FROM satellites'; --no-contour
+
 SELECT Name, dry_mass_kg FROM satellites LIMIT 10;
 
 -- Something we might want to do is provide extra information to improve the
@@ -255,50 +257,13 @@ SELECT COUNT(dry_mass_ks) FROM satellites WHERE dry_mass_kg IS NULL;
 -- `WITH CONFIDENCE 0` will then impute all values regardless; if we asked for
 -- confidence of 0.6 fewer entries (or perhaps none at all) would be filled in.
 
+.show 'INFER dry_mass_kg, launch_mass_kg WITH CONFIDENCE 0.6 FROM satellites_cc
+           WHERE Class_of_Orbit = GEO;' --no-contour -m
+
 -- BayesDB's notion of `CONFIDENCE` is unlike confidence in standard
 -- statistics. Whereas in standard statistics 'confidence' is typically paired
 -- with the word 'interval' to describe some region of probability mass, 
 -- `CONFIDENCE` in BayesDB is a measure of inter-model agreement; that is, 
 -- `CONFIDENCE` is the probability that among the models, there is a unimodal
 -- summary of the value we wish to impute given all other entries in that
--- entry's row. To illustrate confidence, let us re-infer the period of
--- satellites of different orbit classes. Recall that the period of a
--- satellite in a circular orbit can be very accurately determined by the
--- altitude of its orbit. Geosynchronous (`Class_of_Orbit = "GEO"`) satellites
--- have a fixed altitude (perigee = apogee) and a fixed period (~24 hours),
--- whereas satellites in elliptical orbits have variable altitudes and periods.
-
-.show 'SELECT period_minutes, perigee_km, apogee_km, Class_of_Orbit 
-           FROM satellites;' --no-contour --colorby Class_of_Orbit
-
--- Intuitively, we would imagine that we would have less confidence in
--- predicting the periods of satellites in elliptical orbits. We can visualize
--- this by asking BayesDB to re-predict existing values and returning the
--- confidence of those predictions. We will create two temporary tables from
--- the predicted periods and prediction confidences for satellites in
--- geosynchronous and elliptical orbits. We will then stack the tables using
--- UNION and compare the histograms of the confidences.
-
-CREATE TEMP TABLE infer_geo AS
-    INFER EXPLICIT Name, period_minutes, PREDICT period_minutes as period_pred CONFIDENCE period_conf
-        FROM satellites_cc
-        WHERE Class_of_Orbit = GEO;
-
-CREATE TEMP TABLE infer_elliptical AS
-    INFER EXPLICIT Name, period_minutes, PREDICT Period_minutes as period_pred CONFIDENCE period_conf
-        FROM satellites_cc
-        WHERE Class_of_Orbit = Elliptical;
-
--- We take the union of the two tables while creating an `orbit_type`marker
--- variable for Class_of_orbit.
-
-.sql CREATE TEMP TABLE orbit_conf AS  SELECT period_conf, "GEO" AS orbit_type FROM infer_geo
-    UNION
-    SELECT period_conf, "ELLIPTICAL" AS orbit_type FROM infer_elliptical;
-
-.histogram 'SELECT * FROM orbit_conf;' --bins 31 --normed
-
--- We see that the prediction confidences for elliptical orbits are generally
--- lower than those for geosynchronous orbits.
-
---
+-- entry's row. 
