@@ -1,11 +1,12 @@
 
-import bdbcontrib.crosscat_utils as ccu
+import bdbcontrib.bql_utils as bqlu
 
 from textwrap import wrap
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 import seaborn as sns
 import copy
+import pandas as pd
 import numpy as np
 
 
@@ -84,6 +85,10 @@ def get_bayesdb_col_type(column_name, df_column, bdb=None,
     # If column_name is a column label (not a short name!) then the modeltype
     # of the column will be returned otherwise we guess.
 
+    if isinstance(df_column, pd.DataFrame):
+        raise TypeError("Multiple columns in the query result have the same "
+                        "name (%s)." % (column_name,))
+
     def guess_column_type(df_column):
         pd_type = df_column.dtype
         if pd_type is str:
@@ -95,11 +100,8 @@ def get_bayesdb_col_type(column_name, df_column, bdb=None,
                 return 'numerical'
 
     if bdb is not None and generator_name is not None:
-        theta = ccu.get_M_c(bdb, generator_name)
         try:
-            col_idx = theta['name_to_idx'][column_name]
-            modeltype = theta['column_metadata'][col_idx]['modeltype']
-            coltype = MODEL_TO_TYPE_LOOKUP[modeltype]
+            coltype = bqlu.get_column_stattype(bdb, generator_name, column_name)
             # XXX: Force cyclic -> numeric because there is no need to plot
             # cyclic data any differently until we implement rose plots. See
             # http://matplotlib.org/examples/pie_and_polar_charts/polar_bar_demo.html
@@ -107,7 +109,8 @@ def get_bayesdb_col_type(column_name, df_column, bdb=None,
             if coltype.lower() == 'cyclic':
                 coltype = 'numerical'
             return coltype
-        except KeyError:
+        except IndexError:
+            print "didn't find column %s" % (column_name)
             return guess_column_type(df_column)
         except Exception as err:
             print "Unexpected exception: {}".format(err)
@@ -430,7 +433,8 @@ def pairplot(df, bdb=None, generator_name=None, use_shortname=False,
         dummy = data_df[colorby].dropna()
         dvals = np.sort(dummy.unique())
         ndvals = len(dvals)
-        dval_type = get_bayesdb_col_type('colorby', dummy)
+        dval_type = get_bayesdb_col_type('colorby', dummy, bdb=bdb,
+                                         generator_name=generator_name)
         if dval_type.lower() != 'categorical':
             raise ValueError('colorby columns must be categorical.')
         cmap = sns.color_palette("Set1", ndvals)
@@ -547,7 +551,7 @@ def pairplot(df, bdb=None, generator_name=None, use_shortname=False,
     return plt_grid
 
 
-def comparative_hist(df, nbins=15, normed=False):
+def comparative_hist(df, nbins=15, normed=False, bdb=None):
     """Plot a histogram
 
     Given a one-column pandas.DataFrame, df, plots a simple histogram. Given a
@@ -564,7 +568,7 @@ def comparative_hist(df, nbins=15, normed=False):
     """
     df = df.dropna()
 
-    vartype = get_bayesdb_col_type(df.columns[0], df[df.columns[0]])
+    vartype = get_bayesdb_col_type(df.columns[0], df[df.columns[0]], bdb=bdb)
     if vartype == 'categorical':
         values, labels, lookup = conv_categorical_vals_to_numeric(
             df[df.columns[0]])

@@ -34,6 +34,25 @@ def get_column_info(bdb, generator_name):
     return column_info
 
 
+def get_column_stattype(bdb, generator_name, column_name):
+    generator_id = bayeslite.core.bayesdb_get_generator(bdb, generator_name)
+    sql = '''
+        SELECT c.name, gc.stattype
+            FROM bayesdb_generator AS g,
+                bayesdb_generator_column AS gc,
+                bayesdb_column AS c
+            WHERE g.id = ?
+                AND gc.generator_id = g.id
+                AND gc.colno = c.colno
+                AND c.name = ?
+                AND c.tabname = g.tabname
+            ORDER BY c.colno
+        '''
+    cursor = bdb.sql_execute(sql, (generator_id, column_name,))
+    stattype = cursor.fetchall()[0][1]
+    return stattype
+
+
 def get_data_as_list(bdb, table_name, column_list=None):
     if column_list is None:
         sql = 'SELECT * FROM {};'.format(sqlite3_quote_name(table_name))
