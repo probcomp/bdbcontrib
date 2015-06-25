@@ -702,7 +702,8 @@ if __name__ == '__main__':
 
     plt.figure(tight_layout=True, facecolor='white')
     pairplot(df, bdb=cc_client.bdb, generator_name='plottest_cc',
-             use_shortname=False, colorby='four_8', no_contour=True)
+             use_shortname=False, colorby='four_8', no_contour=True,
+             tril=True)
     plt.show()
 
     df = cc_client('SELECT three_n + one_n, three_n * one_n,'
