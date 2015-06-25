@@ -91,6 +91,7 @@ Draws or saves a plot of an arbitrary BQL query
 - `-f, --filename <str>`: save as filename.
 - `-s, --shortnames`: use columns short names (requires codebook) on axis labels.
 - `-m, --show-missing`: Plot partial missing values as lines across their missing dimension.
+- `-t, --tril`: Show only the lower triangular subplots.
 - `--no-countour`: Turn of contours.
 - `--colorby`: The name of a columns to use as a marker variable for color.
 

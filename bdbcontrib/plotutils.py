@@ -110,7 +110,6 @@ def get_bayesdb_col_type(column_name, df_column, bdb=None,
                 coltype = 'numerical'
             return coltype
         except IndexError:
-            print "didn't find column %s" % (column_name)
             return guess_column_type(df_column)
         except Exception as err:
             print "Unexpected exception: {}".format(err)
@@ -159,7 +158,17 @@ def do_hist(data_srs, **kwargs):
     if dtype == 'categorical':
         vals, uvals, _ = conv_categorical_vals_to_numeric(
             data_srs.ix[:, 0], bdb=bdb, generator_name=generator_name)
-        ax.hist(vals, bins=len(uvals))
+        if colors is not None:
+            color_lst = []
+            stacks = []
+            for val, color in colors.iteritems():
+                subval = vals[data_srs.ix[:, 1].values == val]
+                color_lst.append(color)
+                stacks.append(subval)
+            ax.hist(stacks, bins=len(uvals), color=color_lst, alpha=.9,
+                    histtype='barstacked', rwidth=1.0)
+        else:
+            ax.hist(vals, bins=len(uvals))
         ax.set_xticks(range(len(uvals)))
         ax.set_xticklabels(uvals)
     else:
@@ -208,35 +217,68 @@ def do_violinplot(plot_df, vartypes, **kwargs):
     ax = kwargs.get('ax', None)
     bdb = kwargs.get('bdb', None)
     generator_name = kwargs.get('generator_name', None)
-    # colors = kwargs.get('colors', None)
+    colors = kwargs.get('colors', None)
     # dummy = kwargs.get('dummy', False)
+
+    dummy = plot_df.shape[1] == 3
 
     plot_df = plot_df.dropna()
     if ax is None:
         ax = plt.gca()
     assert vartypes[0] != vartypes[1]
     vert = vartypes[1] == 'numerical'
-    plot_df = copy.deepcopy(plot_df)
+    plot_df = copy.deepcopy(plot_df.dropna())
     if vert:
         groupby = plot_df.columns[0]
-        vals = plot_df.columns[1]
     else:
         groupby = plot_df.columns[1]
-        vals = plot_df.columns[0]
+
     _, unique_vals, _ = conv_categorical_vals_to_numeric(
         plot_df[groupby], bdb=bdb, generator_name=generator_name)
 
-    sns.violinplot(plot_df[vals], groupby=plot_df[groupby], order=unique_vals,
-                   names=unique_vals, vert=vert, ax=ax, positions=0,
-                   color='SteelBlue')
+    unique_vals = np.sort(unique_vals)
     n_vals = len(plot_df[groupby].unique())
+    if dummy:
+        order_key = dict((val, i) for i, val in enumerate(unique_vals))
+        base_width = 0.75/len(colors)
+        violin_width = base_width
+        for i, (val, color) in enumerate(colors.iteritems()):
+            subdf = plot_df.loc[plot_df.ix[:, 2] == val]
+            if subdf.empty:
+                continue
+
+            if vert:
+                vals = subdf.columns[1]
+            else:
+                vals = subdf.columns[0]
+
+            # not evey categorical value is guaranteed to appear in each subdf.
+            # Here we compensate.
+            sub_vals = np.sort(subdf[groupby].unique())
+            positions = []
+
+            for v in sub_vals:
+                positions.append(base_width*i + order_key[v] + base_width/2 - .75/2)
+
+            sns.violinplot(subdf[vals], groupby=subdf[groupby],
+                           order=sub_vals, names=sub_vals, vert=vert,
+                           ax=ax, positions=positions, widths=violin_width,
+                           color=color)
+    else:
+        if vert:
+            vals = plot_df.columns[1]
+        else:
+            vals = plot_df.columns[0]
+        sns.violinplot(plot_df[vals], groupby=plot_df[groupby],
+                       order=unique_vals, names=unique_vals, vert=vert, ax=ax,
+                       positions=0, color='SteelBlue')
 
     if vert:
         ax.set_xlim([-.5, n_vals-.5])
-        # ax.set_xticklabels(unique_vals)
+        ax.set_xticklabels(unique_vals)
     else:
         ax.set_ylim([-.5, n_vals-.5])
-        # ax.set_yticklabels(unique_vals)
+        ax.set_yticklabels(unique_vals)
 
     return ax
 
@@ -368,7 +410,7 @@ def zmatrix(data_df, clustermap_kws=None, row_ordering=None,
 
 # TODO: bdb, and table_name should be optional arguments
 def pairplot(df, bdb=None, generator_name=None, use_shortname=False,
-             no_contour=False, colorby=None, show_missing=False):
+             no_contour=False, colorby=None, show_missing=False, tril=False):
     """Plots the columns in data_df in a facet grid.
 
     Supports the following pairs:
@@ -397,6 +439,8 @@ def pairplot(df, bdb=None, generator_name=None, use_shortname=False,
     colorby : str
         Name of a column to use to color data points in histograms and scatter
         plots.
+    tril : bool
+        show only the lower diagonal axes.
 
     Returns
     -------
@@ -548,6 +592,11 @@ def pairplot(df, bdb=None, generator_name=None, use_shortname=False,
         legend = gen_collapsed_legend_from_dict(colors, title=colorby)
         legend.draggable()
 
+    if tril:
+        for y_pos in range(n_vars):
+            for x_pos in range(y_pos+1, n_vars):
+                plt.gcf().delaxes(axes[y_pos][x_pos])
+
     return plt_grid
 
 
@@ -614,7 +663,6 @@ def comparative_hist(df, nbins=15, normed=False, bdb=None):
 
 
 if __name__ == '__main__':
-    import pandas as pd
     from bdbcontrib import facade
     import os
 
@@ -649,7 +697,12 @@ if __name__ == '__main__':
 
     plt.figure(tight_layout=True, facecolor='white')
     pairplot(df, bdb=cc_client.bdb, generator_name='plottest_cc',
-             use_shortname=False)
+             use_shortname=False, tril=True)
+    plt.show()
+
+    plt.figure(tight_layout=True, facecolor='white')
+    pairplot(df, bdb=cc_client.bdb, generator_name='plottest_cc',
+             use_shortname=False, colorby='four_8', no_contour=True)
     plt.show()
 
     df = cc_client('SELECT three_n + one_n, three_n * one_n,'

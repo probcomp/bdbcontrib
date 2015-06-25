@@ -184,6 +184,7 @@ def pairplot(self, argin):
                          name make help to plot more intelligently.
         -s, --shortnames: Use column short names to label facets?
         -m, --show-missing: Plot missing values in scatter plots as lines.
+        -t, --tril: Plot only the lower triangular subplots.
         --no-contour: Turn off contours.
         --colorby: The name of a column to use as a marker variable for color.
 
@@ -204,6 +205,7 @@ def pairplot(self, argin):
                         help='Turn off countours (KDE).')
     parser.add_argument('-m', '--show-missing', action='store_true',
                         help='Plot missing values in scatterplot.')
+    parser.add_argument('-t', '--tril', action='store_true')
     parser.add_argument('--colorby', type=str, default=None,
                         help='Name of column to use as a dummy variable.')
     try:
@@ -220,7 +222,8 @@ def pairplot(self, argin):
     plt.figure(tight_layout=True, facecolor='white', figsize=(c, c))
     pu.pairplot(df, bdb=self._bdb, generator_name=args.generator,
                 use_shortname=args.shortnames, no_contour=args.no_contour,
-                colorby=args.colorby, show_missing=args.show_missing)
+                colorby=args.colorby, show_missing=args.show_missing,
+                tril=args.tril)
 
     if args.filename is None:
         plt.show()
