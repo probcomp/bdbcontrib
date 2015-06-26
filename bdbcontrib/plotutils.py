@@ -258,7 +258,8 @@ def do_violinplot(plot_df, vartypes, **kwargs):
             positions = []
 
             for v in sub_vals:
-                positions.append(base_width*i + order_key[v] + base_width/2 - .75/2)
+                positions.append(base_width*i + order_key[v] + base_width/2
+                                 - .75/2)
 
             sns.violinplot(subdf[vals], groupby=subdf[groupby],
                            order=sub_vals, names=sub_vals, vert=vert,
@@ -275,9 +276,11 @@ def do_violinplot(plot_df, vartypes, **kwargs):
 
     if vert:
         ax.set_xlim([-.5, n_vals-.5])
+        ax.set_xticks(np.arange(n_vals))
         ax.set_xticklabels(unique_vals)
     else:
         ax.set_ylim([-.5, n_vals-.5])
+        ax.set_yticks(np.arange(n_vals))
         ax.set_yticklabels(unique_vals)
 
     return ax
@@ -381,7 +384,8 @@ def zmatrix(data_df, clustermap_kws=None, row_ordering=None,
         # fom a standard estimate pairwise query, which outputs columns
         # (table_id, col0, col1, value). The indices are indexed from the back
         # because it will also handle the no-table_id case
-        data_df.columns = [' '*i for i in  range(1, len(data_df.columns))] + ['value']
+        data_df.columns = [' '*i for i in range(1, len(data_df.columns))] + \
+            ['value']
         pivot_kws = {
             'index': data_df.columns[-3],
             'columns': data_df.columns[-2],
@@ -456,9 +460,8 @@ def pairplot(df, bdb=None, generator_name=None, use_shortname=False,
     # - String values are a possibility (categorical)
     # - who knows what the columns are named. What is the user selects columns
     #   as shortname?
-    # where to handle dropping NaNs? Missing values may be informative.
+    # - where to handle dropping NaNs? Missing values may be informative.
 
-    # data_df = df.dropna()
     data_df = df
 
     colors = None
@@ -516,7 +519,7 @@ def pairplot(df, bdb=None, generator_name=None, use_shortname=False,
 
     # store each axes; reaccessing ax with plt.subplot(plt_grid[a,b]) may
     # overwrite the ax
-    axes = [ [] for _ in xrange(len(all_varnames)) ]
+    axes = [[] for _ in xrange(len(all_varnames))]
     for x_pos, var_name_x in enumerate(all_varnames):
         var_x_type = vartypes[x_pos]
         for y_pos, var_name_y in enumerate(all_varnames):
@@ -576,17 +579,20 @@ def pairplot(df, bdb=None, generator_name=None, use_shortname=False,
                 if vartype[x_pos] == 'categorical':
                     rotate_tick_labels(ax)
 
+    def fake_axis_ticks(ax_tl, ax_tn):
+        atl, btl = ax_tl.get_ylim()
+        atn, btn = ax_tn.get_ylim()
+        tnticks = ax_tn.get_yticks()
+        yrange_tn = (btn-atn)
+        yrange_tl = (btl-atl)
+        tntick_ratios = [(t-atn)/yrange_tn for t in tnticks]
+        ax_tl.set_yticks([r*yrange_tl+atl for r in tntick_ratios])
+        ax_tl.set_yticklabels(tnticks)
+
     # fix the top-left histogram y-axis ticks and labels
-    ax_tl = axes[0][0]
-    ax_tn = axes[0][1]
-    atl, btl = ax_tl.get_ylim()
-    atn, btn = ax_tn.get_ylim()
-    tnticks = ax_tn.get_yticks()
-    yrange_tn = (btn-atn)
-    yrange_tl = (btl-atl)
-    tntick_ratios = [(t-atn)/yrange_tn for t in tnticks]
-    ax_tl.set_yticks([r*yrange_tl+atl for r in tntick_ratios])
-    ax_tl.set_yticklabels(tnticks)
+    if not tril:
+        fake_axis_ticks(axes[0][0], axes[0][1])
+    fake_axis_ticks(axes[-1][-1], axes[-1][0])
 
     if colorby is not None:
         legend = gen_collapsed_legend_from_dict(colors, title=colorby)
@@ -692,13 +698,16 @@ if __name__ == '__main__':
 
     cc_client = facade.BayesDBClient.from_csv('plttest.bdb', 'plottest',
                                               filename)
+
+    # do a plot where a some sub-violins are removed
+    remove_violin_bql = """
+        DELETE FROM plottest
+            WHERE zero_5 = "B"
+            AND (four_8 = 2 OR four_8 = 1);
+    """
+    cc_client.bdb.sql_execute(remove_violin_bql)
     df = cc_client('SELECT one_n, zero_5, five_c, four_8 FROM plottest')
     df = df.as_df()
-
-    plt.figure(tight_layout=True, facecolor='white')
-    pairplot(df, bdb=cc_client.bdb, generator_name='plottest_cc',
-             use_shortname=False, tril=True)
-    plt.show()
 
     plt.figure(tight_layout=True, facecolor='white')
     pairplot(df, bdb=cc_client.bdb, generator_name='plottest_cc',
@@ -706,9 +715,9 @@ if __name__ == '__main__':
              tril=True)
     plt.show()
 
-    df = cc_client('SELECT three_n + one_n, three_n * one_n,'
-                   ' zero_5 || four_8 FROM plottest').as_df()
-
+    # again, without tril to check that outer axes render correctly
     plt.figure(tight_layout=True, facecolor='white')
-    pairplot(df,  use_shortname=False)
+    pairplot(df, bdb=cc_client.bdb, generator_name='plottest_cc',
+             use_shortname=False, colorby='four_8', no_contour=True,
+             tril=False)
     plt.show()
