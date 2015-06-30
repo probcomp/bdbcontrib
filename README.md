@@ -7,7 +7,7 @@ A set of utilities for bayesdb.
 **Requires**
 
 - Matplotlib
-- Seaborn
+- Seaborn == 0.5.1
 - Pandas
 - numpy
 - markdown2 (for `.readtohtml`)
