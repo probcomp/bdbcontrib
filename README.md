@@ -39,6 +39,9 @@ The contrib is split into several files. You can `.hook` individual contrib
 files in the usual way, or to ensure that the entire contrib is automatically
 loaded by the shell, add the following to your `~/.bayesliterc` file
 
+**NOTE:** Leading whitespace is treated as line continuation by the file
+reader. Do not place whitespace before new commands.
+
     .hook /absolute/path/to/contrib_math.py
     .hook /absolute/path/to/contrib_plot.py
     .hook /absolute/path/to/contrib_util.py
