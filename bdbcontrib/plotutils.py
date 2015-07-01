@@ -138,7 +138,6 @@ def do_hist(data_srs, **kwargs):
     bdb = kwargs.get('bdb', None)
     dtype = kwargs.get('dtype', None)
     generator_name = kwargs.get('generator_name', None)
-    # no_contour = kwargs.get('no_contour', None)
     colors = kwargs.get('colors', None)
 
     if dtype is None:
@@ -172,7 +171,6 @@ def do_hist(data_srs, **kwargs):
         ax.set_xticks(range(len(uvals)))
         ax.set_xticklabels(uvals)
     else:
-        # do_kde = not no_contour
         do_kde = True
         if colors is not None:
             for val, color in colors.iteritems():
@@ -293,7 +291,7 @@ def do_kdeplot(plot_df, vartypes, **kwargs):
     # points get jumbled up. We may just want to set a threshold (N=100)?
 
     ax = kwargs.get('ax', None)
-    no_contour = kwargs.get('no_contour', False)
+    show_contour = kwargs.get('show_contour', False)
     colors = kwargs.get('colors', None)
     show_missing = kwargs.get('show_missing', False)
 
@@ -334,7 +332,7 @@ def do_kdeplot(plot_df, vartypes, **kwargs):
                 for y in nacol_y.values:
                     plt.plot(xlim, [y, y], color=color, alpha=.3, lw=2)
 
-    if not no_contour:
+    if show_contour:
         sns.kdeplot(df.ix[:, :2].values, ax=ax)
 
     return ax
@@ -414,7 +412,7 @@ def zmatrix(data_df, clustermap_kws=None, row_ordering=None,
 
 # TODO: bdb, and table_name should be optional arguments
 def pairplot(df, bdb=None, generator_name=None, use_shortname=False,
-             no_contour=False, colorby=None, show_missing=False, tril=False):
+             show_contour=False, colorby=None, show_missing=False, tril=False):
     """Plots the columns in data_df in a facet grid.
 
     Supports the following pairs:
@@ -434,8 +432,8 @@ def pairplot(df, bdb=None, generator_name=None, use_shortname=False,
     use_shortname : bool
         If True, use column shortnames (requires codebook) for axis lables,
         otherwise use the column names in `df`.
-    no_contour : bool
-        If False (default), KDE contours are plotted on top of scatter plots
+    show_contour : bool
+        If True, KDE contours are plotted on top of scatter plots
         and histograms.
     show_missing : bool
         If True, rows with one missing value are plotted as lines on scatter
@@ -500,7 +498,7 @@ def pairplot(df, bdb=None, generator_name=None, use_shortname=False,
         vartype = get_bayesdb_col_type(varname, data_df[varname], bdb=bdb,
                                        generator_name=generator_name)
         do_hist(data_df, dtype=vartype, ax=ax, bdb=bdb,
-                generator_name=generator_name, no_contour=no_contour,
+                generator_name=generator_name,
                 colors=colors)
         if vartype == 'categorical':
             rotate_tick_labels(ax)
@@ -533,8 +531,8 @@ def pairplot(df, bdb=None, generator_name=None, use_shortname=False,
                 if colorby is not None:
                     varnames.append(colorby)
                 ax = do_hist(data_df[varnames], dtype=var_x_type, ax=ax,
-                             bdb=bdb, generator_name=generator_name,
-                             no_contour=no_contour, colors=colors)
+                             bdb=bdb, generator_name=generator_name, 
+                             colors=colors)
             else:
                 varnames = [var_name_x, var_name_y]
                 vartypes_pair = (var_x_type, var_y_type,)
@@ -543,7 +541,7 @@ def pairplot(df, bdb=None, generator_name=None, use_shortname=False,
                 plot_df = prep_plot_df(data_df, varnames)
                 ax = do_pair_plot(plot_df, vartypes_pair, ax=ax, bdb=bdb,
                                   generator_name=generator_name,
-                                  no_contour=no_contour,
+                                  show_contour=show_contour,
                                   show_missing=show_missing,
                                   colors=colors)
 
@@ -552,8 +550,8 @@ def pairplot(df, bdb=None, generator_name=None, use_shortname=False,
                 xmins[y_pos, x_pos] = ax.get_xlim()[0]
                 xmaxs[y_pos, x_pos] = ax.get_xlim()[1]
 
-            ax.set_xlabel(var_name_x)
-            ax.set_ylabel(var_name_y)
+            ax.set_xlabel(var_name_x, fontweight = 'bold')
+            ax.set_ylabel(var_name_y, fontweight = 'bold')
 
     for x_pos in range(n_vars):
         for y_pos in range(n_vars):
@@ -711,13 +709,13 @@ if __name__ == '__main__':
 
     plt.figure(tight_layout=True, facecolor='white')
     pairplot(df, bdb=cc_client.bdb, generator_name='plottest_cc',
-             use_shortname=False, colorby='four_8', no_contour=True,
+             use_shortname=False, colorby='four_8', show_contour=False,
              tril=True)
     plt.show()
 
     # again, without tril to check that outer axes render correctly
     plt.figure(tight_layout=True, facecolor='white')
     pairplot(df, bdb=cc_client.bdb, generator_name='plottest_cc',
-             use_shortname=False, colorby='four_8', no_contour=True,
+             use_shortname=False, colorby='four_8', show_contour=True,
              tril=False)
     plt.show()

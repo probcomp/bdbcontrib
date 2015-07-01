@@ -5,7 +5,8 @@ import matplotlib
 if _platform == 'darwin':
     matplotlib.use('TkAgg')
 
-matplotlib.rcParams.update({'figure.autolayout': True})
+matplotlib.rcParams.update({'figure.autolayout': True,
+    'font.weight': 'bold', 'font': 'bold'})
 
 import bayeslite.core
 import shlex
@@ -173,7 +174,7 @@ def pairplot(self, argin):
     '''Plots pairs of columns in facet grid.
     <bql query> [options]
 
-    Plots continuous-continuous pairs as scatter w/ KDE contour
+    Plots continuous-continuous pairs as scatter (optional KDE contour)
     Plots continuous-categorical pairs as violinplot
     Plots categorical-categorical pairs as heatmap
 
@@ -185,7 +186,7 @@ def pairplot(self, argin):
         -s, --shortnames: Use column short names to label facets?
         -m, --show-missing: Plot missing values in scatter plots as lines.
         -t, --tril: Plot only the lower triangular subplots.
-        --no-contour: Turn off contours.
+        --show-contour: Turn on contours.
         --colorby: The name of a column to use as a marker variable for color.
 
     Example:
@@ -202,7 +203,9 @@ def pairplot(self, argin):
     parser.add_argument('-s', '--shortnames', action='store_true',
                         help='Use column short names?')
     parser.add_argument('--no-contour', action='store_true',
-                        help='Turn off countours (KDE).')
+                        help='Turn off countours (KDE).'),
+    parser.add_argument('--show-contour', action='store_true',
+                        help='Turn on contours (KDE).')
     parser.add_argument('-m', '--show-missing', action='store_true',
                         help='Plot missing values in scatterplot.')
     parser.add_argument('-t', '--tril', action='store_true')
@@ -221,7 +224,7 @@ def pairplot(self, argin):
 
     plt.figure(tight_layout=True, facecolor='white', figsize=(c, c))
     pu.pairplot(df, bdb=self._bdb, generator_name=args.generator,
-                use_shortname=args.shortnames, no_contour=args.no_contour,
+                use_shortname=args.shortnames, show_contour=args.show_contour,
                 colorby=args.colorby, show_missing=args.show_missing,
                 tril=args.tril)
 
