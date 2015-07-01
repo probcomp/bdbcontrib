@@ -201,10 +201,16 @@ def nullify(bdb, table, value):
     c = bdb.sql_execute('pragma table_info({})'.format(quote(table)))
     columns = [r[1] for r in c.fetchall()]
     for col in columns:
-        bql = '''
-        UPDATE {} SET {} = NULL WHERE {} = ?;
-        '''.format(quote(table), quote(col), quote(col))
-        bdb.sql_execute(bql, (value,))
+        if value in ["''", '""']:
+            bql = '''
+            UPDATE {} SET {} = NULL WHERE {} = '';
+            '''.format(quote(table), quote(col), quote(col))
+            bdb.sql_execute(bql)
+        else:
+            bql = '''
+            UPDATE {} SET {} = NULL WHERE {} = ?;
+            '''.format(quote(table), quote(col), quote(col))
+            bdb.sql_execute(bql, (value,))
 
 
 def unicorn():
