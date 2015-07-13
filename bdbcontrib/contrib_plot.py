@@ -6,7 +6,9 @@ if _platform == 'darwin':
     matplotlib.use('TkAgg')
 
 matplotlib.rcParams.update({'figure.autolayout': True,
-    'font.weight': 'bold', 'font': 'bold'})
+    'font.weight': 'bold',
+    'font': 'bold',
+    'figure.facecolor': 'white'})
 
 import bayeslite.core
 import shlex
@@ -67,7 +69,7 @@ def mutual_information_hist_over_models(self, argin):
     c = self._bdb.execute(bql, (generator_id,))
     num_models = c.fetchall()[0][0]
 
-    plt.figure(figsize=(6, 6), facecolor='white')
+    plt.figure(figsize=(6, 6))
 
     mis = []
     for modelno in range(num_models):
@@ -135,7 +137,7 @@ def zmatrix(self, argin):
 
     df = do_query(self._bdb, bql).as_df()
     c = (df.shape[0]**.5)/4.0
-    clustermap_kws = {'linewidths': 0, 'vmin': args.vmin, 'vmax': args.vmax}
+    clustermap_kws = {'linewidths': 0.2, 'vmin': args.vmin, 'vmax': args.vmax}
 
     row_ordering = None
     col_ordering = None
@@ -148,7 +150,7 @@ def zmatrix(self, argin):
             if row_ordering is None or col_ordering is None:
                 raise AttributeError('No prior use if heatmap found.')
 
-        plt.figure(facecolor='white', figsize=(c, .8*c))
+        plt.figure(figsize=(c, .8*c))
     res = pu.zmatrix(df, clustermap_kws=clustermap_kws,
                      row_ordering=row_ordering, col_ordering=col_ordering)
 
@@ -185,7 +187,7 @@ def pairplot(self, argin):
                          name make help to plot more intelligently.
         -s, --shortnames: Use column short names to label facets?
         -m, --show-missing: Plot missing values in scatter plots as lines.
-        -t, --tril: Plot only the lower triangular subplots.
+        -t, --no-tril: Plot the entire square matrix, not just lower triangle.
         --show-contour: Turn on contours.
         --colorby: The name of a column to use as a marker variable for color.
 
@@ -208,7 +210,7 @@ def pairplot(self, argin):
                         help='Turn on contours (KDE).')
     parser.add_argument('-m', '--show-missing', action='store_true',
                         help='Plot missing values in scatterplot.')
-    parser.add_argument('-t', '--tril', action='store_true')
+    parser.add_argument('--no-tril', action='store_true')
     parser.add_argument('--colorby', type=str, default=None,
                         help='Name of column to use as a dummy variable.')
     try:
@@ -222,11 +224,11 @@ def pairplot(self, argin):
     df = do_query(self._bdb, bql).as_df()
     c = len(df.columns)*4
 
-    plt.figure(tight_layout=True, facecolor='white', figsize=(c, c))
+    plt.figure(tight_layout=True, figsize=(c, c))
     pu.pairplot(df, bdb=self._bdb, generator_name=args.generator,
                 use_shortname=args.shortnames, show_contour=args.show_contour,
                 colorby=args.colorby, show_missing=args.show_missing,
-                tril=args.tril)
+                no_tril=args.no_tril)
 
     if args.filename is None:
         plt.show()
@@ -268,7 +270,7 @@ def draw_crosscat_state(self, argin):
         raise ValueError('Metamodel for generator %s (%s) should be crosscat' %
                          (args.generator, metamodel))
 
-    plt.figure(tight_layout=False, facecolor='white')
+    plt.figure(tight_layout=False)
     draw_state(self._bdb, table_name, args.generator, args.modelno,
                row_label_col=args.row_label_col)
 
@@ -339,7 +341,7 @@ def barplot(self, argin):
     df = do_query(self._bdb, bql).as_df()
 
     c = df.shape[0]/2.0
-    plt.figure(facecolor='white', figsize=(c, 5))
+    plt.figure(figsize=(c, 5))
     plt.bar([x-.5 for x in range(df.shape[0])], df.ix[:, 1].values,
             color='#333333', edgecolor='#333333')
 
@@ -404,7 +406,7 @@ def plot_crosscat_chain_diagnostics(self, argin):
     df = do_query(self._bdb, bql, (generator_id,)).as_df()
     models = df['modelno'].astype(int).values
 
-    plt.figure(tight_layout=True, facecolor='white', figsize=(10, 5))
+    plt.figure(tight_layout=True, figsize=(10, 5))
     ax = plt.gca()
     colors = sns.color_palette("GnBu_d", len(models))
     for i, modelno in enumerate(models):

@@ -308,29 +308,33 @@ def do_kdeplot(plot_df, vartypes, **kwargs):
 
     if not dummy:
         plt.scatter(df.values[:, 0], df.values[:, 1], alpha=.5,
-                    color='steelblue')
+                    color='steelblue', zorder=2)
         # plot nulls
         if show_missing:
             nacol_x = null_rows.ix[:, 0].dropna()
             for x in nacol_x.values:
-                plt.plot([x, x], ylim, color='crimson', alpha=.2, lw=1)
+                plt.plot([x, x], ylim, color='crimson', alpha=.2, lw=1,
+                    zorder=1)
             nacol_y = null_rows.ix[:, 1].dropna()
             for y in nacol_y.values:
-                plt.plot(xlim, [y, y], color='crimson', alpha=.2, lw=1)
+                plt.plot(xlim, [y, y], color='crimson', alpha=.2, lw=1,
+                    zorder=1)
     else:
         assert isinstance(colors, dict)
         for val, color in colors.iteritems():
             subdf = df.loc[df.ix[:, 2] == val]
             plt.scatter(subdf.values[:, 0], subdf.values[:, 1], alpha=.5,
-                        color=color)
+                        color=color, zorder=2)
             subnull = null_rows.loc[null_rows.ix[:, 2] == val]
             if show_missing:
                 nacol_x = subnull.ix[:, 0].dropna()
                 for x in nacol_x.values:
-                    plt.plot([x, x], ylim, color=color, alpha=.3, lw=2)
+                    plt.plot([x, x], ylim, color=color, alpha=.3, lw=2,
+                        zorder=1)
                 nacol_y = subnull.ix[:, 1].dropna()
                 for y in nacol_y.values:
-                    plt.plot(xlim, [y, y], color=color, alpha=.3, lw=2)
+                    plt.plot(xlim, [y, y], color=color, alpha=.3, lw=2,
+                        zorder=1)
 
     if show_contour:
         sns.kdeplot(df.ix[:, :2].values, ax=ax)
@@ -393,7 +397,7 @@ def zmatrix(data_df, clustermap_kws=None, row_ordering=None,
 
     if clustermap_kws.get('cmap', None) is None:
         # Choose a soothing blue colormap
-        clustermap_kws['cmap'] = 'PuBu'
+        clustermap_kws['cmap'] = 'BuGn'
 
     if row_ordering is not None and col_ordering is not None:
         index = clustermap_kws['pivot_kws']['index']
@@ -412,7 +416,7 @@ def zmatrix(data_df, clustermap_kws=None, row_ordering=None,
 
 # TODO: bdb, and table_name should be optional arguments
 def pairplot(df, bdb=None, generator_name=None, use_shortname=False,
-             show_contour=False, colorby=None, show_missing=False, tril=False):
+             show_contour=False, colorby=None, show_missing=False, no_tril=True):
     """Plots the columns in data_df in a facet grid.
 
     Supports the following pairs:
@@ -441,8 +445,8 @@ def pairplot(df, bdb=None, generator_name=None, use_shortname=False,
     colorby : str
         Name of a column to use to color data points in histograms and scatter
         plots.
-    tril : bool
-        show only the lower diagonal axes.
+    no_tril : bool
+        Show all axes, not only lower diagonal.
 
     Returns
     -------
@@ -587,8 +591,8 @@ def pairplot(df, bdb=None, generator_name=None, use_shortname=False,
         ax_tl.set_yticks([r*yrange_tl+atl for r in tntick_ratios])
         ax_tl.set_yticklabels(tnticks)
 
-    # fix the top-left histogram y-axis ticks and labels
-    if not tril:
+    # Fix the top-left histogram y-axis ticks and labels.
+    if no_tril:
         fake_axis_ticks(axes[0][0], axes[0][1])
     fake_axis_ticks(axes[-1][-1], axes[-1][0])
 
@@ -596,7 +600,8 @@ def pairplot(df, bdb=None, generator_name=None, use_shortname=False,
         legend = gen_collapsed_legend_from_dict(colors, title=colorby)
         legend.draggable()
 
-    if tril:
+    # tril by default by deleting upper diagonal axes.
+    if not no_tril:
         for y_pos in range(n_vars):
             for x_pos in range(y_pos+1, n_vars):
                 plt.gcf().delaxes(axes[y_pos][x_pos])
@@ -710,12 +715,12 @@ if __name__ == '__main__':
     plt.figure(tight_layout=True, facecolor='white')
     pairplot(df, bdb=cc_client.bdb, generator_name='plottest_cc',
              use_shortname=False, colorby='four_8', show_contour=False,
-             tril=True)
+             no_tril=False)
     plt.show()
 
     # again, without tril to check that outer axes render correctly
     plt.figure(tight_layout=True, facecolor='white')
     pairplot(df, bdb=cc_client.bdb, generator_name='plottest_cc',
              use_shortname=False, colorby='four_8', show_contour=True,
-             tril=False)
+             no_tril=False)
     plt.show()
