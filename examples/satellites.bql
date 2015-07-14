@@ -24,11 +24,11 @@
 -- we use the `.sql` command followed by the SQL code we wish to execute. We
 -- use the `table_info(<table>)` pragma.
 
--- .sql pragma table_info(satellites)
+.sql pragma table_info(satellites)
 
 -- Of course, we can select data just as we would in SQL in BQL:
 
-SELECT name, dry_mass_kg FROM satellites, apogee_km, period_minutes, 
+SELECT name, dry_mass_kg FROM satellites, period_minutes, 
     class_of_orbit LIMIT 10;
 
 -- Something we might want to do is provide extra information to improve the
@@ -112,9 +112,7 @@ ANALYZE satellites_cc FOR 4 MINUTES CHECKPOINT 2 ITERATION WAIT;
 -- and their associated pvalues between all the pairs of columns, using the
 -- `ESTIMATE PAIRWISE` command; and because we do not want to look at
 -- at a very long table, we will visualize it in a heatmap using the `.heatmap`
--- command.
-
-We can visualize using the `.heatmap`.
+-- command. We can visualize using the `.heatmap`.
 
 .heatmap 'ESTIMATE PAIRWISE CORRELATION AS corr FROM satellites_cc;'
 
