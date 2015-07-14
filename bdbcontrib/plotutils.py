@@ -715,12 +715,12 @@ if __name__ == '__main__':
     plt.figure(tight_layout=True, facecolor='white')
     pairplot(df, bdb=cc_client.bdb, generator_name='plottest_cc',
              use_shortname=False, colorby='four_8', show_contour=False,
-             tril=True)
+             show_full=False)
     plt.show()
 
     # again, without tril to check that outer axes render correctly
     plt.figure(tight_layout=True, facecolor='white')
     pairplot(df, bdb=cc_client.bdb, generator_name='plottest_cc',
              use_shortname=False, colorby='four_8', show_contour=True,
-             tril=True)
+             show_fall=False)
     plt.show()
