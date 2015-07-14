@@ -210,7 +210,7 @@ def pairplot(self, argin):
                         help='Turn on contours (KDE).')
     parser.add_argument('-m', '--show-missing', action='store_true',
                         help='Plot missing values in scatterplot.')
-    parser.add_argument('--no-tril', action='store_true')
+    parser.add_argument('--show-full', action='store_true')
     parser.add_argument('--colorby', type=str, default=None,
                         help='Name of column to use as a dummy variable.')
     try:
@@ -228,7 +228,7 @@ def pairplot(self, argin):
     pu.pairplot(df, bdb=self._bdb, generator_name=args.generator,
                 use_shortname=args.shortnames, show_contour=args.show_contour,
                 colorby=args.colorby, show_missing=args.show_missing,
-                no_tril=args.no_tril)
+                show_full=args.show_full)
 
     if args.filename is None:
         plt.show()

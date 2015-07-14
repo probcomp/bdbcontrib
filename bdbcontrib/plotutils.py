@@ -416,7 +416,7 @@ def zmatrix(data_df, clustermap_kws=None, row_ordering=None,
 
 # TODO: bdb, and table_name should be optional arguments
 def pairplot(df, bdb=None, generator_name=None, use_shortname=False,
-             show_contour=False, colorby=None, show_missing=False, no_tril=True):
+             show_contour=False, colorby=None, show_missing=False, show_full=False):
     """Plots the columns in data_df in a facet grid.
 
     Supports the following pairs:
@@ -445,8 +445,8 @@ def pairplot(df, bdb=None, generator_name=None, use_shortname=False,
     colorby : str
         Name of a column to use to color data points in histograms and scatter
         plots.
-    no_tril : bool
-        Show all axes, not only lower diagonal.
+    show_full : bool
+        Show full pairwise plots, rather than only lower triangular plots.
 
     Returns
     -------
@@ -592,7 +592,7 @@ def pairplot(df, bdb=None, generator_name=None, use_shortname=False,
         ax_tl.set_yticklabels(tnticks)
 
     # Fix the top-left histogram y-axis ticks and labels.
-    if no_tril:
+    if show_full:
         fake_axis_ticks(axes[0][0], axes[0][1])
     fake_axis_ticks(axes[-1][-1], axes[-1][0])
 
@@ -601,7 +601,7 @@ def pairplot(df, bdb=None, generator_name=None, use_shortname=False,
         legend.draggable()
 
     # tril by default by deleting upper diagonal axes.
-    if not no_tril:
+    if not show_full:
         for y_pos in range(n_vars):
             for x_pos in range(y_pos+1, n_vars):
                 plt.gcf().delaxes(axes[y_pos][x_pos])
@@ -715,12 +715,12 @@ if __name__ == '__main__':
     plt.figure(tight_layout=True, facecolor='white')
     pairplot(df, bdb=cc_client.bdb, generator_name='plottest_cc',
              use_shortname=False, colorby='four_8', show_contour=False,
-             no_tril=False)
+             tril=True)
     plt.show()
 
     # again, without tril to check that outer axes render correctly
     plt.figure(tight_layout=True, facecolor='white')
     pairplot(df, bdb=cc_client.bdb, generator_name='plottest_cc',
              use_shortname=False, colorby='four_8', show_contour=True,
-             no_tril=False)
+             tril=True)
     plt.show()
