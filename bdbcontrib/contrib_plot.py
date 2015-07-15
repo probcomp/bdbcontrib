@@ -136,6 +136,7 @@ def zmatrix(self, argin):
     bql = " ".join(args.bql)
 
     df = do_query(self._bdb, bql).as_df()
+    df.fillna(0, inplace=True)
     c = (df.shape[0]**.5)/4.0
     clustermap_kws = {'linewidths': 0.2, 'vmin': args.vmin, 'vmax': args.vmax}
 
