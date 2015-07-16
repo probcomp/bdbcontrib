@@ -219,58 +219,6 @@ values, and let BayesDB tell us the belief of its reported value.
     
 ![.show 'SELECT inferred_type_of_orbit, inferred_type_of_orbit_conf, class_of_orbit  FROM inferred_type_of_orbit;' --colorby class_of_orbit --filename output/fig_1.png](fig_1.png)
 
-Now we shall impute missing values of `dry_mass_kg`. First, let us see how many values
-are missing.
-
-
-    bayeslite> SELECT COUNT(*) FROM satellites WHERE dry_mass_kg IS NULL;
-
-    "COUNT"(*)
-    ----------
-           677
-    
-Nearly half the values of dry mass are missing! We can visualize missing
-values in pairs of continuous columns using the `.show` command with the
-`-m` or `--show-missing` option.
-
-
-    bayeslite> .show 'SELECT dry_mass_kg, launch_mass_kg FROM satellites WHERE class_of_orbit = GEO;' -m
-
-    
-![.show 'SELECT dry_mass_kg, launch_mass_kg FROM satellites WHERE class_of_orbit = GEO;' -m --filename output/fig_2.png](fig_2.png)
-
-Missing values are represented as lines along their missing dimension. This
-way, we can see which values of the missing dimensions are more likely by
-observing where the lines intersect with the existing data points.
-
-We will use the `INFER` command to impute missing values for geosynchronous
-satellites.
-
-
-    bayeslite> .show 'INFER dry_mass_kg AS "Inferred Dry Mass (confidence 0)", 
-          ...>         launch_mass_kg AS "Inferred Launch Mass (confidence 0)"
-          ...>         WITH CONFIDENCE 0
-          ...>     FROM satellites_cc
-          ...>     WHERE class_of_orbit = GEO;' -m
-
-    
-![.show 'INFER dry_mass_kg AS "Inferred Dry Mass (confidence 0)",  launch_mass_kg AS "Inferred Launch Mass (confidence 0)" WITH CONFIDENCE 0 FROM satellites_cc WHERE class_of_orbit = GEO;' -m --filename output/fig_3.png](fig_3.png)
-
-No more missing values. Notice the `WITH CONFIDENCE` clause. This tells
-BayesDB to impute entries only if it is confident to a certain degree.
-`WITH CONFIDENCE 0` will then impute all values regardless; if we asked for
-confidence of 0.6 fewer entries (or perhaps none at all) would be filled in.
-
-
-    bayeslite> .show 'INFER dry_mass_kg AS "Inferred Dry Mass (confidence 0.6)",
-          ...>         launch_mass_kg AS "Inferred Launch Mass (confidence 0.6)"
-          ...>         WITH CONFIDENCE 0.6 
-          ...>     FROM satellites_cc
-          ...>     WHERE class_of_orbit = GEO;' -m
-
-    
-![.show 'INFER dry_mass_kg AS "Inferred Dry Mass (confidence 0.6)", launch_mass_kg AS "Inferred Launch Mass (confidence 0.6)" WITH CONFIDENCE 0.6 FROM satellites_cc WHERE class_of_orbit = GEO;' -m --filename output/fig_4.png](fig_4.png)
-
 BayesDB's notion of `CONFIDENCE` is unlike confidence in standard
 statistics. Whereas in standard statistics 'confidence' is typically paired
 with the word 'interval' to describe some region of probability mass,

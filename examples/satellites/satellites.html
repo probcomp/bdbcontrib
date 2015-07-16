@@ -222,55 +222,6 @@ bayeslite&gt; .show 'SELECT inferred_type_of_orbit, inferred_type_of_orbit_conf,
 
 <p><img src="fig_1.png" alt=".show 'SELECT inferred<em>type</em>of<em>orbit, inferred</em>type<em>of</em>orbit<em>conf, class</em>of<em>orbit  FROM inferred</em>type<em>of</em>orbit;' --colorby class<em>of</em>orbit --filename output/fig_1.png" /></p>
 
-<p>Now we shall impute missing values of <code>dry_mass_kg</code>. First, let us see how many values
-are missing.</p>
-
-<pre><code>bayeslite&gt; SELECT COUNT(*) FROM satellites WHERE dry_mass_kg IS NULL;
-
-"COUNT"(*)
-----------
-       677
-</code></pre>
-
-<p>Nearly half the values of dry mass are missing! We can visualize missing
-values in pairs of continuous columns using the <code>.show</code> command with the
-<code>-m</code> or <code>--show-missing</code> option.</p>
-
-<pre><code>bayeslite&gt; .show 'SELECT dry_mass_kg, launch_mass_kg FROM satellites WHERE class_of_orbit = GEO;' -m
-</code></pre>
-
-<p><img src="fig_2.png" alt=".show 'SELECT dry<em>mass</em>kg, launch<em>mass</em>kg FROM satellites WHERE class<em>of</em>orbit = GEO;' -m --filename output/fig_2.png" /></p>
-
-<p>Missing values are represented as lines along their missing dimension. This
-way, we can see which values of the missing dimensions are more likely by
-observing where the lines intersect with the existing data points.</p>
-
-<p>We will use the <code>INFER</code> command to impute missing values for geosynchronous
-satellites.</p>
-
-<pre><code>bayeslite&gt; .show 'INFER dry_mass_kg AS "Inferred Dry Mass (confidence 0)", 
-      ...&gt;         launch_mass_kg AS "Inferred Launch Mass (confidence 0)"
-      ...&gt;         WITH CONFIDENCE 0
-      ...&gt;     FROM satellites_cc
-      ...&gt;     WHERE class_of_orbit = GEO;' -m
-</code></pre>
-
-<p><img src="fig_3.png" alt=".show 'INFER dry<em>mass</em>kg AS &quot;Inferred Dry Mass (confidence 0)&quot;,  launch<em>mass</em>kg AS &quot;Inferred Launch Mass (confidence 0)&quot; WITH CONFIDENCE 0 FROM satellites<em>cc WHERE class</em>of<em>orbit = GEO;' -m --filename output/fig</em>3.png" /></p>
-
-<p>No more missing values. Notice the <code>WITH CONFIDENCE</code> clause. This tells
-BayesDB to impute entries only if it is confident to a certain degree.
-<code>WITH CONFIDENCE 0</code> will then impute all values regardless; if we asked for
-confidence of 0.6 fewer entries (or perhaps none at all) would be filled in.</p>
-
-<pre><code>bayeslite&gt; .show 'INFER dry_mass_kg AS "Inferred Dry Mass (confidence 0.6)",
-      ...&gt;         launch_mass_kg AS "Inferred Launch Mass (confidence 0.6)"
-      ...&gt;         WITH CONFIDENCE 0.6 
-      ...&gt;     FROM satellites_cc
-      ...&gt;     WHERE class_of_orbit = GEO;' -m
-</code></pre>
-
-<p><img src="fig_4.png" alt=".show 'INFER dry<em>mass</em>kg AS &quot;Inferred Dry Mass (confidence 0.6)&quot;, launch<em>mass</em>kg AS &quot;Inferred Launch Mass (confidence 0.6)&quot; WITH CONFIDENCE 0.6 FROM satellites<em>cc WHERE class</em>of<em>orbit = GEO;' -m --filename output/fig</em>4.png" /></p>
-
 <p>BayesDB's notion of <code>CONFIDENCE</code> is unlike confidence in standard
 statistics. Whereas in standard statistics 'confidence' is typically paired
 with the word 'interval' to describe some region of probability mass,
