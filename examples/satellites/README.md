@@ -18,14 +18,14 @@ command followed by what we want the table to be named --- we will call it
 satellites --- followed by the path to the csv.
 
 
-    bayeslite> .csv satellites data/satellites.utf8.csv
+    venture[bql]> .csv satellites data/satellites.utf8.csv
 
     
 Now that we have a table, we can use the `.describe` command to view the
 columns in the table.
 
 
-    bayeslite> .describe table satellites
+    venture[bql]> .describe table satellites
 
        tabname | colno |                         name | shortname
     -----------+-------+------------------------------+----------
@@ -56,7 +56,7 @@ columns in the table.
 We can select data just as we would in SQL in BQL:
 
 
-    bayeslite> SELECT name, dry_mass_kg, period_minutes, class_of_orbit
+    venture[bql]> SELECT name, dry_mass_kg, period_minutes, class_of_orbit
           ...>     FROM satellites LIMIT 10;
 
                                                        Name | Dry_Mass_kg | Period_minutes | Class_of_Orbit
@@ -78,7 +78,7 @@ frequencies. In the next example, the first argument `dry_mass_kg` is a
 `NUMERICAL` variable is plotted in different colors based on the `class_of_orbit`.
 
 
-    bayeslite> .histogram SELECT dry_mass_kg, class_of_orbit FROM satellites; -b 35 --normed
+    venture[bql]> .histogram SELECT dry_mass_kg, class_of_orbit FROM satellites; -b 35 --normed
 
     
 ![.histogram SELECT dry_mass_kg, class_of_orbit FROM satellites; -b 35 --normed --filename output/fig_0.png](fig_0.png)
@@ -89,10 +89,10 @@ Different datasets use different markers for missing data, this dataset uses
 `.nullify` command, followed by the table, followed by the value to convert.
 
 
-    bayeslite> .nullify satellites NaN
+    venture[bql]> .nullify satellites NaN
 
     
-    bayeslite> SELECT name, dry_mass_kg FROM satellites LIMIT 10;
+    venture[bql]> SELECT name, dry_mass_kg FROM satellites LIMIT 10;
 
                                                        Name | Dry_Mass_kg
     --------------------------------------------------------+------------
@@ -119,7 +119,7 @@ To create a generator we use the keywords `CREATE GENERATOR <name> FROM
 <table> USING <metamodel> ( [arguments] )`.
 
 
-    bayeslite> CREATE GENERATOR satellites_cc FOR satellites
+    venture[bql]> CREATE GENERATOR satellites_cc FOR satellites
           ...>     USING crosscat(
           ...>         GUESS(*),
           ...>         name IGNORE
@@ -138,7 +138,7 @@ We can see how well the system guess the types of our columns by using the
 `.describe command.
 
 
-    bayeslite> .describe columns satellites_cc
+    venture[bql]> .describe columns satellites_cc
 
     colno |                         name |    stattype | shortname
     ------+------------------------------+-------------+----------
@@ -171,7 +171,7 @@ BayesDB are the result of averaging across models. We will arbitratily
 choose 16 models.
 
 
-    bayeslite> INITIALIZE 16 MODELS FOR satellites_cc;
+    venture[bql]> INITIALIZE 16 MODELS FOR satellites_cc;
 
     
 Now we ask BayesDB to use `ANALYZE` our data using the instances of
@@ -183,7 +183,7 @@ done enough analysis on enough models (but do not worry about this quite
 yet).
 
 
-    bayeslite> ANALYZE satellites_cc FOR 4 MINUTES CHECKPOINT 2 ITERATION WAIT;
+    venture[bql]> ANALYZE satellites_cc FOR 4 MINUTES CHECKPOINT 2 ITERATION WAIT;
 
     
 ## Inferring values
@@ -195,7 +195,7 @@ We shall impute missing values of `dry_mass_kg`. First, let us see how many valu
 are missing.
 
 
-    bayeslite> SELECT COUNT(*) FROM satellites WHERE dry_mass_kg IS NULL;
+    venture[bql]> SELECT COUNT(*) FROM satellites WHERE dry_mass_kg IS NULL;
 
     "COUNT"(*)
     ----------
@@ -206,7 +206,7 @@ values in pairs of continuous columns using the `.show` command with the
 `-m` or `--show-missing` option.
 
 
-    bayeslite> .show 'SELECT dry_mass_kg, launch_mass_kg FROM satellites;' -m
+    venture[bql]> .show 'SELECT dry_mass_kg, launch_mass_kg FROM satellites;' -m
 
     
 ![.show 'SELECT dry_mass_kg, launch_mass_kg FROM satellites;' -m --filename output/fig_1.png](fig_1.png)
@@ -219,7 +219,7 @@ We will use the `INFER` command to impute missing values for geosynchronous
 satellites.
 
 
-    bayeslite> .show 'INFER dry_mass_kg AS "Inferred Dry Mass (confidence 0)", 
+    venture[bql]> .show 'INFER dry_mass_kg AS "Inferred Dry Mass (confidence 0)", 
           ...>         launch_mass_kg AS "Inferred Launch Mass (confidence 0)"
           ...>         WITH CONFIDENCE 0
           ...>     FROM satellites_cc
@@ -234,7 +234,7 @@ BayesDB to impute entries only if it is confident to a certain degree.
 confidence of 0.6 fewer entries (or perhaps none at all) would be filled in.
 
 
-    bayeslite> .show 'INFER dry_mass_kg AS "Inferred Dry Mass (confidence 0.6)",
+    venture[bql]> .show 'INFER dry_mass_kg AS "Inferred Dry Mass (confidence 0.6)",
           ...>         launch_mass_kg AS "Inferred Launch Mass (confidence 0.6)"
           ...>         WITH CONFIDENCE 0.6 
           ...>     FROM satellites_cc
@@ -267,7 +267,7 @@ at a very long table, we will visualize it in a heatmap using the `.heatmap`
 command. We can visualize using the `.heatmap`.
 
 
-    bayeslite> .heatmap 'ESTIMATE PAIRWISE CORRELATION AS corr FROM satellites_cc;'
+    venture[bql]> .heatmap 'ESTIMATE PAIRWISE CORRELATION AS corr FROM satellites_cc;'
 
     
 ![.heatmap 'ESTIMATE PAIRWISE CORRELATION AS corr FROM satellites_cc;' --filename output/fig_4.png](fig_4.png)
@@ -278,7 +278,7 @@ that `DEPENDENCE PROBABILITY` determines a richer network of relationships
 than standard measures of correlation.
 
 
-    bayeslite> .heatmap 'ESTIMATE PAIRWISE DEPENDENCE PROBABILITY FROM satellites_cc;'
+    venture[bql]> .heatmap 'ESTIMATE PAIRWISE DEPENDENCE PROBABILITY FROM satellites_cc;'
 
     
 ![.heatmap 'ESTIMATE PAIRWISE DEPENDENCE PROBABILITY FROM satellites_cc;' --filename output/fig_5.png](fig_5.png)
@@ -296,7 +296,7 @@ of the orbit).
 Which variables predict `Anticipated_Lifetime` --- which are the main predictors?
 
 
-    bayeslite> ESTIMATE COLUMNS DEPENDENCE PROBABILITY WITH anticipated_lifetime AS 
+    venture[bql]> ESTIMATE COLUMNS DEPENDENCE PROBABILITY WITH anticipated_lifetime AS 
           ...>         "Probability of Dependence with Lifetime"
           ...>     FROM satellites_cc
           ...>     ORDER BY "Probability of Dependence with Lifetime" DESC LIMIT 10;
@@ -315,7 +315,7 @@ Which variables predict `Anticipated_Lifetime` --- which are the main predictors
           Operator_Owner |                                  0.6875
     
 
-    bayeslite> ESTIMATE COLUMNS DEPENDENCE PROBABILITY WITH anticipated_lifetime AS 
+    venture[bql]> ESTIMATE COLUMNS DEPENDENCE PROBABILITY WITH anticipated_lifetime AS 
           ...>         "Probability of Dependence with Lifetime"
           ...>     FROM satellites_cc
           ...>     ORDER BY "Probability of Dependence with Lifetime" DESC LIMIT 10;
@@ -334,7 +334,7 @@ Which variables predict `Anticipated_Lifetime` --- which are the main predictors
           Operator_Owner |                                  0.6875
     
 
-    bayeslite> .show 'SELECT anticipated_lifetime, period_minutes, launch_mass_kg, 
+    venture[bql]> .show 'SELECT anticipated_lifetime, period_minutes, launch_mass_kg, 
           ...>     dry_mass_kg, inclination_radians FROM satellites;'
 
     
@@ -344,7 +344,7 @@ Let us look at the dependencies for other variables such as `purpose`,
 and `launch_mass_kg`. We can show the data both in tabular and graphical form.
 
 
-    bayeslite> ESTIMATE COLUMNS DEPENDENCE PROBABILITY WITH purpose AS
+    venture[bql]> ESTIMATE COLUMNS DEPENDENCE PROBABILITY WITH purpose AS
           ...>         "Probability of Dependence with Purpose"
           ...>     FROM satellites_cc
           ...>     ORDER BY "Probability of Dependence with Purpose" DESC LIMIT 10;
@@ -363,7 +363,7 @@ and `launch_mass_kg`. We can show the data both in tabular and graphical form.
                        Apogee_km |                                 0.8125
     
 
-    bayeslite> .bar 'ESTIMATE COLUMNS DEPENDENCE PROBABILITY WITH launch_mass_kg AS
+    venture[bql]> .bar 'ESTIMATE COLUMNS DEPENDENCE PROBABILITY WITH launch_mass_kg AS
           ...>         "Probability of Dependence with Launch Mass"
           ...>     FROM satellites_cc
           ...>     ORDER BY "Probability of Dependence with Launch Mass" DESC LIMIT 10;'
@@ -384,7 +384,7 @@ specify that we only want the probabilities of non-null values using a
 `WHERE` clause (the predictive probability of `NULL` is `NULL`).
 
 
-    bayeslite> .show 'ESTIMATE anticipated_lifetime, PREDICTIVE PROBABILITY OF anticipated_lifetime 
+    venture[bql]> .show 'ESTIMATE anticipated_lifetime, PREDICTIVE PROBABILITY OF anticipated_lifetime 
           ...>         AS "Relative Probability of Lifetime"
           ...>     FROM satellites_cc
           ...>     WHERE anticipated_lifetime IS NOT NULL;'
@@ -397,14 +397,14 @@ Let us get a list of the 10 most anomalous satellites by sorting by
 `relative probability of lifetime` in ascending (`ASC`) order.
 
 
-    bayeslite> CREATE TEMP TABLE unlikely_lifetimes AS ESTIMATE name, anticipated_lifetime,
+    venture[bql]> CREATE TEMP TABLE unlikely_lifetimes AS ESTIMATE name, anticipated_lifetime,
           ...>         PREDICTIVE PROBABILITY OF anticipated_lifetime 
           ...>             AS "Relative Probability of Lifetime"
           ...>     FROM satellites_cc;
 
     
 
-    bayeslite> SELECT * FROM unlikely_lifetimes
+    venture[bql]> SELECT * FROM unlikely_lifetimes
           ...>     WHERE Anticipated_Lifetime IS NOT NULL 
           ...>     ORDER BY "Relative Probability of Lifetime" ASC LIMIT 10;
 
@@ -429,13 +429,13 @@ data-entry errors. A geosynchronous orbit should take 24 hours
 geosynchronous orbit.
 
 
-    bayeslite> CREATE TEMP TABLE unlikely_periods AS ESTIMATE name, class_of_orbit, period_minutes,
+    venture[bql]> CREATE TEMP TABLE unlikely_periods AS ESTIMATE name, class_of_orbit, period_minutes,
           ...>         PREDICTIVE PROBABILITY OF period_minutes AS "Relative Probability of Period"
           ...>     FROM satellites_cc;
 
     
 
-    bayeslite> SELECT * FROM unlikely_periods
+    venture[bql]> SELECT * FROM unlikely_periods
           ...>     WHERE class_of_orbit IS GEO AND period_minutes IS NOT NULL
           ...>     ORDER BY "Relative Probability of Period" ASC LIMIT 10;
 
@@ -472,7 +472,7 @@ observed the `Class_of_Orbit` and `Dry_Mass` (1000 simulations).
 We specify the number of points to simulate using `LIMIT`.
 
 
-    bayeslite> CREATE TEMP TABLE satellite_purpose AS
+    venture[bql]> CREATE TEMP TABLE satellite_purpose AS
           ...>     SIMULATE country_of_operator, purpose FROM satellites_cc
           ...>         GIVEN Class_of_orbit = GEO, Dry_mass_kg = 500 
           ...>         LIMIT 1000;
@@ -490,7 +490,7 @@ country-purpose column using the `||` operator, and then use SQLite's
 most frequent user-purpose combinations.
 
 
-    bayeslite> SELECT country_of_operator || "--" || purpose AS "Country-Purpose",
+    venture[bql]> SELECT country_of_operator || "--" || purpose AS "Country-Purpose",
           ...>         COUNT("Country-Purpose") AS frequency
           ...>     FROM satellite_purpose
           ...>     Group BY "Country-Purpose"
@@ -513,7 +513,7 @@ most frequent user-purpose combinations.
 We can visualize this data using the `.bar` command
 
 
-    bayeslite> .bar 'SELECT country_of_operator || "--" || purpose AS "Country-Purpose", 
+    venture[bql]> .bar 'SELECT country_of_operator || "--" || purpose AS "Country-Purpose", 
           ...>         COUNT("Country-Purpose") AS frequency
           ...>     FROM satellite_purpose
           ...>     GROUP BY "Country-Purpose"
