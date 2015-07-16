@@ -27,16 +27,64 @@ satellites --- followed by the path to the csv.</p>
 <pre><code>bayeslite&gt; .csv satellites data/satellites.utf8.csv
 </code></pre>
 
-<p>Something we might want to do is provide extra information to improve the
-interpretability of the data. We can add a .csv of metadata called a
-codebook. The codebook has four columns: the column name (<code>name</code>), a
-human-readable short name (<code>shortname</code>), a long description (<code>description</code>),
-and a value map for categorical variables (<code>value_map</code>; check the source for
-an example). To add a codebook, use <code>.codebook</code> command followed by the
-table to associate the codebook with, followed by the path to the codebook.</p>
+<p>Now that we have a table, we can use the <code>.describe</code> command to view the
+columns in the table.</p>
 
-<pre><code>bayeslite&gt; .codebook satellites data/satellites_codebook.utf8.csv
+<pre><code>bayeslite&gt; .describe table satellites
+
+   tabname | colno |                         name | shortname
+-----------+-------+------------------------------+----------
+satellites |     0 |                         Name |      None
+satellites |     1 |          Country_of_Operator |      None
+satellites |     2 |               Operator_Owner |      None
+satellites |     3 |                        Users |      None
+satellites |     4 |                      Purpose |      None
+satellites |     5 |               Class_of_Orbit |      None
+satellites |     6 |                Type_of_Orbit |      None
+satellites |     7 |                   Perigee_km |      None
+satellites |     8 |                    Apogee_km |      None
+satellites |     9 |                 Eccentricity |      None
+satellites |    10 |               Period_minutes |      None
+satellites |    11 |               Launch_Mass_kg |      None
+satellites |    12 |                  Dry_Mass_kg |      None
+satellites |    13 |                  Power_watts |      None
+satellites |    14 |               Date_of_Launch |      None
+satellites |    15 |         Anticipated_Lifetime |      None
+satellites |    16 |                   Contractor |      None
+satellites |    17 |        Country_of_Contractor |      None
+satellites |    18 |                  Launch_Site |      None
+satellites |    19 |               Launch_Vehicle |      None
+satellites |    20 | Source_Used_for_Orbital_Data |      None
+satellites |    21 |     longitude_radians_of_geo |      None
+satellites |    22 |          Inclination_radians |      None
 </code></pre>
+
+<p>We can select data just as we would in SQL in BQL:</p>
+
+<pre><code>bayeslite&gt; SELECT name, dry_mass_kg, period_minutes, class_of_orbit FROM satellites LIMIT 10;
+
+                                                   Name | Dry_Mass_kg | Period_minutes | Class_of_Orbit
+--------------------------------------------------------+-------------+----------------+---------------
+                                               AAUSat-3 |        None |         100.42 |            LEO
+          ABS-1 (LMI-1, Lockheed Martin-Intersputnik-1) |        1730 |        1436.08 |            GEO
+               ABS-1A (Koreasat 2, Mugunghwa 2, ABS-1A) |         800 |        1436.13 |            GEO
+ABS-2i (MBSat, Mobile Broadcasting Satellite, Han Byul) |        1700 |         1436.1 |            GEO
+                        ABS-7 (Koreasat 3, Mugungwha 3) |        1800 |        1436.06 |            GEO
+ AcrimSat (Active Cavity Radiometer Irradiance Monitor) |          13 |           98.6 |            LEO
+                     Advanced Orion 2 (NROL 6, USA 139) |        None |        1436.14 |            GEO
+                    Advanced Orion 3 (NROL 19, USA 171) |        None |         1436.1 |            GEO
+                   Advanced Orion 4 (NRO L-26, USA 202) |        None |         1438.8 |            GEO
+                   Advanced Orion 5 (NRO L-32, USA 223) |        None |           None |            GEO
+</code></pre>
+
+<p>We can also use visualization tools, such as <code>.histogram</code>, to plot emperical
+frequencies. In the next example, the first argument <code>dry_mass_kg</code> is a
+<code>NUMERICAL</code> variable whichw</p>
+
+<pre><code>bayeslite&gt; .histogram SELECT dry_mass_kg, class_of_orbit FROM satellites; -b 35 --normed
+</code></pre>
+
+<p><img src="fig_0.png" alt=".histogram SELECT dry<em>mass</em>kg, class<em>of</em>orbit FROM satellites; -b 35 --normed --filename output/fig_0.png" /></p>
 
 <p>Finally, we need to tell BayesDB which values to treat as missing, <code>NULL</code>.
 Different datasets use different markers for missing data, this dataset uses
@@ -62,7 +110,7 @@ ABS-2i (MBSat, Mobile Broadcasting Satellite, Han Byul) |        1700
                    Advanced Orion 5 (NRO L-32, USA 223) |        None
 </code></pre>
 
-<p>We see that the <code>NaN</code> entires have been replaced with <code>None</code>, which is the
+<p>Notice that <code>NaN</code> entires have been replaced with <code>None</code>, which is the
 way Python represents SQL <code>NULL</code>.</p>
 
 <h2>Generating models of the data</h2>
@@ -77,9 +125,8 @@ will use the default generator, crosscat.</p>
 <pre><code>bayeslite&gt; CREATE GENERATOR satellites_cc FOR satellites
       ...&gt;     USING crosscat(
       ...&gt;         GUESS(*),
-      ...&gt;         Name IGNORE,
-      ...&gt;         longitude_radians_of_geo CYCLIC,
-      ...&gt;         Inclination_radians CYCLIC);
+      ...&gt;         name IGNORE
+      ...&gt;     );
 </code></pre>
 
 <p>We created a generator named <code>satellites_cc</code> for our <code>satellites</code> table using
@@ -88,9 +135,7 @@ a little information about how we would like the columns in our table to be
 modeled. <code>GUESS(*)</code> means that we would like crosscat to guess the
 statistical data type of each column, e.g., <code>NUMERICAL</code>, <code>CATEGORICAL</code>
 <code>CYCLIC</code>; <code>Name IGNORE</code> means that we would like crosscat to ignore the
-<code>Name</code> column during analyses and not to assign it a statistical data type.
-We explicitly set <code>longitude_radians_of_geo</code> and <code>Inclination_radians</code> to
-<code>CYCLIC</code> since these are special data types.</p>
+<code>Name</code> column during analyses and not to assign it a statistical data type.</p>
 
 <p>We can see how well the system guess the types of our columns by using the
 `.describe command.</p>
@@ -99,28 +144,28 @@ We explicitly set <code>longitude_radians_of_geo</code> and <code>Inclination_ra
 
 colno |                         name |    stattype | shortname
 ------+------------------------------+-------------+----------
-    1 |          Country_of_Operator | categorical |          
-    2 |               Operator_Owner | categorical |          
-    3 |                        Users | categorical |          
-    4 |                      Purpose | categorical |          
-    5 |               Class_of_Orbit | categorical |          
-    6 |                Type_of_Orbit | categorical |          
-    7 |                   Perigee_km |   numerical |          
-    8 |                    Apogee_km |   numerical |          
-    9 |                 Eccentricity |   numerical |          
-   10 |               Period_minutes |   numerical |          
-   11 |               Launch_Mass_kg |   numerical |          
-   12 |                  Dry_Mass_kg |   numerical |          
-   13 |                  Power_watts |   numerical |          
-   14 |               Date_of_Launch |   numerical |          
-   15 |         Anticipated_Lifetime |   numerical |          
-   16 |                   Contractor | categorical |          
-   17 |        Country_of_Contractor | categorical |          
-   18 |                  Launch_Site | categorical |          
-   19 |               Launch_Vehicle | categorical |          
-   20 | Source_Used_for_Orbital_Data | categorical |          
-   21 |     longitude_radians_of_geo |      cyclic |          
-   22 |          Inclination_radians |      cyclic |
+    1 |          Country_of_Operator | categorical |      None
+    2 |               Operator_Owner | categorical |      None
+    3 |                        Users | categorical |      None
+    4 |                      Purpose | categorical |      None
+    5 |               Class_of_Orbit | categorical |      None
+    6 |                Type_of_Orbit | categorical |      None
+    7 |                   Perigee_km |   numerical |      None
+    8 |                    Apogee_km |   numerical |      None
+    9 |                 Eccentricity |   numerical |      None
+   10 |               Period_minutes |   numerical |      None
+   11 |               Launch_Mass_kg |   numerical |      None
+   12 |                  Dry_Mass_kg |   numerical |      None
+   13 |                  Power_watts |   numerical |      None
+   14 |               Date_of_Launch |   numerical |      None
+   15 |         Anticipated_Lifetime |   numerical |      None
+   16 |                   Contractor | categorical |      None
+   17 |        Country_of_Contractor | categorical |      None
+   18 |                  Launch_Site | categorical |      None
+   19 |               Launch_Vehicle | categorical |      None
+   20 | Source_Used_for_Orbital_Data | categorical |      None
+   21 |     longitude_radians_of_geo |   numerical |      None
+   22 |          Inclination_radians |   numerical |      None
 </code></pre>
 
 <p>The next step is to tell BayesDB how many instances of crosscat we would
@@ -142,6 +187,69 @@ yet).</p>
 <pre><code>bayeslite&gt; ANALYZE satellites_cc FOR 4 MINUTES CHECKPOINT 2 ITERATION WAIT;
 </code></pre>
 
+<h2>Inferring values</h2>
+
+<p>Inferring is like imputing. <code>INFER</code> produces a summary value for a missing
+(<code>NULL</code>) entry. If we use the <code>EXPLICIT</code> keyword, we can re-infer present
+values.</p>
+
+<p>We shall impute missing values of <code>dry_mass_kg</code>. First, let us see how many values
+are missing.</p>
+
+<pre><code>bayeslite&gt; SELECT COUNT(*) FROM satellites WHERE dry_mass_kg IS NULL;
+
+"COUNT"(*)
+----------
+       677
+</code></pre>
+
+<p>Nearly half the values of dry mass are missing! We can visualize missing
+values in pairs of continuous columns using the <code>.show</code> command with the
+<code>-m</code> or <code>--show-missing</code> option.</p>
+
+<pre><code>bayeslite&gt; .show 'SELECT dry_mass_kg, launch_mass_kg FROM satellites;' -m
+</code></pre>
+
+<p><img src="fig_1.png" alt=".show 'SELECT dry<em>mass</em>kg, launch<em>mass</em>kg FROM satellites;' -m --filename output/fig_1.png" /></p>
+
+<p>Missing values are represented as lines along their missing dimension. This
+way, we can see which values of the missing dimensions are more likely by
+observing where the lines intersect with the existing data points.</p>
+
+<p>We will use the <code>INFER</code> command to impute missing values for geosynchronous
+satellites.</p>
+
+<pre><code>bayeslite&gt; .show 'INFER dry_mass_kg AS "Inferred Dry Mass (confidence 0)", 
+      ...&gt;         launch_mass_kg AS "Inferred Launch Mass (confidence 0)"
+      ...&gt;         WITH CONFIDENCE 0
+      ...&gt;     FROM satellites_cc
+      ...&gt;     WHERE class_of_orbit = GEO;' -m
+</code></pre>
+
+<p><img src="fig_2.png" alt=".show 'INFER dry<em>mass</em>kg AS &quot;Inferred Dry Mass (confidence 0)&quot;,  launch<em>mass</em>kg AS &quot;Inferred Launch Mass (confidence 0)&quot; WITH CONFIDENCE 0 FROM satellites<em>cc WHERE class</em>of<em>orbit = GEO;' -m --filename output/fig</em>2.png" /></p>
+
+<p>No more missing values. Notice the <code>WITH CONFIDENCE</code> clause. This tells
+BayesDB to impute entries only if it is confident to a certain degree.
+<code>WITH CONFIDENCE 0</code> will then impute all values regardless; if we asked for
+confidence of 0.6 fewer entries (or perhaps none at all) would be filled in.</p>
+
+<pre><code>bayeslite&gt; .show 'INFER dry_mass_kg AS "Inferred Dry Mass (confidence 0.6)",
+      ...&gt;         launch_mass_kg AS "Inferred Launch Mass (confidence 0.6)"
+      ...&gt;         WITH CONFIDENCE 0.6 
+      ...&gt;     FROM satellites_cc
+      ...&gt;     WHERE class_of_orbit = GEO;' -m
+</code></pre>
+
+<p><img src="fig_3.png" alt=".show 'INFER dry<em>mass</em>kg AS &quot;Inferred Dry Mass (confidence 0.6)&quot;, launch<em>mass</em>kg AS &quot;Inferred Launch Mass (confidence 0.6)&quot; WITH CONFIDENCE 0.6 FROM satellites<em>cc WHERE class</em>of<em>orbit = GEO;' -m --filename output/fig</em>3.png" /></p>
+
+<p>BayesDB's notion of <code>CONFIDENCE</code> is unlike confidence in standard
+statistics. Whereas in standard statistics 'confidence' is typically paired
+with the word 'interval' to describe some region of probability mass,
+<code>CONFIDENCE</code> in BayesDB is a measure of inter-model agreement; that is,
+<code>CONFIDENCE</code> is the probability that among the models, there is a unimodal
+summary of the value we wish to impute given all other entries in that
+entry's row.</p>
+
 <h2>Characterizing dependence between variables</h2>
 
 <p>Now that the analyses are finished, we can begin to ask BayesDB questions
@@ -155,12 +263,12 @@ BayesDB has the ability to compute observed correlation coefficients
 and their associated pvalues between all the pairs of columns, using the
 <code>ESTIMATE PAIRWISE</code> command; and because we do not want to look at
 at a very long table, we will visualize it in a heatmap using the <code>.heatmap</code>
-command.</p>
+command. We can visualize using the <code>.heatmap</code>.</p>
 
 <pre><code>bayeslite&gt; .heatmap 'ESTIMATE PAIRWISE CORRELATION AS corr FROM satellites_cc;'
 </code></pre>
 
-<p><img src="fig_0.png" alt=".heatmap 'ESTIMATE PAIRWISE CORRELATION AS corr FROM satellites<em>cc;' --filename sat</em>analysis/fig_0.png" /></p>
+<p><img src="fig_4.png" alt=".heatmap 'ESTIMATE PAIRWISE CORRELATION AS corr FROM satellites<em>cc;' --filename output/fig</em>4.png" /></p>
 
 <p>BayesDB has a more powerful notion of dependence called <code>DEPENDENCE PROBABILITY</code>,
 which is the degree of belief that two columns have some dependence. Notice
@@ -170,7 +278,7 @@ than standard measures of correlation.</p>
 <pre><code>bayeslite&gt; .heatmap 'ESTIMATE PAIRWISE DEPENDENCE PROBABILITY FROM satellites_cc;'
 </code></pre>
 
-<p><img src="fig_1.png" alt=".heatmap 'ESTIMATE PAIRWISE DEPENDENCE PROBABILITY FROM satellites<em>cc;' --filename sat</em>analysis/fig_1.png" /></p>
+<p><img src="fig_5.png" alt=".heatmap 'ESTIMATE PAIRWISE DEPENDENCE PROBABILITY FROM satellites<em>cc;' --filename output/fig</em>5.png" /></p>
 
 <p>Each cell in the heatmap represents the dependence probability between a
 pair of columns. Darker cells represent higher dependence probability. The
@@ -184,57 +292,79 @@ of the orbit).</p>
 
 <p>Which variables predict <code>Anticipated_Lifetime</code> --- which are the main predictors?</p>
 
-<pre><code>bayeslite&gt; ESTIMATE COLUMNS DEPENDENCE PROBABILITY WITH Anticipated_Lifetime AS 
+<pre><code>bayeslite&gt; ESTIMATE COLUMNS DEPENDENCE PROBABILITY WITH anticipated_lifetime AS 
       ...&gt;         "Probability of Dependence with Lifetime"
       ...&gt;     FROM satellites_cc
-      ...&gt;     ORDER BY "Probability of Dependence with Lifetime" DESC LIMIT 10; 
+      ...&gt;     ORDER BY "Probability of Dependence with Lifetime" DESC LIMIT 10;
 
                 name | Probability of Dependence with Lifetime
 ---------------------+----------------------------------------
 Anticipated_Lifetime |                                       1
-      Class_of_Orbit |                                     1.0
-      Launch_Vehicle |                                     1.0
-          Perigee_km |                                     1.0
-          Contractor |                                  0.9375
-      Date_of_Launch |                                  0.9375
  Inclination_radians |                                  0.9375
-      Operator_Owner |                                  0.9375
-      Period_minutes |                                  0.9375
-             Purpose |                                  0.9375
+      Launch_Mass_kg |                                   0.875
+         Power_watts |                                   0.875
+         Dry_Mass_kg |                                  0.8125
+         Launch_Site |                                  0.8125
+      Launch_Vehicle |                                    0.75
+               Users |                                    0.75
+      Class_of_Orbit |                                  0.6875
+      Operator_Owner |                                  0.6875
 
 
-bayeslite&gt; .bar 'ESTIMATE COLUMNS DEPENDENCE PROBABILITY WITH Anticipated_Lifetime AS 
+bayeslite&gt; ESTIMATE COLUMNS DEPENDENCE PROBABILITY WITH anticipated_lifetime AS 
       ...&gt;         "Probability of Dependence with Lifetime"
       ...&gt;     FROM satellites_cc
-      ...&gt;     ORDER BY "Probability of Dependence with Lifetime" DESC LIMIT 10;'
+      ...&gt;     ORDER BY "Probability of Dependence with Lifetime" DESC LIMIT 10;
+
+                name | Probability of Dependence with Lifetime
+---------------------+----------------------------------------
+Anticipated_Lifetime |                                       1
+ Inclination_radians |                                  0.9375
+      Launch_Mass_kg |                                   0.875
+         Power_watts |                                   0.875
+         Dry_Mass_kg |                                  0.8125
+         Launch_Site |                                  0.8125
+      Launch_Vehicle |                                    0.75
+               Users |                                    0.75
+      Class_of_Orbit |                                  0.6875
+      Operator_Owner |                                  0.6875
+
+
+bayeslite&gt; .show 'SELECT anticipated_lifetime, period_minutes, launch_mass_kg, 
+      ...&gt;     dry_mass_kg, inclination_radians FROM satellites;'
 </code></pre>
 
-<p><img src="fig_2.png" alt=".bar 'ESTIMATE COLUMNS DEPENDENCE PROBABILITY WITH Anticipated<em>Lifetime AS  &quot;Probability of Dependence with Lifetime&quot; FROM satellites</em>cc ORDER BY &quot;Probability of Dependence with Lifetime&quot; DESC LIMIT 10;' --filename sat<em>analysis/fig</em>2.png" /></p>
-
-<pre><code>bayeslite&gt; .show 'SELECT Anticipated_Lifetime, Period_minutes, Launch_Mass_kg, 
-      ...&gt;     Dry_Mass_kg, Inclination_radians FROM satellites;'
-</code></pre>
-
-<p><img src="fig_3.png" alt=".show 'SELECT Anticipated<em>Lifetime, Period</em>minutes, Launch<em>Mass</em>kg,  Dry<em>Mass</em>kg, Inclination<em>radians FROM satellites;' --filename sat</em>analysis/fig_3.png" /></p>
+<p><img src="fig_6.png" alt=".show 'SELECT anticipated<em>lifetime, period</em>minutes, launch<em>mass</em>kg,  dry<em>mass</em>kg, inclination<em>radians FROM satellites;' --filename output/fig</em>6.png" /></p>
 
 <p>Let us look at the dependencies for other variables such as <code>purpose</code>,
-and <code>launch_mass_kg</code>.</p>
+and <code>launch_mass_kg</code>. We can show the data both in tabular and graphical form.</p>
 
-<pre><code>bayeslite&gt; .bar 'ESTIMATE COLUMNS DEPENDENCE PROBABILITY WITH purpose AS
+<pre><code>bayeslite&gt; ESTIMATE COLUMNS DEPENDENCE PROBABILITY WITH purpose AS
       ...&gt;         "Probability of Dependence with Purpose"
       ...&gt;     FROM satellites_cc
-      ...&gt;     ORDER BY "Probability of Dependence with Purpose" DESC LIMIT 10;'
-</code></pre>
+      ...&gt;     ORDER BY "Probability of Dependence with Purpose" DESC LIMIT 10;
 
-<p><img src="fig_4.png" alt=".bar 'ESTIMATE COLUMNS DEPENDENCE PROBABILITY WITH purpose AS &quot;Probability of Dependence with Purpose&quot; FROM satellites<em>cc ORDER BY &quot;Probability of Dependence with Purpose&quot; DESC LIMIT 10;' --filename sat</em>analysis/fig_4.png" /></p>
+                        name | Probability of Dependence with Purpose
+-----------------------------+---------------------------------------
+                     Purpose |                                      1
+              Launch_Vehicle |                                 0.9375
+                       Users |                                 0.9375
+              Class_of_Orbit |                                  0.875
+                 Launch_Site |                                  0.875
+              Operator_Owner |                                  0.875
+                  Perigee_km |                                  0.875
+              Period_minutes |                                  0.875
+Source_Used_for_Orbital_Data |                                  0.875
+                   Apogee_km |                                 0.8125
 
-<pre><code>bayeslite&gt; .bar 'ESTIMATE COLUMNS DEPENDENCE PROBABILITY WITH launch_mass_kg AS
+
+bayeslite&gt; .bar 'ESTIMATE COLUMNS DEPENDENCE PROBABILITY WITH launch_mass_kg AS
       ...&gt;         "Probability of Dependence with Launch Mass"
       ...&gt;     FROM satellites_cc
       ...&gt;     ORDER BY "Probability of Dependence with Launch Mass" DESC LIMIT 10;'
 </code></pre>
 
-<p><img src="fig_5.png" alt=".bar 'ESTIMATE COLUMNS DEPENDENCE PROBABILITY WITH launch<em>mass</em>kg AS &quot;Probability of Dependence with Launch Mass&quot; FROM satellites<em>cc ORDER BY &quot;Probability of Dependence with Launch Mass&quot; DESC LIMIT 10;' --filename sat</em>analysis/fig_5.png" /></p>
+<p><img src="fig_7.png" alt=".bar 'ESTIMATE COLUMNS DEPENDENCE PROBABILITY WITH launch<em>mass</em>kg AS &quot;Probability of Dependence with Launch Mass&quot; FROM satellites<em>cc ORDER BY &quot;Probability of Dependence with Launch Mass&quot; DESC LIMIT 10;' --filename output/fig</em>7.png" /></p>
 
 <h2>Identify satellites with unlikely lifetimes</h2>
 
@@ -248,37 +378,41 @@ a scatter plot of data and their predictive probability functions
 specify that we only want the probabilities of non-null values using a
 <code>WHERE</code> clause (the predictive probability of <code>NULL</code> is <code>NULL</code>).</p>
 
-<pre><code>bayeslite&gt; .show 'ESTIMATE Anticipated_Lifetime, PREDICTIVE PROBABILITY OF Anticipated_Lifetime 
-      ...&gt;         AS "relative probability of lifetime"
+<pre><code>bayeslite&gt; .show 'ESTIMATE anticipated_lifetime, PREDICTIVE PROBABILITY OF anticipated_lifetime 
+      ...&gt;         AS "Relative Probability of Lifetime"
       ...&gt;     FROM satellites_cc
-      ...&gt;     WHERE Anticipated_Lifetime IS NOT NULL;'
+      ...&gt;     WHERE anticipated_lifetime IS NOT NULL;'
 </code></pre>
 
-<p><img src="fig_6.png" alt=".show 'ESTIMATE Anticipated<em>Lifetime, PREDICTIVE PROBABILITY OF Anticipated</em>Lifetime  AS &quot;relative probability of lifetime&quot; FROM satellites<em>cc WHERE Anticipated</em>Lifetime IS NOT NULL;' --filename sat<em>analysis/fig</em>6.png" /></p>
+<p><img src="fig_8.png" alt=".show 'ESTIMATE anticipated<em>lifetime, PREDICTIVE PROBABILITY OF anticipated</em>lifetime  AS &quot;Relative Probability of Lifetime&quot; FROM satellites<em>cc WHERE anticipated</em>lifetime IS NOT NULL;' --filename output/fig_8.png" /></p>
 
 <p>Note that there are plenty of non-extreme values that have low probabilities.
 Let us get a list of the 10 most anomalous satellites by sorting by
 <code>relative probability of lifetime</code> in ascending (<code>ASC</code>) order.</p>
 
-<pre><code>bayeslite&gt; ESTIMATE Name, Anticipated_Lifetime,
-      ...&gt;         PREDICTIVE PROBABILITY OF Anticipated_Lifetime 
-      ...&gt;             AS "relative probability of lifetime"
-      ...&gt;     FROM satellites_cc
-      ...&gt;     WHERE Anticipated_Lifetime IS NOT NULL 
-      ...&gt;     ORDER BY "relative probability of lifetime" ASC LIMIT 10;
+<pre><code>bayeslite&gt; CREATE TEMP TABLE unlikely_lifetimes AS ESTIMATE name, anticipated_lifetime,
+      ...&gt;         PREDICTIVE PROBABILITY OF anticipated_lifetime 
+      ...&gt;             AS "Relative Probability of Lifetime"
+      ...&gt;     FROM satellites_cc;
 
-                                                                         Name | Anticipated_Lifetime | relative probability of lifetime
+
+
+bayeslite&gt; SELECT * FROM unlikely_lifetimes
+      ...&gt;     WHERE Anticipated_Lifetime IS NOT NULL 
+      ...&gt;     ORDER BY "Relative Probability of Lifetime" ASC LIMIT 10;
+
+                                                                         Name | Anticipated_Lifetime | Relative Probability of Lifetime
 ------------------------------------------------------------------------------+----------------------+---------------------------------
-                      International Space Station (ISS [first element Zarya]) |                   30 |                5.07330863329e-07
-Milstar DFS-5 (USA 164, Milstar 2-F3) (Military Strategic and Tactical Relay) |                    0 |                 0.00117710193799
-                                   DSP 21 (USA 159) (Defense Support Program) |                  0.5 |                 0.00169644337628
-                                   DSP 22 (USA 176) (Defense Support Program) |                  0.5 |                 0.00169644337628
-                                   Express-A1R (Express 4A, Ekspress-A No. 4) |                  0.5 |                 0.00169644337628
-                                                                 Intelsat 701 |                  0.5 |                 0.00169644337628
-                                      MUOS-1 (Mobile User Objective System 1) |                  0.5 |                 0.00169644337628
-                                      MUOS-2 (Mobile User Objective System 2) |                  0.5 |                 0.00169644337628
-                                                                     Optus B3 |                  0.5 |                 0.00169644337628
-              SDS III-3 (Satellite Data System) (NRO L-12, Aquila-1, USA 162) |                  0.5 |                 0.00169644337628
+                      International Space Station (ISS [first element Zarya]) |                   30 |                7.51353982709e-07
+                                                                    Landsat 7 |                   15 |                0.000171660566109
+                                                                 Intelsat 701 |                  0.5 |                 0.00110533567674
+Milstar DFS-5 (USA 164, Milstar 2-F3) (Military Strategic and Tactical Relay) |                    0 |                 0.00125200959929
+                                                                    Sicral 1A |                  0.5 |                 0.00150493811402
+                                   Express-A1R (Express 4A, Ekspress-A No. 4) |                  0.5 |                 0.00165065104071
+                                                                    Sicral 1B |                  0.5 |                 0.00236815225572
+              SDS III-3 (Satellite Data System) (NRO L-12, Aquila-1, USA 162) |                  0.5 |                 0.00314255032604
+                                                                     Optus B3 |                  0.5 |                 0.00359723240625
+                                      MUOS-1 (Mobile User Objective System 1) |                  0.5 |                  0.0049487694417
 </code></pre>
 
 <p>Recall earlier that we mentioned that some of the relations are governed by
@@ -288,24 +422,28 @@ data-entry errors. A geosynchronous orbit should take 24 hours
 (1440 minutes). Let us display the anomalous values for satellites in
 geosynchronous orbit.</p>
 
-<pre><code>bayeslite&gt; ESTIMATE Name, class_of_orbit, Period_minutes,
-      ...&gt;         PREDICTIVE PROBABILITY OF Period_minutes AS "relative probability of period"
-      ...&gt;     FROM satellites_cc
-      ...&gt;     WHERE class_of_orbit IS GEO AND Period_minutes IS NOT NULL
-      ...&gt;     ORDER BY "relative probability of period" ASC LIMIT 10;
+<pre><code>bayeslite&gt; CREATE TEMP TABLE unlikely_periods AS ESTIMATE name, class_of_orbit, period_minutes,
+      ...&gt;         PREDICTIVE PROBABILITY OF period_minutes AS "Relative Probability of Period"
+      ...&gt;     FROM satellites_cc;
 
-                                                           Name | Class_of_Orbit | Period_minutes | relative probability of period
+
+
+bayeslite&gt; SELECT * FROM unlikely_periods
+      ...&gt;     WHERE class_of_orbit IS GEO AND period_minutes IS NOT NULL
+      ...&gt;     ORDER BY "Relative Probability of Period" ASC LIMIT 10;
+
+                                                           Name | Class_of_Orbit | Period_minutes | Relative Probability of Period
 ----------------------------------------------------------------+----------------+----------------+-------------------------------
-  SDS III-6 (Satellite Data System) NRO L-27, Gryphon, USA 227) |            GEO |          14.36 |              4.06215961584e-06
-                           Advanced Orion 6 (NRO L-15, USA 237) |            GEO |          23.94 |              4.43855900251e-06
-    SDS III-7 (Satellite Data System) NRO L-38, Drake, USA 236) |            GEO |          23.94 |              4.43855900251e-06
-                     DSP 20 (USA 149) (Defense Support Program) |            GEO |         142.08 |              1.13796934215e-05
-                                     Zhongxing 11 (Chinasat 11) |            GEO |        1436.24 |              0.000624804578259
-                                                   Intelsat 903 |            GEO |        1436.16 |              0.000738621883855
-               QZS-1 (Quazi-Zenith Satellite System, Michibiki) |            GEO |           1436 |              0.000833167440674
-AEHF-2 (Advanced Extremely High Frequency satellite-2, USA 235) |            GEO |        1306.29 |              0.000875061136031
-AEHF-3 (Advanced Extremely High Frequency satellite-3, USA 246) |            GEO |        1306.29 |              0.000875061136031
-                         Mercury 2 (Advanced Vortex 2, USA 118) |            GEO |        1436.12 |              0.000889466848498
+AEHF-3 (Advanced Extremely High Frequency satellite-3, USA 246) |            GEO |        1306.29 |                0.0013803768558
+AEHF-2 (Advanced Extremely High Frequency satellite-2, USA 235) |            GEO |        1306.29 |               0.00138250960867
+                     DSP 20 (USA 149) (Defense Support Program) |            GEO |         142.08 |               0.00260573250161
+                                                   Intelsat 903 |            GEO |        1436.16 |                0.0030466671703
+                                                        BSAT-3B |            GEO |        1365.61 |                0.0031700534801
+                                                   Intelsat 902 |            GEO |         1436.1 |               0.00327082624867
+  SDS III-6 (Satellite Data System) NRO L-27, Gryphon, USA 227) |            GEO |          14.36 |               0.00349186578493
+                           Advanced Orion 6 (NRO L-15, USA 237) |            GEO |          23.94 |               0.00360477074483
+    SDS III-7 (Satellite Data System) NRO L-38, Drake, USA 236) |            GEO |          23.94 |               0.00360477074483
+               QZS-1 (Quazi-Zenith Satellite System, Michibiki) |            GEO |           1436 |               0.00381912730397
 </code></pre>
 
 <p>We see a couple of oddities. There are satellites with 24-minute periods. It
@@ -328,7 +466,7 @@ observed the <code>Class_of_Orbit</code> and <code>Dry_Mass</code> (1000 simulat
 We specify the number of points to simulate using <code>LIMIT</code>.</p>
 
 <pre><code>bayeslite&gt; CREATE TEMP TABLE satellite_purpose AS
-      ...&gt;     SIMULATE Country_of_operator, Purpose FROM satellites_cc
+      ...&gt;     SIMULATE country_of_operator, purpose FROM satellites_cc
       ...&gt;         GIVEN Class_of_orbit = GEO, Dry_mass_kg = 500 
       ...&gt;         LIMIT 1000;
 </code></pre>
@@ -351,18 +489,18 @@ most frequent user-purpose combinations.</p>
       ...&gt;     ORDER BY frequency DESC
       ...&gt;     LIMIT 10;
 
-                   Country-Purpose | frequency
------------------------------------+----------
-               USA--Communications |       127
-            Russia--Communications |        32
-        China (PR)--Communications |        28
-       USA--Technology Development |        26
-USA--Navigation/Global Positioning |        25
-                USA--Space Physics |        17
-     Multinational--Communications |        15
-             Japan--Communications |        14
-China (PR)--Technology Development |        10
-               USA--Remote Sensing |        10
+                          Country-Purpose | frequency
+------------------------------------------+----------
+                      USA--Communications |       145
+       USA--Navigation/Global Positioning |        64
+                   Russia--Communications |        36
+               China (PR)--Communications |        27
+              USA--Technology Development |        17
+China (PR)--Navigation/Global Positioning |        16
+    Russia--Navigation/Global Positioning |        16
+                    India--Communications |        12
+            Multinational--Communications |        12
+             USA--Electronic Surveillance |        10
 </code></pre>
 
 <p>We can visualize this data using the <code>.bar</code> command</p>
@@ -375,68 +513,5 @@ China (PR)--Technology Development |        10
       ...&gt;     LIMIT 20;'
 </code></pre>
 
-<p><img src="fig_7.png" alt=".bar 'SELECT country<em>of</em>operator || &quot;--&quot; || purpose AS &quot;Country-Purpose&quot;,  COUNT(&quot;Country-Purpose&quot;) AS frequency FROM satellite<em>purpose GROUP BY &quot;Country-Purpose&quot; ORDER BY frequency DESC LIMIT 20;' --filename sat</em>analysis/fig_7.png" /></p>
-
-<h2>Inferring values</h2>
-
-<p>Inferring is like imputing. <code>INFER</code> produces a summary value for a missing
-(<code>NULL</code>) entry. If we use the <code>EXPLICIT</code> keyword, we can re-infer present
-values.</p>
-
-<p>We shall impute missing values of mass. First, let us see how many values
-are missing.</p>
-
-<pre><code>bayeslite&gt; SELECT COUNT(*) FROM satellites WHERE dry_mass_kg IS NULL;
-
-"COUNT"(*)
-----------
-       677
-</code></pre>
-
-<p>Nearly half the values of dry mass are missing! We can visualize missing
-values in pairs of continuous columns using the <code>.show</code> command with the
-<code>-m</code> or <code>--show-missing</code> option.</p>
-
-<pre><code>bayeslite&gt; .show 'SELECT dry_mass_kg, launch_mass_kg FROM satellites;' -m
-</code></pre>
-
-<p><img src="fig_8.png" alt=".show 'SELECT dry<em>mass</em>kg, launch<em>mass</em>kg FROM satellites;' -m --filename sat<em>analysis/fig</em>8.png" /></p>
-
-<p>Missing values are represented as lines along their missing dimension. This
-way, we can see which values of the missing dimensions are more likely by
-observing where the lines intersect with the existing data points.</p>
-
-<p>We will use the <code>INFER</code> command to impute missing values for geosynchronous
-satellites.</p>
-
-<pre><code>bayeslite&gt; .show 'INFER dry_mass_kg AS "inferred dry mass", 
-      ...&gt;         launch_mass_kg AS "inferred launch mass"
-      ...&gt;         WITH CONFIDENCE 0
-      ...&gt;     FROM satellites_cc
-      ...&gt;     WHERE Class_of_Orbit = GEO;' -m
-</code></pre>
-
-<p><img src="fig_9.png" alt=".show 'INFER dry<em>mass</em>kg AS &quot;inferred dry mass&quot;,  launch<em>mass</em>kg AS &quot;inferred launch mass&quot; WITH CONFIDENCE 0 FROM satellites<em>cc WHERE Class</em>of<em>Orbit = GEO;' -m --filename sat</em>analysis/fig_9.png" /></p>
-
-<p>No more missing values. Notice the <code>WITH CONFIDENCE</code> clause. This tells
-BayesDB to impute entries only if it is confident to a certain degree.
-<code>WITH CONFIDENCE 0</code> will then impute all values regardless; if we asked for
-confidence of 0.6 fewer entries (or perhaps none at all) would be filled in.</p>
-
-<pre><code>bayeslite&gt; .show 'INFER dry_mass_kg AS "inferred dry mass",
-      ...&gt;         launch_mass_kg AS "inferred launch mass"
-      ...&gt;         WITH CONFIDENCE 0.6 
-      ...&gt;     FROM satellites_cc
-      ...&gt;     WHERE Class_of_Orbit = GEO;' -m
-</code></pre>
-
-<p><img src="fig_10.png" alt=".show 'INFER dry<em>mass</em>kg AS &quot;inferred dry mass&quot;, launch<em>mass</em>kg AS &quot;inferred launch mass&quot; WITH CONFIDENCE 0.6 FROM satellites<em>cc WHERE Class</em>of<em>Orbit = GEO;' -m --filename sat</em>analysis/fig_10.png" /></p>
-
-<p>BayesDB's notion of <code>CONFIDENCE</code> is unlike confidence in standard
-statistics. Whereas in standard statistics 'confidence' is typically paired
-with the word 'interval' to describe some region of probability mass,
-<code>CONFIDENCE</code> in BayesDB is a measure of inter-model agreement; that is,
-<code>CONFIDENCE</code> is the probability that among the models, there is a unimodal
-summary of the value we wish to impute given all other entries in that
-entry's row.</p>
+<p><img src="fig_9.png" alt=".bar 'SELECT country<em>of</em>operator || &quot;--&quot; || purpose AS &quot;Country-Purpose&quot;,  COUNT(&quot;Country-Purpose&quot;) AS frequency FROM satellite<em>purpose GROUP BY &quot;Country-Purpose&quot; ORDER BY frequency DESC LIMIT 20;' --filename output/fig</em>9.png" /></p>
 </html>

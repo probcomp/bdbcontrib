@@ -19,27 +19,20 @@
 
 .csv satellites data/satellites.utf8.csv
 
--- Now that we have a table, we can ask SQLite for some information about the
--- table using SQLite pragma. To access SQL- or SQLite-specific functionality
--- we use the `.sql` command followed by the SQL code we wish to execute. We
--- use the `table_info(<table>)` pragma.
+-- Now that we have a table, we can use the `.describe` command to view the
+-- columns in the table.
 
-.sql pragma table_info(satellites)
+.describe table satellites
 
--- Of course, we can select data just as we would in SQL in BQL:
+-- We can select data just as we would in SQL in BQL:
 
-SELECT name, dry_mass_kg FROM satellites, period_minutes, 
-    class_of_orbit LIMIT 10;
+SELECT name, dry_mass_kg, period_minutes, class_of_orbit FROM satellites LIMIT 10;
 
--- Something we might want to do is provide extra information to improve the
--- interpretability of the data. We can add a .csv of metadata called a
--- codebook. The codebook has four columns: the column name (`name`), a
--- human-readable short name (`shortname`), a long description (`description`),
--- and a value map for categorical variables (`value_map`; check the source for
--- an example). To add a codebook, use `.codebook` command followed by the
--- table to associate the codebook with, followed by the path to the codebook.
+-- We can also use visualization tools, such as `.histogram`, to plot emperical
+-- frequencies. In the next example, the first argument `dry_mass_kg` is a
+-- `NUMERICAL` variable whichw 
 
-.codebook satellites data/satellites_codebook.utf8.csv
+.histogram SELECT dry_mass_kg, class_of_orbit FROM satellites; -b 35 --normed
 
 -- Finally, we need to tell BayesDB which values to treat as missing, `NULL`.
 -- Different datasets use different markers for missing data, this dataset uses
@@ -49,7 +42,7 @@ SELECT name, dry_mass_kg FROM satellites, period_minutes,
 .nullify satellites NaN
 SELECT name, dry_mass_kg FROM satellites LIMIT 10;
 
--- We see that the `NaN` entires have been replaced with `None`, which is the
+-- Notice that `NaN` entires have been replaced with `None`, which is the
 -- way Python represents SQL `NULL`.
 
 -- ## Generating models of the data
@@ -63,9 +56,8 @@ SELECT name, dry_mass_kg FROM satellites LIMIT 10;
 CREATE GENERATOR satellites_cc FOR satellites
     USING crosscat(
         GUESS(*),
-        Name IGNORE,
-        longitude_radians_of_geo CYCLIC,
-        Inclination_radians CYCLIC);
+        name IGNORE
+    );
 
 -- We created a generator named `satellites_cc` for our `satellites` table using
 -- the crosscat metamodel. Inside the parenthesis, we provide crosscat with
@@ -74,8 +66,6 @@ CREATE GENERATOR satellites_cc FOR satellites
 -- statistical data type of each column, e.g., `NUMERICAL`, `CATEGORICAL` 
 -- `CYCLIC`; `Name IGNORE` means that we would like crosscat to ignore the 
 -- `Name` column during analyses and not to assign it a statistical data type.
--- We explicitly set `longitude_radians_of_geo` and `Inclination_radians` to
--- `CYCLIC` since these are special data types.
 
 -- We can see how well the system guess the types of our columns by using the
 -- `.describe command.
@@ -98,6 +88,54 @@ INITIALIZE 16 MODELS FOR satellites_cc;
 -- yet).
 
 ANALYZE satellites_cc FOR 4 MINUTES CHECKPOINT 2 ITERATION WAIT;
+    
+-- ## Inferring values
+-- Inferring is like imputing. `INFER` produces a summary value for a missing
+-- (`NULL`) entry. If we use the `EXPLICIT` keyword, we can re-infer present
+-- values.
+
+-- We shall impute missing values of `dry_mass_kg`. First, let us see how many values
+-- are missing.
+
+SELECT COUNT(*) FROM satellites WHERE dry_mass_kg IS NULL;
+
+-- Nearly half the values of dry mass are missing! We can visualize missing
+-- values in pairs of continuous columns using the `.show` command with the
+-- `-m` or `--show-missing` option. 
+
+.show 'SELECT dry_mass_kg, launch_mass_kg FROM satellites;' -m
+
+-- Missing values are represented as lines along their missing dimension. This
+-- way, we can see which values of the missing dimensions are more likely by
+-- observing where the lines intersect with the existing data points.
+
+-- We will use the `INFER` command to impute missing values for geosynchronous
+-- satellites.
+
+.show 'INFER dry_mass_kg AS "Inferred Dry Mass (confidence 0)", 
+        launch_mass_kg AS "Inferred Launch Mass (confidence 0)"
+        WITH CONFIDENCE 0
+    FROM satellites_cc
+    WHERE class_of_orbit = GEO;' -m
+
+-- No more missing values. Notice the `WITH CONFIDENCE` clause. This tells
+-- BayesDB to impute entries only if it is confident to a certain degree.
+-- `WITH CONFIDENCE 0` will then impute all values regardless; if we asked for
+-- confidence of 0.6 fewer entries (or perhaps none at all) would be filled in.
+
+.show 'INFER dry_mass_kg AS "Inferred Dry Mass (confidence 0.6)",
+        launch_mass_kg AS "Inferred Launch Mass (confidence 0.6)"
+        WITH CONFIDENCE 0.6 
+    FROM satellites_cc
+    WHERE class_of_orbit = GEO;' -m
+
+-- BayesDB's notion of `CONFIDENCE` is unlike confidence in standard
+-- statistics. Whereas in standard statistics 'confidence' is typically paired
+-- with the word 'interval' to describe some region of probability mass, 
+-- `CONFIDENCE` in BayesDB is a measure of inter-model agreement; that is, 
+-- `CONFIDENCE` is the probability that among the models, there is a unimodal
+-- summary of the value we wish to impute given all other entries in that
+-- entry's row. 
 
 -- ## Characterizing dependence between variables
 
@@ -135,26 +173,26 @@ ANALYZE satellites_cc FOR 4 MINUTES CHECKPOINT 2 ITERATION WAIT;
 
 -- Which variables predict `Anticipated_Lifetime` --- which are the main predictors?
 
-ESTIMATE COLUMNS DEPENDENCE PROBABILITY WITH Anticipated_Lifetime AS 
+ESTIMATE COLUMNS DEPENDENCE PROBABILITY WITH anticipated_lifetime AS 
         "Probability of Dependence with Lifetime"
     FROM satellites_cc
-    ORDER BY "Probability of Dependence with Lifetime" DESC LIMIT 10; 
+    ORDER BY "Probability of Dependence with Lifetime" DESC LIMIT 10;
 
-.bar 'ESTIMATE COLUMNS DEPENDENCE PROBABILITY WITH Anticipated_Lifetime AS 
+ESTIMATE COLUMNS DEPENDENCE PROBABILITY WITH anticipated_lifetime AS 
         "Probability of Dependence with Lifetime"
     FROM satellites_cc
-    ORDER BY "Probability of Dependence with Lifetime" DESC LIMIT 10;'
+    ORDER BY "Probability of Dependence with Lifetime" DESC LIMIT 10;
 
-.show 'SELECT Anticipated_Lifetime, Period_minutes, Launch_Mass_kg, 
-    Dry_Mass_kg, Inclination_radians FROM satellites;'
+.show 'SELECT anticipated_lifetime, period_minutes, launch_mass_kg, 
+    dry_mass_kg, inclination_radians FROM satellites;'
 
 -- Let us look at the dependencies for other variables such as `purpose`,
--- and `launch_mass_kg`.
+-- and `launch_mass_kg`. We can show the data both in tabular and graphical form.
 
-.bar 'ESTIMATE COLUMNS DEPENDENCE PROBABILITY WITH purpose AS
+ESTIMATE COLUMNS DEPENDENCE PROBABILITY WITH purpose AS
         "Probability of Dependence with Purpose"
     FROM satellites_cc
-    ORDER BY "Probability of Dependence with Purpose" DESC LIMIT 10;'
+    ORDER BY "Probability of Dependence with Purpose" DESC LIMIT 10;
 
 .bar 'ESTIMATE COLUMNS DEPENDENCE PROBABILITY WITH launch_mass_kg AS
         "Probability of Dependence with Launch Mass"
@@ -173,23 +211,23 @@ ESTIMATE COLUMNS DEPENDENCE PROBABILITY WITH Anticipated_Lifetime AS
 -- specify that we only want the probabilities of non-null values using a 
 -- `WHERE` clause (the predictive probability of `NULL` is `NULL`).
 
-.show 'ESTIMATE Anticipated_Lifetime, PREDICTIVE PROBABILITY OF Anticipated_Lifetime 
-        AS "relative probability of lifetime"
+.show 'ESTIMATE anticipated_lifetime, PREDICTIVE PROBABILITY OF anticipated_lifetime 
+        AS "Relative Probability of Lifetime"
     FROM satellites_cc
-    WHERE Anticipated_Lifetime IS NOT NULL;' 
+    WHERE anticipated_lifetime IS NOT NULL;'
 
 -- Note that there are plenty of non-extreme values that have low probabilities.
 -- Let us get a list of the 10 most anomalous satellites by sorting by
 -- `relative probability of lifetime` in ascending (`ASC`) order.
 
-CREATE TEMP TABLE temp1 AS ESTIMATE Name, Anticipated_Lifetime,
-        PREDICTIVE PROBABILITY OF Anticipated_Lifetime 
-            AS "relative probability of lifetime"
+CREATE TEMP TABLE unlikely_lifetimes AS ESTIMATE name, anticipated_lifetime,
+        PREDICTIVE PROBABILITY OF anticipated_lifetime 
+            AS "Relative Probability of Lifetime"
     FROM satellites_cc;
 
-SELECT * FROM temp1
+SELECT * FROM unlikely_lifetimes
     WHERE Anticipated_Lifetime IS NOT NULL 
-    ORDER BY "relative probability of lifetime" ASC LIMIT 10;
+    ORDER BY "Relative Probability of Lifetime" ASC LIMIT 10;
 
 -- Recall earlier that we mentioned that some of the relations are governed by
 -- the laws of physics and are thus nearly deterministic? We can use this
@@ -198,13 +236,13 @@ SELECT * FROM temp1
 -- (1440 minutes). Let us display the anomalous values for satellites in
 -- geosynchronous orbit.
 
-CREATE TEMP TABLE temp2 AS ESTIMATE Name, class_of_orbit, Period_minutes,
-        PREDICTIVE PROBABILITY OF Period_minutes AS "relative probability of period"
+CREATE TEMP TABLE unlikely_periods AS ESTIMATE name, class_of_orbit, period_minutes,
+        PREDICTIVE PROBABILITY OF period_minutes AS "Relative Probability of Period"
     FROM satellites_cc;
 
-SELECT * FROM temp2
-    WHERE class_of_orbit IS GEO AND Period_minutes IS NOT NULL
-    ORDER BY "relative probability of period" ASC LIMIT 20;
+SELECT * FROM unlikely_periods
+    WHERE class_of_orbit IS GEO AND period_minutes IS NOT NULL
+    ORDER BY "Relative Probability of Period" ASC LIMIT 10;
 
 -- We see a couple of oddities. There are satellites with 24-minute periods. It
 -- appears that these entries are in hours rather than minutes. There are other
@@ -226,7 +264,7 @@ SELECT * FROM temp2
 -- We specify the number of points to simulate using `LIMIT`.
 
 CREATE TEMP TABLE satellite_purpose AS
-    SIMULATE Country_of_operator, Purpose FROM satellites_cc
+    SIMULATE country_of_operator, purpose FROM satellites_cc
         GIVEN Class_of_orbit = GEO, Dry_mass_kg = 500 
         LIMIT 1000;
 
@@ -256,51 +294,3 @@ SELECT country_of_operator || "--" || purpose AS "Country-Purpose",
     GROUP BY "Country-Purpose"
     ORDER BY frequency DESC
     LIMIT 20;'
-
--- ## Inferring values
--- Inferring is like imputing. `INFER` produces a summary value for a missing
--- (`NULL`) entry. If we use the `EXPLICIT` keyword, we can re-infer present
--- values.
-
--- We shall impute missing values of mass. First, let us see how many values
--- are missing.
-
-SELECT COUNT(*) FROM satellites WHERE dry_mass_kg IS NULL;
-
--- Nearly half the values of dry mass are missing! We can visualize missing
--- values in pairs of continuous columns using the `.show` command with the
--- `-m` or `--show-missing` option. 
-
-.show 'SELECT dry_mass_kg, launch_mass_kg FROM satellites;' -m
-
--- Missing values are represented as lines along their missing dimension. This
--- way, we can see which values of the missing dimensions are more likely by
--- observing where the lines intersect with the existing data points.
-
--- We will use the `INFER` command to impute missing values for geosynchronous
--- satellites.
-
-.show 'INFER dry_mass_kg AS "inferred dry mass", 
-        launch_mass_kg AS "inferred launch mass"
-        WITH CONFIDENCE 0
-    FROM satellites_cc
-    WHERE Class_of_Orbit = GEO;' -m
-
--- No more missing values. Notice the `WITH CONFIDENCE` clause. This tells
--- BayesDB to impute entries only if it is confident to a certain degree.
--- `WITH CONFIDENCE 0` will then impute all values regardless; if we asked for
--- confidence of 0.6 fewer entries (or perhaps none at all) would be filled in.
-
-.show 'INFER dry_mass_kg AS "inferred dry mass",
-        launch_mass_kg AS "inferred launch mass"
-        WITH CONFIDENCE 0.6 
-    FROM satellites_cc
-    WHERE Class_of_Orbit = GEO;' -m
-
--- BayesDB's notion of `CONFIDENCE` is unlike confidence in standard
--- statistics. Whereas in standard statistics 'confidence' is typically paired
--- with the word 'interval' to describe some region of probability mass, 
--- `CONFIDENCE` in BayesDB is a measure of inter-model agreement; that is, 
--- `CONFIDENCE` is the probability that among the models, there is a unimodal
--- summary of the value we wish to impute given all other entries in that
--- entry's row. 
