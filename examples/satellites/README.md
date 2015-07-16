@@ -61,21 +61,21 @@ We can select data just as we would in SQL in BQL:
 
                                                        Name | Dry_Mass_kg | Period_minutes | Class_of_Orbit
     --------------------------------------------------------+-------------+----------------+---------------
-                                                   AAUSat-3 |        None |         100.42 |            LEO
+                                                   AAUSat-3 |         NaN |         100.42 |            LEO
               ABS-1 (LMI-1, Lockheed Martin-Intersputnik-1) |        1730 |        1436.08 |            GEO
                    ABS-1A (Koreasat 2, Mugunghwa 2, ABS-1A) |         800 |        1436.13 |            GEO
     ABS-2i (MBSat, Mobile Broadcasting Satellite, Han Byul) |        1700 |         1436.1 |            GEO
                             ABS-7 (Koreasat 3, Mugungwha 3) |        1800 |        1436.06 |            GEO
      AcrimSat (Active Cavity Radiometer Irradiance Monitor) |          13 |           98.6 |            LEO
-                         Advanced Orion 2 (NROL 6, USA 139) |        None |        1436.14 |            GEO
-                        Advanced Orion 3 (NROL 19, USA 171) |        None |         1436.1 |            GEO
-                       Advanced Orion 4 (NRO L-26, USA 202) |        None |         1438.8 |            GEO
-                       Advanced Orion 5 (NRO L-32, USA 223) |        None |           None |            GEO
+                         Advanced Orion 2 (NROL 6, USA 139) |         NaN |        1436.14 |            GEO
+                        Advanced Orion 3 (NROL 19, USA 171) |         NaN |         1436.1 |            GEO
+                       Advanced Orion 4 (NRO L-26, USA 202) |         NaN |         1438.8 |            GEO
+                       Advanced Orion 5 (NRO L-32, USA 223) |         NaN |            NaN |            GEO
 
     
 We can also use visualization tools, such as `.histogram`, to plot emperical
 frequencies. In the next example, the first argument `dry_mass_kg` is a
-`NUMERICAL` variable whichw
+`NUMERICAL` variable is plotted in different colors based on the `class_of_orbit`.
 
 
     bayeslite> .histogram SELECT dry_mass_kg, class_of_orbit FROM satellites; -b 35 --normed

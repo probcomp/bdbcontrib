@@ -65,21 +65,21 @@ satellites |    22 |          Inclination_radians |      None
 
                                                    Name | Dry_Mass_kg | Period_minutes | Class_of_Orbit
 --------------------------------------------------------+-------------+----------------+---------------
-                                               AAUSat-3 |        None |         100.42 |            LEO
+                                               AAUSat-3 |         Nan |         100.42 |            LEO
           ABS-1 (LMI-1, Lockheed Martin-Intersputnik-1) |        1730 |        1436.08 |            GEO
                ABS-1A (Koreasat 2, Mugunghwa 2, ABS-1A) |         800 |        1436.13 |            GEO
 ABS-2i (MBSat, Mobile Broadcasting Satellite, Han Byul) |        1700 |         1436.1 |            GEO
                         ABS-7 (Koreasat 3, Mugungwha 3) |        1800 |        1436.06 |            GEO
  AcrimSat (Active Cavity Radiometer Irradiance Monitor) |          13 |           98.6 |            LEO
-                     Advanced Orion 2 (NROL 6, USA 139) |        None |        1436.14 |            GEO
-                    Advanced Orion 3 (NROL 19, USA 171) |        None |         1436.1 |            GEO
-                   Advanced Orion 4 (NRO L-26, USA 202) |        None |         1438.8 |            GEO
-                   Advanced Orion 5 (NRO L-32, USA 223) |        None |           None |            GEO
+                     Advanced Orion 2 (NROL 6, USA 139) |         Nan |        1436.14 |            GEO
+                    Advanced Orion 3 (NROL 19, USA 171) |         Nan |         1436.1 |            GEO
+                   Advanced Orion 4 (NRO L-26, USA 202) |         Nan |         1438.8 |            GEO
+                   Advanced Orion 5 (NRO L-32, USA 223) |         Nan |            Nan |            GEO
 </code></pre>
 
 <p>We can also use visualization tools, such as <code>.histogram</code>, to plot emperical
 frequencies. In the next example, the first argument <code>dry_mass_kg</code> is a
-<code>NUMERICAL</code> variable whichw</p>
+<code>NUMERICAL</code> variable is plotted in different colors based on the `class_of_orbit`.</p>
 
 <pre><code>bayeslite&gt; .histogram SELECT dry_mass_kg, class_of_orbit FROM satellites; -b 35 --normed
 </code></pre>

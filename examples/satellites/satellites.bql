@@ -28,9 +28,9 @@
 
 SELECT name, dry_mass_kg, period_minutes, class_of_orbit FROM satellites LIMIT 10;
 
--- We can also use visualization tools, such as `.histogram`, to plot emperical
+-- We can also use visualization tools such as `.histogram` to plot emperical
 -- frequencies. In the next example, the first argument `dry_mass_kg` is a
--- `NUMERICAL` variable whichw 
+-- `NUMERICAL` variable is plotted in different colors based on the `class_of_orbit`.
 
 .histogram SELECT dry_mass_kg, class_of_orbit FROM satellites; -b 35 --normed
 
