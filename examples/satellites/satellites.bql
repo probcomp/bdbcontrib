@@ -155,8 +155,22 @@ SELECT COUNT(*) FROM satellites WHERE dry_mass_kg IS NULL;
 .heatmap 'ESTIMATE PAIRWISE CORRELATION AS corr FROM satellites_cc;'
 
 -- BayesDB has a more powerful notion of dependence called `DEPENDENCE PROBABILITY`,
--- which is the degree of belief that two columns have some dependence. Notice
--- that `DEPENDENCE PROBABILITY` determines a richer network of relationships
+-- which is the degree of belief that two columns have some dependence. First let
+-- us see the probability that each column depdnds on `perigee_km`, and `longitude_radians_of_geo`.
+
+ESTIMATE COLUMNS DEPENDENCE PROBABILITY WITH perigee_km AS
+        "Probability of Dependence with Perigee"
+    FROM satellites_cc
+    ORDER BY "Probability of Dependence with Perigee" DESC LIMIT 10;
+
+ESTIMATE COLUMNS DEPENDENCE PROBABILITY WITH longitude_radians_of_geo AS
+        "Probability of Dependence with Longitude Radians"
+    FROM satellites_cc
+    ORDER BY "Probability of Dependence with Longitude Radians" DESC LIMIT 10;
+
+-- Let us now view all pairwise dependencies probabilities using the `.heatmap` command.
+-- The entries along the diagnoal are 1, since each variable is dependent with itself.
+-- Notice that `DEPENDENCE PROBABILITY` determines a richer network of relationships
 -- than standard measures of correlation.
 
 .heatmap 'ESTIMATE PAIRWISE DEPENDENCE PROBABILITY FROM satellites_cc;'
@@ -171,12 +185,7 @@ SELECT COUNT(*) FROM satellites WHERE dry_mass_kg IS NULL;
 -- form its `perigee` (lowest altitude of the orbit) and `apogee` (highest altitude
 -- of the orbit).
 
--- Which variables predict `Anticipated_Lifetime` --- which are the main predictors?
-
-ESTIMATE COLUMNS DEPENDENCE PROBABILITY WITH anticipated_lifetime AS 
-        "Probability of Dependence with Lifetime"
-    FROM satellites_cc
-    ORDER BY "Probability of Dependence with Lifetime" DESC LIMIT 10;
+-- Which variables predict `anticipated_lifetime` --- which are the main predictors?
 
 ESTIMATE COLUMNS DEPENDENCE PROBABILITY WITH anticipated_lifetime AS 
         "Probability of Dependence with Lifetime"
@@ -186,18 +195,12 @@ ESTIMATE COLUMNS DEPENDENCE PROBABILITY WITH anticipated_lifetime AS
 .show 'SELECT anticipated_lifetime, period_minutes, launch_mass_kg, 
     dry_mass_kg, inclination_radians FROM satellites;'
 
--- Let us look at the dependencies for other variables such as `purpose`,
--- and `launch_mass_kg`. We can show the data both in tabular and graphical form.
+-- Let us look at the dependencies for other variables such as `purpose`.
 
 ESTIMATE COLUMNS DEPENDENCE PROBABILITY WITH purpose AS
         "Probability of Dependence with Purpose"
     FROM satellites_cc
     ORDER BY "Probability of Dependence with Purpose" DESC LIMIT 10;
-
-.bar 'ESTIMATE COLUMNS DEPENDENCE PROBABILITY WITH launch_mass_kg AS
-        "Probability of Dependence with Launch Mass"
-    FROM satellites_cc
-    ORDER BY "Probability of Dependence with Launch Mass" DESC LIMIT 10;'
 
 -- ## Identify satellites with unlikely lifetimes
 
@@ -211,10 +214,11 @@ ESTIMATE COLUMNS DEPENDENCE PROBABILITY WITH purpose AS
 -- specify that we only want the probabilities of non-null values using a 
 -- `WHERE` clause (the predictive probability of `NULL` is `NULL`).
 
-.show 'ESTIMATE anticipated_lifetime, PREDICTIVE PROBABILITY OF anticipated_lifetime 
-        AS "Relative Probability of Lifetime"
+.show 'ESTIMATE anticipated_lifetime,
+        PREDICTIVE PROBABILITY OF anticipated_lifetime AS "Relative Probability of Lifetime",
+        class_of_orbit
     FROM satellites_cc
-    WHERE anticipated_lifetime IS NOT NULL;'
+    WHERE anticipated_lifetime IS NOT NULL;' --colorby class_of_orbit
 
 -- Note that there are plenty of non-extreme values that have low probabilities.
 -- Let us get a list of the 10 most anomalous satellites by sorting by

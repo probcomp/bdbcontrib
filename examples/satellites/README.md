@@ -18,14 +18,14 @@ command followed by what we want the table to be named --- we will call it
 satellites --- followed by the path to the csv.
 
 
-    venture[bql]> .csv satellites data/satellites.utf8.csv
+    bayeslite> .csv satellites data/satellites.utf8.csv
 
     
 Now that we have a table, we can use the `.describe` command to view the
 columns in the table.
 
 
-    venture[bql]> .describe table satellites
+    bayeslite> .describe table satellites
 
        tabname | colno |                         name | shortname
     -----------+-------+------------------------------+----------
@@ -56,8 +56,7 @@ columns in the table.
 We can select data just as we would in SQL in BQL:
 
 
-    venture[bql]> SELECT name, dry_mass_kg, period_minutes, class_of_orbit
-          ...>     FROM satellites LIMIT 10;
+    bayeslite> SELECT name, dry_mass_kg, period_minutes, class_of_orbit FROM satellites LIMIT 10;
 
                                                        Name | Dry_Mass_kg | Period_minutes | Class_of_Orbit
     --------------------------------------------------------+-------------+----------------+---------------
@@ -71,14 +70,13 @@ We can select data just as we would in SQL in BQL:
                         Advanced Orion 3 (NROL 19, USA 171) |         NaN |         1436.1 |            GEO
                        Advanced Orion 4 (NRO L-26, USA 202) |         NaN |         1438.8 |            GEO
                        Advanced Orion 5 (NRO L-32, USA 223) |         NaN |            NaN |            GEO
-
     
-We can also use visualization tools, such as `.histogram`, to plot emperical
+We can also use visualization tools such as `.histogram` to plot emperical
 frequencies. In the next example, the first argument `dry_mass_kg` is a
 `NUMERICAL` variable is plotted in different colors based on the `class_of_orbit`.
 
 
-    venture[bql]> .histogram SELECT dry_mass_kg, class_of_orbit FROM satellites; -b 35 --normed
+    bayeslite> .histogram SELECT dry_mass_kg, class_of_orbit FROM satellites; -b 35 --normed
 
     
 ![.histogram SELECT dry_mass_kg, class_of_orbit FROM satellites; -b 35 --normed --filename output/fig_0.png](fig_0.png)
@@ -89,10 +87,10 @@ Different datasets use different markers for missing data, this dataset uses
 `.nullify` command, followed by the table, followed by the value to convert.
 
 
-    venture[bql]> .nullify satellites NaN
+    bayeslite> .nullify satellites NaN
 
     
-    venture[bql]> SELECT name, dry_mass_kg FROM satellites LIMIT 10;
+    bayeslite> SELECT name, dry_mass_kg FROM satellites LIMIT 10;
 
                                                        Name | Dry_Mass_kg
     --------------------------------------------------------+------------
@@ -119,7 +117,7 @@ To create a generator we use the keywords `CREATE GENERATOR <name> FROM
 <table> USING <metamodel> ( [arguments] )`.
 
 
-    venture[bql]> CREATE GENERATOR satellites_cc FOR satellites
+    bayeslite> CREATE GENERATOR satellites_cc FOR satellites
           ...>     USING crosscat(
           ...>         GUESS(*),
           ...>         name IGNORE
@@ -138,7 +136,7 @@ We can see how well the system guess the types of our columns by using the
 `.describe command.
 
 
-    venture[bql]> .describe columns satellites_cc
+    bayeslite> .describe columns satellites_cc
 
     colno |                         name |    stattype | shortname
     ------+------------------------------+-------------+----------
@@ -171,7 +169,7 @@ BayesDB are the result of averaging across models. We will arbitratily
 choose 16 models.
 
 
-    venture[bql]> INITIALIZE 16 MODELS FOR satellites_cc;
+    bayeslite> INITIALIZE 16 MODELS FOR satellites_cc;
 
     
 Now we ask BayesDB to use `ANALYZE` our data using the instances of
@@ -183,7 +181,7 @@ done enough analysis on enough models (but do not worry about this quite
 yet).
 
 
-    venture[bql]> ANALYZE satellites_cc FOR 4 MINUTES CHECKPOINT 2 ITERATION WAIT;
+    bayeslite> ANALYZE satellites_cc FOR 4 MINUTES CHECKPOINT 2 ITERATION WAIT;
 
     
 ## Inferring values
@@ -195,7 +193,7 @@ We shall impute missing values of `dry_mass_kg`. First, let us see how many valu
 are missing.
 
 
-    venture[bql]> SELECT COUNT(*) FROM satellites WHERE dry_mass_kg IS NULL;
+    bayeslite> SELECT COUNT(*) FROM satellites WHERE dry_mass_kg IS NULL;
 
     "COUNT"(*)
     ----------
@@ -206,7 +204,7 @@ values in pairs of continuous columns using the `.show` command with the
 `-m` or `--show-missing` option.
 
 
-    venture[bql]> .show 'SELECT dry_mass_kg, launch_mass_kg FROM satellites;' -m
+    bayeslite> .show 'SELECT dry_mass_kg, launch_mass_kg FROM satellites;' -m
 
     
 ![.show 'SELECT dry_mass_kg, launch_mass_kg FROM satellites;' -m --filename output/fig_1.png](fig_1.png)
@@ -219,7 +217,7 @@ We will use the `INFER` command to impute missing values for geosynchronous
 satellites.
 
 
-    venture[bql]> .show 'INFER dry_mass_kg AS "Inferred Dry Mass (confidence 0)", 
+    bayeslite> .show 'INFER dry_mass_kg AS "Inferred Dry Mass (confidence 0)", 
           ...>         launch_mass_kg AS "Inferred Launch Mass (confidence 0)"
           ...>         WITH CONFIDENCE 0
           ...>     FROM satellites_cc
@@ -234,7 +232,7 @@ BayesDB to impute entries only if it is confident to a certain degree.
 confidence of 0.6 fewer entries (or perhaps none at all) would be filled in.
 
 
-    venture[bql]> .show 'INFER dry_mass_kg AS "Inferred Dry Mass (confidence 0.6)",
+    bayeslite> .show 'INFER dry_mass_kg AS "Inferred Dry Mass (confidence 0.6)",
           ...>         launch_mass_kg AS "Inferred Launch Mass (confidence 0.6)"
           ...>         WITH CONFIDENCE 0.6 
           ...>     FROM satellites_cc
@@ -267,18 +265,60 @@ at a very long table, we will visualize it in a heatmap using the `.heatmap`
 command. We can visualize using the `.heatmap`.
 
 
-    venture[bql]> .heatmap 'ESTIMATE PAIRWISE CORRELATION AS corr FROM satellites_cc;'
+    bayeslite> .heatmap 'ESTIMATE PAIRWISE CORRELATION AS corr FROM satellites_cc;'
 
     
 ![.heatmap 'ESTIMATE PAIRWISE CORRELATION AS corr FROM satellites_cc;' --filename output/fig_4.png](fig_4.png)
 
 BayesDB has a more powerful notion of dependence called `DEPENDENCE PROBABILITY`,
-which is the degree of belief that two columns have some dependence. Notice
-that `DEPENDENCE PROBABILITY` determines a richer network of relationships
+which is the degree of belief that two columns have some dependence. First let
+us see the probability that each column depdnds on `perigee_km`, and `longitude_radians_of_geo`.
+
+
+    bayeslite> ESTIMATE COLUMNS DEPENDENCE PROBABILITY WITH perigee_km AS
+          ...>         "Probability of Dependence with Perigee"
+          ...>     FROM satellites_cc
+          ...>     ORDER BY "Probability of Dependence with Perigee" DESC LIMIT 10;
+
+                            name | Probability of Dependence with Perigee
+    -----------------------------+---------------------------------------
+                  Class_of_Orbit |                                    1.0
+                      Perigee_km |                                      1
+                  Period_minutes |                                    1.0
+    Source_Used_for_Orbital_Data |                                    1.0
+                       Apogee_km |                                 0.9375
+                     Launch_Site |                                 0.9375
+                  Operator_Owner |                                 0.9375
+                         Purpose |                                 0.9375
+                           Users |                                 0.9375
+            Anticipated_Lifetime |                                  0.875
+    
+
+    bayeslite> ESTIMATE COLUMNS DEPENDENCE PROBABILITY WITH longitude_radians_of_geo AS
+          ...>         "Probability of Dependence with Longitude Radians"
+          ...>     FROM satellites_cc
+          ...>     ORDER BY "Probability of Dependence with Longitude Radians" DESC LIMIT 10;
+
+                        name | Probability of Dependence with Longitude Radians
+    -------------------------+-------------------------------------------------
+       Country_of_Contractor |                                              1.0
+    longitude_radians_of_geo |                                                1
+                  Contractor |                                           0.9375
+         Country_of_Operator |                                            0.875
+              Date_of_Launch |                                           0.5625
+              Launch_Vehicle |                                           0.3125
+               Type_of_Orbit |                                           0.3125
+        Anticipated_Lifetime |                                             0.25
+                 Dry_Mass_kg |                                             0.25
+              Launch_Mass_kg |                                             0.25
+    
+Let us now view all pairwise dependencies probabilities using the `.heatmap` command.
+The entries along the diagnoal are 1, since each variable is dependent with itself.
+Notice that `DEPENDENCE PROBABILITY` determines a richer network of relationships
 than standard measures of correlation.
 
 
-    venture[bql]> .heatmap 'ESTIMATE PAIRWISE DEPENDENCE PROBABILITY FROM satellites_cc;'
+    bayeslite> .heatmap 'ESTIMATE PAIRWISE DEPENDENCE PROBABILITY FROM satellites_cc;'
 
     
 ![.heatmap 'ESTIMATE PAIRWISE DEPENDENCE PROBABILITY FROM satellites_cc;' --filename output/fig_5.png](fig_5.png)
@@ -293,58 +333,38 @@ determine a satellite's orbital period (the amount of time an orbit takes)
 form its `perigee` (lowest altitude of the orbit) and `apogee` (highest altitude
 of the orbit).
 
-Which variables predict `Anticipated_Lifetime` --- which are the main predictors?
+Which variables predict `anticipated_lifetime` --- which are the main predictors?
 
 
-    venture[bql]> ESTIMATE COLUMNS DEPENDENCE PROBABILITY WITH anticipated_lifetime AS 
+    bayeslite> ESTIMATE COLUMNS DEPENDENCE PROBABILITY WITH anticipated_lifetime AS 
           ...>         "Probability of Dependence with Lifetime"
           ...>     FROM satellites_cc
           ...>     ORDER BY "Probability of Dependence with Lifetime" DESC LIMIT 10;
 
-                    name | Probability of Dependence with Lifetime
-    ---------------------+----------------------------------------
-    Anticipated_Lifetime |                                       1
-     Inclination_radians |                                  0.9375
-          Launch_Mass_kg |                                   0.875
-             Power_watts |                                   0.875
-             Dry_Mass_kg |                                  0.8125
-             Launch_Site |                                  0.8125
-          Launch_Vehicle |                                    0.75
-                   Users |                                    0.75
-          Class_of_Orbit |                                  0.6875
-          Operator_Owner |                                  0.6875
+                            name | Probability of Dependence with Lifetime
+    -----------------------------+----------------------------------------
+            Anticipated_Lifetime |                                       1
+                         Purpose |                                  0.9375
+                   Type_of_Orbit |                                  0.9375
+                  Class_of_Orbit |                                   0.875
+                  Launch_Vehicle |                                   0.875
+                      Perigee_km |                                   0.875
+                  Period_minutes |                                   0.875
+    Source_Used_for_Orbital_Data |                                   0.875
+                       Apogee_km |                                  0.8125
+             Inclination_radians |                                  0.8125
     
 
-    venture[bql]> ESTIMATE COLUMNS DEPENDENCE PROBABILITY WITH anticipated_lifetime AS 
-          ...>         "Probability of Dependence with Lifetime"
-          ...>     FROM satellites_cc
-          ...>     ORDER BY "Probability of Dependence with Lifetime" DESC LIMIT 10;
-
-                    name | Probability of Dependence with Lifetime
-    ---------------------+----------------------------------------
-    Anticipated_Lifetime |                                       1
-     Inclination_radians |                                  0.9375
-          Launch_Mass_kg |                                   0.875
-             Power_watts |                                   0.875
-             Dry_Mass_kg |                                  0.8125
-             Launch_Site |                                  0.8125
-          Launch_Vehicle |                                    0.75
-                   Users |                                    0.75
-          Class_of_Orbit |                                  0.6875
-          Operator_Owner |                                  0.6875
-    
-
-    venture[bql]> .show 'SELECT anticipated_lifetime, period_minutes, launch_mass_kg, 
+    bayeslite> .show 'SELECT anticipated_lifetime, period_minutes, launch_mass_kg, 
           ...>     dry_mass_kg, inclination_radians FROM satellites;'
 
     
 ![.show 'SELECT anticipated_lifetime, period_minutes, launch_mass_kg,  dry_mass_kg, inclination_radians FROM satellites;' --filename output/fig_6.png](fig_6.png)
 
-Let us look at the dependencies for other variables such as `purpose`,
-and `launch_mass_kg`. We can show the data both in tabular and graphical form.
+Let us look at the dependencies for other variables such as `purpose`.
 
 
-    venture[bql]> ESTIMATE COLUMNS DEPENDENCE PROBABILITY WITH purpose AS
+    bayeslite> ESTIMATE COLUMNS DEPENDENCE PROBABILITY WITH purpose AS
           ...>         "Probability of Dependence with Purpose"
           ...>     FROM satellites_cc
           ...>     ORDER BY "Probability of Dependence with Purpose" DESC LIMIT 10;
@@ -352,25 +372,16 @@ and `launch_mass_kg`. We can show the data both in tabular and graphical form.
                             name | Probability of Dependence with Purpose
     -----------------------------+---------------------------------------
                          Purpose |                                      1
+            Anticipated_Lifetime |                                 0.9375
+                  Class_of_Orbit |                                 0.9375
                   Launch_Vehicle |                                 0.9375
-                           Users |                                 0.9375
-                  Class_of_Orbit |                                  0.875
+                      Perigee_km |                                 0.9375
+                  Period_minutes |                                 0.9375
+    Source_Used_for_Orbital_Data |                                 0.9375
+                       Apogee_km |                                  0.875
+             Inclination_radians |                                  0.875
                      Launch_Site |                                  0.875
-                  Operator_Owner |                                  0.875
-                      Perigee_km |                                  0.875
-                  Period_minutes |                                  0.875
-    Source_Used_for_Orbital_Data |                                  0.875
-                       Apogee_km |                                 0.8125
     
-
-    venture[bql]> .bar 'ESTIMATE COLUMNS DEPENDENCE PROBABILITY WITH launch_mass_kg AS
-          ...>         "Probability of Dependence with Launch Mass"
-          ...>     FROM satellites_cc
-          ...>     ORDER BY "Probability of Dependence with Launch Mass" DESC LIMIT 10;'
-
-    
-![.bar 'ESTIMATE COLUMNS DEPENDENCE PROBABILITY WITH launch_mass_kg AS "Probability of Dependence with Launch Mass" FROM satellites_cc ORDER BY "Probability of Dependence with Launch Mass" DESC LIMIT 10;' --filename output/fig_7.png](fig_7.png)
-
 ## Identify satellites with unlikely lifetimes
 
 We can use BayesDB to identify anomalous values in our table. An anomaly
@@ -384,42 +395,43 @@ specify that we only want the probabilities of non-null values using a
 `WHERE` clause (the predictive probability of `NULL` is `NULL`).
 
 
-    venture[bql]> .show 'ESTIMATE anticipated_lifetime, PREDICTIVE PROBABILITY OF anticipated_lifetime 
-          ...>         AS "Relative Probability of Lifetime"
+    bayeslite> .show 'ESTIMATE anticipated_lifetime,
+          ...>         PREDICTIVE PROBABILITY OF anticipated_lifetime AS "Relative Probability of Lifetime",
+          ...>         class_of_orbit
           ...>     FROM satellites_cc
-          ...>     WHERE anticipated_lifetime IS NOT NULL;'
+          ...>     WHERE anticipated_lifetime IS NOT NULL;' --colorby class_of_orbit
 
     
-![.show 'ESTIMATE anticipated_lifetime, PREDICTIVE PROBABILITY OF anticipated_lifetime  AS "Relative Probability of Lifetime" FROM satellites_cc WHERE anticipated_lifetime IS NOT NULL;' --filename output/fig_8.png](fig_8.png)
+![.show 'ESTIMATE anticipated_lifetime, PREDICTIVE PROBABILITY OF anticipated_lifetime AS "Relative Probability of Lifetime", class_of_orbit FROM satellites_cc WHERE anticipated_lifetime IS NOT NULL;' --colorby class_of_orbit --filename output/fig_7.png](fig_7.png)
 
 Note that there are plenty of non-extreme values that have low probabilities.
 Let us get a list of the 10 most anomalous satellites by sorting by
 `relative probability of lifetime` in ascending (`ASC`) order.
 
 
-    venture[bql]> CREATE TEMP TABLE unlikely_lifetimes AS ESTIMATE name, anticipated_lifetime,
+    bayeslite> CREATE TEMP TABLE unlikely_lifetimes AS ESTIMATE name, anticipated_lifetime,
           ...>         PREDICTIVE PROBABILITY OF anticipated_lifetime 
           ...>             AS "Relative Probability of Lifetime"
           ...>     FROM satellites_cc;
 
     
 
-    venture[bql]> SELECT * FROM unlikely_lifetimes
+    bayeslite> SELECT * FROM unlikely_lifetimes
           ...>     WHERE Anticipated_Lifetime IS NOT NULL 
           ...>     ORDER BY "Relative Probability of Lifetime" ASC LIMIT 10;
 
                                                                              Name | Anticipated_Lifetime | Relative Probability of Lifetime
     ------------------------------------------------------------------------------+----------------------+---------------------------------
-                          International Space Station (ISS [first element Zarya]) |                   30 |                7.51353982709e-07
-                                                                        Landsat 7 |                   15 |                0.000171660566109
-                                                                     Intelsat 701 |                  0.5 |                 0.00110533567674
-    Milstar DFS-5 (USA 164, Milstar 2-F3) (Military Strategic and Tactical Relay) |                    0 |                 0.00125200959929
-                                                                        Sicral 1A |                  0.5 |                 0.00150493811402
-                                       Express-A1R (Express 4A, Ekspress-A No. 4) |                  0.5 |                 0.00165065104071
-                                                                        Sicral 1B |                  0.5 |                 0.00236815225572
-                  SDS III-3 (Satellite Data System) (NRO L-12, Aquila-1, USA 162) |                  0.5 |                 0.00314255032604
-                                                                         Optus B3 |                  0.5 |                 0.00359723240625
-                                          MUOS-1 (Mobile User Objective System 1) |                  0.5 |                  0.0049487694417
+                          International Space Station (ISS [first element Zarya]) |                   30 |                 1.0169524722e-08
+                                                                        Landsat 7 |                   15 |                0.000685702575657
+    Milstar DFS-5 (USA 164, Milstar 2-F3) (Military Strategic and Tactical Relay) |                    0 |                 0.00096459872395
+                                                                        Sicral 1A |                  0.5 |                  0.0011743413493
+                                                                        Sicral 1B |                  0.5 |                  0.0011743413493
+                  SDS III-3 (Satellite Data System) (NRO L-12, Aquila-1, USA 162) |                  0.5 |                 0.00136596155644
+                                                                     Intelsat 701 |                  0.5 |                  0.0013754486028
+                                       Express-A1R (Express 4A, Ekspress-A No. 4) |                  0.5 |                 0.00143743571884
+                                                                         Optus B3 |                  0.5 |                 0.00156898978007
+                                          MUOS-1 (Mobile User Objective System 1) |                  0.5 |                 0.00165524283272
     
 Recall earlier that we mentioned that some of the relations are governed by
 the laws of physics and are thus nearly deterministic? We can use this
@@ -429,28 +441,28 @@ data-entry errors. A geosynchronous orbit should take 24 hours
 geosynchronous orbit.
 
 
-    venture[bql]> CREATE TEMP TABLE unlikely_periods AS ESTIMATE name, class_of_orbit, period_minutes,
+    bayeslite> CREATE TEMP TABLE unlikely_periods AS ESTIMATE name, class_of_orbit, period_minutes,
           ...>         PREDICTIVE PROBABILITY OF period_minutes AS "Relative Probability of Period"
           ...>     FROM satellites_cc;
 
     
 
-    venture[bql]> SELECT * FROM unlikely_periods
+    bayeslite> SELECT * FROM unlikely_periods
           ...>     WHERE class_of_orbit IS GEO AND period_minutes IS NOT NULL
           ...>     ORDER BY "Relative Probability of Period" ASC LIMIT 10;
 
                                                                Name | Class_of_Orbit | Period_minutes | Relative Probability of Period
     ----------------------------------------------------------------+----------------+----------------+-------------------------------
-    AEHF-3 (Advanced Extremely High Frequency satellite-3, USA 246) |            GEO |        1306.29 |                0.0013803768558
-    AEHF-2 (Advanced Extremely High Frequency satellite-2, USA 235) |            GEO |        1306.29 |               0.00138250960867
-                         DSP 20 (USA 149) (Defense Support Program) |            GEO |         142.08 |               0.00260573250161
-                                                       Intelsat 903 |            GEO |        1436.16 |                0.0030466671703
-                                                            BSAT-3B |            GEO |        1365.61 |                0.0031700534801
-                                                       Intelsat 902 |            GEO |         1436.1 |               0.00327082624867
-      SDS III-6 (Satellite Data System) NRO L-27, Gryphon, USA 227) |            GEO |          14.36 |               0.00349186578493
-                               Advanced Orion 6 (NRO L-15, USA 237) |            GEO |          23.94 |               0.00360477074483
-        SDS III-7 (Satellite Data System) NRO L-38, Drake, USA 236) |            GEO |          23.94 |               0.00360477074483
-                   QZS-1 (Quazi-Zenith Satellite System, Michibiki) |            GEO |           1436 |               0.00381912730397
+      SDS III-6 (Satellite Data System) NRO L-27, Gryphon, USA 227) |            GEO |          14.36 |              0.000124298202231
+                               Advanced Orion 6 (NRO L-15, USA 237) |            GEO |          23.94 |              0.000133022005534
+        SDS III-7 (Satellite Data System) NRO L-38, Drake, USA 236) |            GEO |          23.94 |              0.000133022005534
+                         DSP 20 (USA 149) (Defense Support Program) |            GEO |         142.08 |              0.000174677326307
+    AEHF-3 (Advanced Extremely High Frequency satellite-3, USA 246) |            GEO |        1306.29 |               0.00146576917949
+    AEHF-2 (Advanced Extremely High Frequency satellite-2, USA 235) |            GEO |        1306.29 |               0.00148010892364
+                                                       Intelsat 903 |            GEO |        1436.16 |               0.00264683665626
+                                                            BSAT-3B |            GEO |        1365.61 |               0.00272741466372
+                                                       Intelsat 902 |            GEO |         1436.1 |               0.00284064324015
+                                        Compass G-7 (Beidou IGSO-2) |            GEO |        1436.12 |               0.00310559749026
     
 We see a couple of oddities. There are satellites with 24-minute periods. It
 appears that these entries are in hours rather than minutes. There are other
@@ -472,7 +484,7 @@ observed the `Class_of_Orbit` and `Dry_Mass` (1000 simulations).
 We specify the number of points to simulate using `LIMIT`.
 
 
-    venture[bql]> CREATE TEMP TABLE satellite_purpose AS
+    bayeslite> CREATE TEMP TABLE satellite_purpose AS
           ...>     SIMULATE country_of_operator, purpose FROM satellites_cc
           ...>         GIVEN Class_of_orbit = GEO, Dry_mass_kg = 500 
           ...>         LIMIT 1000;
@@ -490,7 +502,7 @@ country-purpose column using the `||` operator, and then use SQLite's
 most frequent user-purpose combinations.
 
 
-    venture[bql]> SELECT country_of_operator || "--" || purpose AS "Country-Purpose",
+    bayeslite> SELECT country_of_operator || "--" || purpose AS "Country-Purpose",
           ...>         COUNT("Country-Purpose") AS frequency
           ...>     FROM satellite_purpose
           ...>     Group BY "Country-Purpose"
@@ -500,20 +512,20 @@ most frequent user-purpose combinations.
                               Country-Purpose | frequency
     ------------------------------------------+----------
                           USA--Communications |       145
-           USA--Navigation/Global Positioning |        64
-                       Russia--Communications |        36
-                   China (PR)--Communications |        27
-                  USA--Technology Development |        17
-    China (PR)--Navigation/Global Positioning |        16
-        Russia--Navigation/Global Positioning |        16
-                        India--Communications |        12
-                Multinational--Communications |        12
-                 USA--Electronic Surveillance |        10
+           USA--Navigation/Global Positioning |        74
+                   China (PR)--Communications |        34
+                       Russia--Communications |        34
+                  USA--Technology Development |        16
+        Russia--Navigation/Global Positioning |        15
+                Multinational--Communications |        14
+                        India--Communications |        10
+    China (PR)--Navigation/Global Positioning |         9
+                        Japan--Communications |         9
     
 We can visualize this data using the `.bar` command
 
 
-    venture[bql]> .bar 'SELECT country_of_operator || "--" || purpose AS "Country-Purpose", 
+    bayeslite> .bar 'SELECT country_of_operator || "--" || purpose AS "Country-Purpose", 
           ...>         COUNT("Country-Purpose") AS frequency
           ...>     FROM satellite_purpose
           ...>     GROUP BY "Country-Purpose"
@@ -521,5 +533,5 @@ We can visualize this data using the `.bar` command
           ...>     LIMIT 20;'
 
     
-![.bar 'SELECT country_of_operator || "--" || purpose AS "Country-Purpose",  COUNT("Country-Purpose") AS frequency FROM satellite_purpose GROUP BY "Country-Purpose" ORDER BY frequency DESC LIMIT 20;' --filename output/fig_9.png](fig_9.png)
+![.bar 'SELECT country_of_operator || "--" || purpose AS "Country-Purpose",  COUNT("Country-Purpose") AS frequency FROM satellite_purpose GROUP BY "Country-Purpose" ORDER BY frequency DESC LIMIT 20;' --filename output/fig_8.png](fig_8.png)
 
