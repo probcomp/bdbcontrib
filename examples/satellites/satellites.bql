@@ -94,14 +94,33 @@ ANALYZE satellites_cc FOR 4 MINUTES CHECKPOINT 2 ITERATION WAIT;
 -- (`NULL`) entry. If we use the `EXPLICIT` keyword, we can re-infer present
 -- values.
 
--- We shall impute missing values of `dry_mass_kg`. First, let us see how many values
+-- First we will impute missing values of `type_of_orbit`. Let us see how many
+-- values are missing.
+
+SELECT COUNT(*) FROM satellites WHERE type_of_orbit IS NULL;
+
+-- We will use the `INFER EXPLICIT PREDICT` query to impute all missing
+-- values, and let BayesDB tell us the belief of its reported value.
+
+CREATE TEMP TABLE inferred_type_of_orbit AS
+    INFER EXPLICIT
+        PREDICT type_of_orbit AS "inferred_type_of_orbit" 
+            CONFIDENCE "inferred_type_of_orbit_conf",
+        anticipated_lifetime, perigee_km, period_minutes, class_of_orbit
+    FROM satellites_cc
+    WHERE type_of_orbit IS NULL;
+
+.show 'SELECT inferred_type_of_orbit, inferred_type_of_orbit_conf, class_of_orbit 
+    FROM inferred_type_of_orbit;' --colorby class_of_orbit
+
+-- Now we shall impute missing values of `dry_mass_kg`. First, let us see how many values
 -- are missing.
 
 SELECT COUNT(*) FROM satellites WHERE dry_mass_kg IS NULL;
 
 -- Nearly half the values of dry mass are missing! We can visualize missing
 -- values in pairs of continuous columns using the `.show` command with the
--- `-m` or `--show-missing` option. 
+-- `-m` or `--show-missing` option.
 
 .show 'SELECT dry_mass_kg, launch_mass_kg FROM satellites WHERE class_of_orbit = GEO;' -m
 

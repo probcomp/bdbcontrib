@@ -189,7 +189,37 @@ Inferring is like imputing. `INFER` produces a summary value for a missing
 (`NULL`) entry. If we use the `EXPLICIT` keyword, we can re-infer present
 values.
 
-We shall impute missing values of `dry_mass_kg`. First, let us see how many values
+First we will impute missing values of `type_of_orbit`. Let us see how many
+values are missing.
+
+
+    bayeslite> SELECT COUNT(*) FROM satellites WHERE type_of_orbit IS NULL;
+
+    "COUNT"(*)
+    ----------
+           646
+    
+We will use the `INFER EXPLICIT PREDICT` query to impute all missing
+values, and let BayesDB tell us the belief of its reported value.
+
+
+    bayeslite> CREATE TEMP TABLE inferred_type_of_orbit AS
+          ...>     INFER EXPLICIT
+          ...>         PREDICT type_of_orbit AS "inferred_type_of_orbit" 
+          ...>             CONFIDENCE "inferred_type_of_orbit_conf",
+          ...>         anticipated_lifetime, perigee_km, period_minutes, class_of_orbit
+          ...>     FROM satellites_cc
+          ...>     WHERE type_of_orbit IS NULL;
+
+    
+
+    bayeslite> .show 'SELECT inferred_type_of_orbit, inferred_type_of_orbit_conf, class_of_orbit 
+          ...>     FROM inferred_type_of_orbit;' --colorby class_of_orbit
+
+    
+![.show 'SELECT inferred_type_of_orbit, inferred_type_of_orbit_conf, class_of_orbit  FROM inferred_type_of_orbit;' --colorby class_of_orbit --filename output/fig_1.png](fig_1.png)
+
+Now we shall impute missing values of `dry_mass_kg`. First, let us see how many values
 are missing.
 
 
@@ -204,10 +234,10 @@ values in pairs of continuous columns using the `.show` command with the
 `-m` or `--show-missing` option.
 
 
-    bayeslite> .show 'SELECT dry_mass_kg, launch_mass_kg FROM satellites;' -m
+    bayeslite> .show 'SELECT dry_mass_kg, launch_mass_kg FROM satellites WHERE class_of_orbit = GEO;' -m
 
     
-![.show 'SELECT dry_mass_kg, launch_mass_kg FROM satellites;' -m --filename output/fig_1.png](fig_1.png)
+![.show 'SELECT dry_mass_kg, launch_mass_kg FROM satellites WHERE class_of_orbit = GEO;' -m --filename output/fig_2.png](fig_2.png)
 
 Missing values are represented as lines along their missing dimension. This
 way, we can see which values of the missing dimensions are more likely by
@@ -224,7 +254,7 @@ satellites.
           ...>     WHERE class_of_orbit = GEO;' -m
 
     
-![.show 'INFER dry_mass_kg AS "Inferred Dry Mass (confidence 0)",  launch_mass_kg AS "Inferred Launch Mass (confidence 0)" WITH CONFIDENCE 0 FROM satellites_cc WHERE class_of_orbit = GEO;' -m --filename output/fig_2.png](fig_2.png)
+![.show 'INFER dry_mass_kg AS "Inferred Dry Mass (confidence 0)",  launch_mass_kg AS "Inferred Launch Mass (confidence 0)" WITH CONFIDENCE 0 FROM satellites_cc WHERE class_of_orbit = GEO;' -m --filename output/fig_3.png](fig_3.png)
 
 No more missing values. Notice the `WITH CONFIDENCE` clause. This tells
 BayesDB to impute entries only if it is confident to a certain degree.
@@ -239,7 +269,7 @@ confidence of 0.6 fewer entries (or perhaps none at all) would be filled in.
           ...>     WHERE class_of_orbit = GEO;' -m
 
     
-![.show 'INFER dry_mass_kg AS "Inferred Dry Mass (confidence 0.6)", launch_mass_kg AS "Inferred Launch Mass (confidence 0.6)" WITH CONFIDENCE 0.6 FROM satellites_cc WHERE class_of_orbit = GEO;' -m --filename output/fig_3.png](fig_3.png)
+![.show 'INFER dry_mass_kg AS "Inferred Dry Mass (confidence 0.6)", launch_mass_kg AS "Inferred Launch Mass (confidence 0.6)" WITH CONFIDENCE 0.6 FROM satellites_cc WHERE class_of_orbit = GEO;' -m --filename output/fig_4.png](fig_4.png)
 
 BayesDB's notion of `CONFIDENCE` is unlike confidence in standard
 statistics. Whereas in standard statistics 'confidence' is typically paired
@@ -268,7 +298,7 @@ command. We can visualize using the `.heatmap`.
     bayeslite> .heatmap 'ESTIMATE PAIRWISE CORRELATION AS corr FROM satellites_cc;'
 
     
-![.heatmap 'ESTIMATE PAIRWISE CORRELATION AS corr FROM satellites_cc;' --filename output/fig_4.png](fig_4.png)
+![.heatmap 'ESTIMATE PAIRWISE CORRELATION AS corr FROM satellites_cc;' --filename output/fig_5.png](fig_5.png)
 
 BayesDB has a more powerful notion of dependence called `DEPENDENCE PROBABILITY`,
 which is the degree of belief that two columns have some dependence. First let
@@ -282,16 +312,16 @@ us see the probability that each column depdnds on `perigee_km`, and `longitude_
 
                             name | Probability of Dependence with Perigee
     -----------------------------+---------------------------------------
+                       Apogee_km |                                    1.0
                   Class_of_Orbit |                                    1.0
                       Perigee_km |                                      1
                   Period_minutes |                                    1.0
+                         Purpose |                                    1.0
     Source_Used_for_Orbital_Data |                                    1.0
-                       Apogee_km |                                 0.9375
+                           Users |                                    1.0
                      Launch_Site |                                 0.9375
+                  Launch_Vehicle |                                 0.9375
                   Operator_Owner |                                 0.9375
-                         Purpose |                                 0.9375
-                           Users |                                 0.9375
-            Anticipated_Lifetime |                                  0.875
     
 
     bayeslite> ESTIMATE COLUMNS DEPENDENCE PROBABILITY WITH longitude_radians_of_geo AS
@@ -301,16 +331,16 @@ us see the probability that each column depdnds on `perigee_km`, and `longitude_
 
                         name | Probability of Dependence with Longitude Radians
     -------------------------+-------------------------------------------------
-       Country_of_Contractor |                                              1.0
     longitude_radians_of_geo |                                                1
-                  Contractor |                                           0.9375
-         Country_of_Operator |                                            0.875
-              Date_of_Launch |                                           0.5625
-              Launch_Vehicle |                                           0.3125
-               Type_of_Orbit |                                           0.3125
-        Anticipated_Lifetime |                                             0.25
-                 Dry_Mass_kg |                                             0.25
-              Launch_Mass_kg |                                             0.25
+       Country_of_Contractor |                                            0.875
+         Country_of_Operator |                                           0.8125
+                  Contractor |                                            0.625
+              Date_of_Launch |                                            0.625
+        Anticipated_Lifetime |                                            0.375
+                 Dry_Mass_kg |                                            0.375
+              Launch_Mass_kg |                                            0.375
+                 Power_watts |                                            0.375
+                 Launch_Site |                                           0.3125
     
 Let us now view all pairwise dependencies probabilities using the `.heatmap` command.
 The entries along the diagnoal are 1, since each variable is dependent with itself.
@@ -321,7 +351,7 @@ than standard measures of correlation.
     bayeslite> .heatmap 'ESTIMATE PAIRWISE DEPENDENCE PROBABILITY FROM satellites_cc;'
 
     
-![.heatmap 'ESTIMATE PAIRWISE DEPENDENCE PROBABILITY FROM satellites_cc;' --filename output/fig_5.png](fig_5.png)
+![.heatmap 'ESTIMATE PAIRWISE DEPENDENCE PROBABILITY FROM satellites_cc;' --filename output/fig_6.png](fig_6.png)
 
 Each cell in the heatmap represents the dependence probability between a
 pair of columns. Darker cells represent higher dependence probability. The
@@ -341,25 +371,25 @@ Which variables predict `anticipated_lifetime` --- which are the main predictors
           ...>     FROM satellites_cc
           ...>     ORDER BY "Probability of Dependence with Lifetime" DESC LIMIT 10;
 
-                            name | Probability of Dependence with Lifetime
-    -----------------------------+----------------------------------------
-            Anticipated_Lifetime |                                       1
-                         Purpose |                                  0.9375
-                   Type_of_Orbit |                                  0.9375
-                  Class_of_Orbit |                                   0.875
-                  Launch_Vehicle |                                   0.875
-                      Perigee_km |                                   0.875
-                  Period_minutes |                                   0.875
-    Source_Used_for_Orbital_Data |                                   0.875
-                       Apogee_km |                                  0.8125
-             Inclination_radians |                                  0.8125
+                    name | Probability of Dependence with Lifetime
+    ---------------------+----------------------------------------
+    Anticipated_Lifetime |                                       1
+             Launch_Site |                                  0.9375
+          Launch_Vehicle |                                  0.9375
+          Operator_Owner |                                  0.9375
+               Apogee_km |                                   0.875
+          Class_of_Orbit |                                   0.875
+             Dry_Mass_kg |                                   0.875
+          Launch_Mass_kg |                                   0.875
+              Perigee_km |                                   0.875
+          Period_minutes |                                   0.875
     
 
     bayeslite> .show 'SELECT anticipated_lifetime, period_minutes, launch_mass_kg, 
           ...>     dry_mass_kg, inclination_radians FROM satellites;'
 
     
-![.show 'SELECT anticipated_lifetime, period_minutes, launch_mass_kg,  dry_mass_kg, inclination_radians FROM satellites;' --filename output/fig_6.png](fig_6.png)
+![.show 'SELECT anticipated_lifetime, period_minutes, launch_mass_kg,  dry_mass_kg, inclination_radians FROM satellites;' --filename output/fig_7.png](fig_7.png)
 
 Let us look at the dependencies for other variables such as `purpose`.
 
@@ -371,16 +401,16 @@ Let us look at the dependencies for other variables such as `purpose`.
 
                             name | Probability of Dependence with Purpose
     -----------------------------+---------------------------------------
+                       Apogee_km |                                    1.0
+                  Class_of_Orbit |                                    1.0
+                      Perigee_km |                                    1.0
+                  Period_minutes |                                    1.0
                          Purpose |                                      1
-            Anticipated_Lifetime |                                 0.9375
-                  Class_of_Orbit |                                 0.9375
+    Source_Used_for_Orbital_Data |                                    1.0
+                           Users |                                    1.0
+                     Launch_Site |                                 0.9375
                   Launch_Vehicle |                                 0.9375
-                      Perigee_km |                                 0.9375
-                  Period_minutes |                                 0.9375
-    Source_Used_for_Orbital_Data |                                 0.9375
-                       Apogee_km |                                  0.875
-             Inclination_radians |                                  0.875
-                     Launch_Site |                                  0.875
+                  Operator_Owner |                                 0.9375
     
 ## Identify satellites with unlikely lifetimes
 
@@ -402,7 +432,7 @@ specify that we only want the probabilities of non-null values using a
           ...>     WHERE anticipated_lifetime IS NOT NULL;' --colorby class_of_orbit
 
     
-![.show 'ESTIMATE anticipated_lifetime, PREDICTIVE PROBABILITY OF anticipated_lifetime AS "Relative Probability of Lifetime", class_of_orbit FROM satellites_cc WHERE anticipated_lifetime IS NOT NULL;' --colorby class_of_orbit --filename output/fig_7.png](fig_7.png)
+![.show 'ESTIMATE anticipated_lifetime, PREDICTIVE PROBABILITY OF anticipated_lifetime AS "Relative Probability of Lifetime", class_of_orbit FROM satellites_cc WHERE anticipated_lifetime IS NOT NULL;' --colorby class_of_orbit --filename output/fig_8.png](fig_8.png)
 
 Note that there are plenty of non-extreme values that have low probabilities.
 Let us get a list of the 10 most anomalous satellites by sorting by
@@ -422,16 +452,16 @@ Let us get a list of the 10 most anomalous satellites by sorting by
 
                                                                              Name | Anticipated_Lifetime | Relative Probability of Lifetime
     ------------------------------------------------------------------------------+----------------------+---------------------------------
-                          International Space Station (ISS [first element Zarya]) |                   30 |                 1.0169524722e-08
-                                                                        Landsat 7 |                   15 |                0.000685702575657
-    Milstar DFS-5 (USA 164, Milstar 2-F3) (Military Strategic and Tactical Relay) |                    0 |                 0.00096459872395
-                                                                        Sicral 1A |                  0.5 |                  0.0011743413493
-                                                                        Sicral 1B |                  0.5 |                  0.0011743413493
-                  SDS III-3 (Satellite Data System) (NRO L-12, Aquila-1, USA 162) |                  0.5 |                 0.00136596155644
-                                                                     Intelsat 701 |                  0.5 |                  0.0013754486028
-                                       Express-A1R (Express 4A, Ekspress-A No. 4) |                  0.5 |                 0.00143743571884
-                                                                         Optus B3 |                  0.5 |                 0.00156898978007
-                                          MUOS-1 (Mobile User Objective System 1) |                  0.5 |                 0.00165524283272
+                          International Space Station (ISS [first element Zarya]) |                   30 |                6.21152044684e-09
+                                                                        Landsat 7 |                   15 |                0.000446867749407
+    Milstar DFS-5 (USA 164, Milstar 2-F3) (Military Strategic and Tactical Relay) |                    0 |                0.000465514644094
+                                                                     Intelsat 701 |                  0.5 |                0.000584320650423
+                                          MUOS-1 (Mobile User Objective System 1) |                  0.5 |                0.000779520008062
+                                          MUOS-2 (Mobile User Objective System 2) |                  0.5 |                0.000779520008062
+                  SDS III-3 (Satellite Data System) (NRO L-12, Aquila-1, USA 162) |                  0.5 |                0.000936381714756
+                                       Express-A1R (Express 4A, Ekspress-A No. 4) |                  0.5 |                 0.00101824373482
+                                                                        Sicral 1A |                  0.5 |                 0.00105271096261
+                                                                        Sicral 1B |                  0.5 |                 0.00105271096261
     
 Recall earlier that we mentioned that some of the relations are governed by
 the laws of physics and are thus nearly deterministic? We can use this
@@ -453,16 +483,16 @@ geosynchronous orbit.
 
                                                                Name | Class_of_Orbit | Period_minutes | Relative Probability of Period
     ----------------------------------------------------------------+----------------+----------------+-------------------------------
-      SDS III-6 (Satellite Data System) NRO L-27, Gryphon, USA 227) |            GEO |          14.36 |              0.000124298202231
-                               Advanced Orion 6 (NRO L-15, USA 237) |            GEO |          23.94 |              0.000133022005534
-        SDS III-7 (Satellite Data System) NRO L-38, Drake, USA 236) |            GEO |          23.94 |              0.000133022005534
-                         DSP 20 (USA 149) (Defense Support Program) |            GEO |         142.08 |              0.000174677326307
-    AEHF-3 (Advanced Extremely High Frequency satellite-3, USA 246) |            GEO |        1306.29 |               0.00146576917949
-    AEHF-2 (Advanced Extremely High Frequency satellite-2, USA 235) |            GEO |        1306.29 |               0.00148010892364
-                                                       Intelsat 903 |            GEO |        1436.16 |               0.00264683665626
-                                                            BSAT-3B |            GEO |        1365.61 |               0.00272741466372
-                                                       Intelsat 902 |            GEO |         1436.1 |               0.00284064324015
-                                        Compass G-7 (Beidou IGSO-2) |            GEO |        1436.12 |               0.00310559749026
+      SDS III-6 (Satellite Data System) NRO L-27, Gryphon, USA 227) |            GEO |          14.36 |              0.000403237731587
+                               Advanced Orion 6 (NRO L-15, USA 237) |            GEO |          23.94 |              0.000427259909844
+        SDS III-7 (Satellite Data System) NRO L-38, Drake, USA 236) |            GEO |          23.94 |              0.000427259909844
+                         DSP 20 (USA 149) (Defense Support Program) |            GEO |         142.08 |              0.000439919289686
+    AEHF-2 (Advanced Extremely High Frequency satellite-2, USA 235) |            GEO |        1306.29 |               0.00133083067151
+    AEHF-3 (Advanced Extremely High Frequency satellite-3, USA 246) |            GEO |        1306.29 |               0.00133083067151
+                                                       Intelsat 903 |            GEO |        1436.16 |                0.0029655619154
+                                                       Intelsat 902 |            GEO |         1436.1 |               0.00302734354936
+                                                            BSAT-3B |            GEO |        1365.61 |               0.00305392231107
+                                        Compass G-8 (Beidou IGSO-3) |            GEO |        1435.93 |               0.00371235505715
     
 We see a couple of oddities. There are satellites with 24-minute periods. It
 appears that these entries are in hours rather than minutes. There are other
@@ -511,16 +541,16 @@ most frequent user-purpose combinations.
 
                               Country-Purpose | frequency
     ------------------------------------------+----------
-                          USA--Communications |       145
-           USA--Navigation/Global Positioning |        74
-                   China (PR)--Communications |        34
-                       Russia--Communications |        34
-                  USA--Technology Development |        16
-        Russia--Navigation/Global Positioning |        15
-                Multinational--Communications |        14
-                        India--Communications |        10
-    China (PR)--Navigation/Global Positioning |         9
-                        Japan--Communications |         9
+                          USA--Communications |       120
+           USA--Navigation/Global Positioning |        77
+                       Russia--Communications |        33
+                   China (PR)--Communications |        28
+        Russia--Navigation/Global Positioning |        20
+    China (PR)--Navigation/Global Positioning |        16
+                        India--Communications |        12
+                        Japan--Communications |        10
+                Multinational--Communications |        10
+                           USA--Early Warning |         9
     
 We can visualize this data using the `.bar` command
 
@@ -533,5 +563,5 @@ We can visualize this data using the `.bar` command
           ...>     LIMIT 20;'
 
     
-![.bar 'SELECT country_of_operator || "--" || purpose AS "Country-Purpose",  COUNT("Country-Purpose") AS frequency FROM satellite_purpose GROUP BY "Country-Purpose" ORDER BY frequency DESC LIMIT 20;' --filename output/fig_8.png](fig_8.png)
+![.bar 'SELECT country_of_operator || "--" || purpose AS "Country-Purpose",  COUNT("Country-Purpose") AS frequency FROM satellite_purpose GROUP BY "Country-Purpose" ORDER BY frequency DESC LIMIT 20;' --filename output/fig_9.png](fig_9.png)
 
