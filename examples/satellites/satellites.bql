@@ -103,7 +103,7 @@ SELECT COUNT(*) FROM satellites WHERE dry_mass_kg IS NULL;
 -- values in pairs of continuous columns using the `.show` command with the
 -- `-m` or `--show-missing` option. 
 
-.show 'SELECT dry_mass_kg, launch_mass_kg FROM satellites;' -m
+.show 'SELECT dry_mass_kg, launch_mass_kg FROM satellites WHERE class_of_orbit = GEO;' -m
 
 -- Missing values are represented as lines along their missing dimension. This
 -- way, we can see which values of the missing dimensions are more likely by
