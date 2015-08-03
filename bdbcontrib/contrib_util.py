@@ -51,7 +51,7 @@ def render_bql_as_html(self, argin):
 
 @bayesdb_shell_cmd('nullify')
 def nullify(self, argin):
-    '''Replaces a user specified missing value with NULL
+    '''replaces a user specified missing value with NULL
     <table> <value>
 
     Example:
@@ -65,7 +65,7 @@ def nullify(self, argin):
 
 @bayesdb_shell_cmd('cardinality')
 def cardinality(self, argin):
-    '''Display the cardinality of columns in a table
+    '''display the cardinality of columns in a table
     <table> [<column> <column> ...]
 
     Example:
@@ -74,19 +74,18 @@ def cardinality(self, argin):
     '''
     args = argin.split()
     table = args.pop(0)
-    if (len(args)):
+    if len(args) > 0:
         cols = args
     else:
-        sql = '''PRAGMA table_info(%s)
-        ''' % (quote(table),)
-        print "About to execute", sql
+        sql = 'PRAGMA table_info(%s)' % (quote(table),)
         res = self._bdb.sql_execute(sql)
         cols = [r[1] for r in res.fetchall()]
     counts = []
     for col in cols:
-        sql = '''SELECT COUNT (DISTINCT %s) FROM %s
+        sql = '''
+        SELECT COUNT (DISTINCT %s) FROM %s
         ''' % (quote(col), quote(table))
         res = self._bdb.sql_execute(sql)
-        counts.append((col, res.fetchone()[0]))
+        counts.append((col, res.next()[0]))
 
-    pp_list(self.stdout, counts, ["column", "cardinality"])
+    pp_list(self.stdout, counts, ['column', 'cardinality'])
