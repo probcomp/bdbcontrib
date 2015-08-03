@@ -83,7 +83,7 @@ def cardinality(self, argin):
     counts = []
     for col in cols:
         sql = '''
-        SELECT COUNT (DISTINCT %s) FROM %s
+            SELECT COUNT (DISTINCT %s) FROM %s
         ''' % (quote(col), quote(table))
         res = self._bdb.sql_execute(sql)
         counts.append((col, res.next()[0]))
