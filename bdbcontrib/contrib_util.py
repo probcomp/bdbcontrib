@@ -13,7 +13,7 @@ READTOHTML_CSS = os.path.join(ROOTDIR, 'readtohtml.css')
 
 @bayesdb_shell_cmd('readtohtml')
 def render_bql_as_html(self, argin):
-    '''read a BQL file and output to HTML and markdown
+    '''read BQL file and output to HTML and markdown
     <bql_file> <output_directory>
 
     Example:
