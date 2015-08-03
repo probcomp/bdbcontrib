@@ -13,7 +13,7 @@ READTOHTML_CSS = os.path.join(ROOTDIR, 'readtohtml.css')
 
 @bayesdb_shell_cmd('readtohtml')
 def render_bql_as_html(self, argin):
-    '''Reads a bql file and outputs to html and markdown.
+    '''read a BQL file and output to HTML and markdown
     <bql_file> <output_directory>
 
     Example:
@@ -51,7 +51,7 @@ def render_bql_as_html(self, argin):
 
 @bayesdb_shell_cmd('nullify')
 def nullify(self, argin):
-    '''replaces a user specified missing value with NULL
+    '''replace a user-specified missing value with NULL
     <table> <value>
 
     Example:
