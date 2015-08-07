@@ -42,7 +42,7 @@ class ArgumentParser(argparse.ArgumentParser):
 
 @bayesdb_shell_cmd('mihist')
 def mutual_information_hist_over_models(self, argin):
-    '''Plots a histogram of mutual information between two columns over models.
+    '''plot histogram of mutual information over models
     <generator> <col1> <col2> [options]
     '''
     parser = ArgumentParser(prog='.mihist')
@@ -96,11 +96,11 @@ def mutual_information_hist_over_models(self, argin):
 
 @bayesdb_shell_cmd('heatmap')
 def zmatrix(self, argin):
-    '''Creates a clustered heatmap from the bql query.
+    '''create clustered heatmap from BQL query
     <pairwise bql query> [options]
 
-    Creates a clustered heatmap from the bql query. If no filename is
-    specified, will attempt to draw.
+    Create a clustered heatmap from the BQL query.  Plot graphically
+    by default, or to a file if `-f`/`--filename` is specified.
 
     Options
     -------
@@ -118,6 +118,7 @@ def zmatrix(self, argin):
     Example (compare dependence probability and mutual information):
     bayeslite> .heatmap ESTIMATE PAIRWISE DEPENDENCE PROBABILITY FROM mytable
     bayeslite> .heatmap 'ESTIMATE PAIRWISE MUTUAL INFORMATION FROM mytable;' --last-sort
+
     '''
     parser = ArgumentParser(prog='.heatmap')
     parser.add_argument('bql', type=str, nargs='+', help='PAIRWISE BQL query')
@@ -174,7 +175,7 @@ def zmatrix(self, argin):
 
 @bayesdb_shell_cmd('show')
 def pairplot(self, argin):
-    '''Plots pairs of columns in facet grid.
+    '''plot pairs of columns in facet grid
     <bql query> [options]
 
     Plots continuous-continuous pairs as scatter (optional KDE contour)
@@ -241,7 +242,7 @@ def pairplot(self, argin):
 # TODO: better name
 @bayesdb_shell_cmd('ccstate')
 def draw_crosscat_state(self, argin):
-    '''Draws the crosscat state.
+    '''draw crosscat state
     <generator> <modelno> [options]
 
     Options:
@@ -284,7 +285,7 @@ def draw_crosscat_state(self, argin):
 
 @bayesdb_shell_cmd('histogram')
 def histogram(self, argin):
-    '''plots a histogram
+    '''plot histogram
     <query> [options]
 
     If the result of query has two columns, hist uses the second column to
@@ -322,7 +323,7 @@ def histogram(self, argin):
 
 @bayesdb_shell_cmd('bar')
 def barplot(self, argin):
-    '''bar plot of a two-column query
+    '''bar plot of two-column query
     <query> [options]
 
     Uses the first column of the query as the bar names and the second column
@@ -363,7 +364,7 @@ def barplot(self, argin):
 
 @bayesdb_shell_cmd('chainplot')
 def plot_crosscat_chain_diagnostics(self, argin):
-    ''' Plots diagnostics for each model of the specified generator
+    '''plot diagnostics for all models of generator
     <diagnostic> <generator> [output_filename]
 
     Valid (crosscat) diagnostics are
