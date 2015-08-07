@@ -99,19 +99,28 @@ ANALYZE satellites_cc FOR 4 MINUTES CHECKPOINT 2 ITERATION WAIT;
 
 SELECT COUNT(*) FROM satellites WHERE type_of_orbit IS NULL;
 
--- We will use the `INFER EXPLICIT PREDICT` query to impute all missing
--- values, and let BayesDB tell us the belief of its reported value.
+-- We will use the `INFER EXPLICIT` query to impute all missing
+-- values, and let BayesDB tell us the belief of its reported value. First we
+-- will pull out `anticipated_lifetime`, `perigee_km`, `period_minutes`, and
+-- `class_of_orbit` exactly as they appear in the table. Next we will use the
+-- special BQL expression `PREDICT <col_name> CONFIDENCE <conf_name>`, which
+-- will retrun two values: first, a prediction for `<col_name>` and second a
+-- confidence level for the predicted value.
 
-CREATE TEMP TABLE inferred_type_of_orbit AS
+CREATE TEMP TABLE inferred_orbit AS
     INFER EXPLICIT
-        PREDICT type_of_orbit AS "inferred_type_of_orbit" 
-            CONFIDENCE "inferred_type_of_orbit_conf",
-        anticipated_lifetime, perigee_km, period_minutes, class_of_orbit
+        anticipated_lifetime, perigee_km, period_minutes, class_of_orbit,
+        PREDICT type_of_orbit AS inferred_orbit_type
+            CONFIDENCE inferred_orbit_type_conf
     FROM satellites_cc
     WHERE type_of_orbit IS NULL;
 
-.show 'SELECT inferred_type_of_orbit, inferred_type_of_orbit_conf, class_of_orbit 
-    FROM inferred_type_of_orbit;' --colorby class_of_orbit
+-- We can visualize the result both in tabular and graphical form.
+
+SELECT * FROM inferred_orbit LIMIT 10;
+
+.show 'SELECT inferred_orbit_type, inferred_orbit_type_conf, class_of_orbit 
+    FROM inferred_orbit;' --colorby class_of_orbit
 
 -- Now we shall impute missing values of `dry_mass_kg`. First, let us see how many values
 -- are missing.
@@ -148,6 +157,10 @@ SELECT COUNT(*) FROM satellites WHERE dry_mass_kg IS NULL;
     FROM satellites_cc
     WHERE class_of_orbit = GEO;' -m
 
+-- Notice that the number of red lines is exactly the same as before. This is because
+-- BayesDB does not have enough confidence (0.6) to fill in any missing values for
+-- `dry_mass_kg`.
+
 -- BayesDB's notion of `CONFIDENCE` is unlike confidence in standard
 -- statistics. Whereas in standard statistics 'confidence' is typically paired
 -- with the word 'interval' to describe some region of probability mass, 
@@ -171,7 +184,7 @@ SELECT COUNT(*) FROM satellites WHERE dry_mass_kg IS NULL;
 -- at a very long table, we will visualize it in a heatmap using the `.heatmap`
 -- command. We can visualize using the `.heatmap`.
 
-.heatmap 'ESTIMATE PAIRWISE CORRELATION AS corr FROM satellites_cc;'
+.heatmap 'ESTIMATE PAIRWISE CORRELATION FROM satellites_cc;'
 
 -- BayesDB has a more powerful notion of dependence called `DEPENDENCE PROBABILITY`,
 -- which is the degree of belief that two columns have some dependence. First let
@@ -252,6 +265,26 @@ SELECT * FROM unlikely_lifetimes
     WHERE Anticipated_Lifetime IS NOT NULL 
     ORDER BY "Relative Probability of Lifetime" ASC LIMIT 10;
 
+-- There are other values in the table with unlikely anticipated lifetimes, although
+-- it is not entirely clear why BayesDB has identified them as such. To determine
+-- why `Sicral 1A`, for instance, has a low probability lifetime, let us query
+-- the satellites which BayesDB believes are similar to `Sicral 1A` using the
+-- `SIMILARITY TO` query.
+
+CREATE TEMP TABLE similiarity_to_sicral1a AS
+    ESTIMATE name, anticipated_lifetime,
+        SIMILARITY TO (name = 'Sicral 1A') AS sim_to_sicral
+    FROM satellites_cc;
+
+SELECT * FROM similiarity_to_sicral1a 
+    ORDER BY sim_to_sicral DESC LIMIT 10;
+
+-- All the satellites that BayesDB believes are similar to `Sicral 1A` have lifetimes
+-- between 5 to 12 years, except for its sister satellite `Sicral 1B` which is
+-- also an anomaly. Furthe research on these two satellites indicates that their
+-- actual anticipated lifetime is 10 years; the database entry is an error.
+
+
 -- Recall earlier that we mentioned that some of the relations are governed by
 -- the laws of physics and are thus nearly deterministic? We can use this
 -- determinism coupled with our notion of anomalousness to search the table for
@@ -272,6 +305,7 @@ SELECT * FROM unlikely_periods
 -- entries that have too-short periods, which appear to be decimal errors.
 
 -- **NOTE:** We have reported these errors to the database maintainers.
+
 
 -- ## Simulating entries
 
