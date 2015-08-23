@@ -1,7 +1,7 @@
-
 from bayeslite.sqlite3_util import sqlite3_quote_name as quote
 
 from cStringIO import StringIO
+import argparse
 import string
 import os
 
@@ -11,6 +11,21 @@ PLOTTING_COMMANDS = ['.heatmap', '.histogram', '.show',
 BPROMPT = 'bayeslite> '
 CPROMPT = '      ...> '
 
+
+# Kludgey workaround for idiotic Python argparse module which exits
+# the process on argument parsing failure.  We override the exit
+# method of ArgumentParser so that it raises an exception instead of
+# exiting the process, which we then catch around parser.parse_args()
+# in order to report the message and return to the command loop.
+class ArgparseError(Exception):
+    def __init__(self, status, message):
+        self.status = status
+        self.message = message
+
+
+class ArgumentParser(argparse.ArgumentParser):
+    def exit(self, status=0, message=None):
+        raise ArgparseError(status, message)
 
 def is_dot_command(line):
     if is_blank_line(line):

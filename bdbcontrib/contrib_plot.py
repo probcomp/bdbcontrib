@@ -1,4 +1,3 @@
-
 from sys import platform as _platform
 
 import matplotlib
@@ -17,27 +16,12 @@ import textwrap
 
 from bdbcontrib.facade import do_query
 from bdbcontrib.draw_cc_state import draw_state
+from bdbcontrib.general_utils import ArgparseError, ArgumentParser
 from bayeslite.shell.hook import bayesdb_shell_cmd
 
 import bdbcontrib.plotutils as pu
 import matplotlib.pyplot as plt
 import seaborn as sns
-
-
-# Kludgey workaround for idiotic Python argparse module which exits
-# the process on argument parsing failure.  We override the exit
-# method of ArgumentParser so that it raises an exception instead of
-# exiting the process, which we then catch around parser.parse_args()
-# in order to report the message and return to the command loop.
-class ArgparseError(Exception):
-    def __init__(self, status, message):
-        self.status = status
-        self.message = message
-
-
-class ArgumentParser(argparse.ArgumentParser):
-    def exit(self, status=0, message=None):
-        raise ArgparseError(status, message)
 
 
 @bayesdb_shell_cmd('mihist')
