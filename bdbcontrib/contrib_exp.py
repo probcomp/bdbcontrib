@@ -1,27 +1,33 @@
-from bayeslite.shell.hook import bayesdb_shell_cmd
-from bdbcontrib.general_utils import ArgparseError, ArgumentParser
+import argparse
+import math
+import shlex
 
+from bayeslite import core
+from bayeslite.shell.hook import bayesdb_shell_cmd
+from bayeslite.sqlite3_util import sqlite3_quote_name
 import bdbexp
+
+from bdbcontrib.general_utils import ArgparseError, ArgumentParser
 
 experiments = {
     'haystacks' : bdbexp.haystacks,
     'hyperparams' : bdbexp.hyperparams,
     'infer' : bdbexp.infer,
-    'kl_divergence' : bdbexp.kl_divergence,
     'permute' : bdbexp.permute,
-    'predictive_pdf' : bdbexp.predictive_pdf,
-    'recover' : bdbexp.recover
+    'recover' : bdbexp.recover,
+    'univariate_kl' : bdbexp.univariate_kldiv,
+    'univariate_pdf' : bdbexp.univariate_pdf
     }
 
 @bayesdb_shell_cmd('experiment')
-def experiment(self, argin):
+def run_experiment(self, argin):
     '''
     Launch an experimental inference quality test.
     USAGE: .experiment <exp_name> [exp_args ...]
 
     <exp_name>
-        permute         kl_divergence
-        haystacks       predictive_pdf
+        permute         univariate_kl
+        haystacks       univariate_pdf
         hyperparams     recover
         infer
 
