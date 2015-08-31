@@ -46,7 +46,7 @@ SELECT name, dry_mass_kg FROM satellites LIMIT 10;
 -- way Python represents SQL `NULL`.
 
 -- ## Generating models of the data
--- Before we can as BayesDB any questions we need to create a generator. A
+-- Before we can ask BayesDB any questions we need to create a generator. A
 -- generator specifies the model that we want to impose on the data. Here, we
 -- will use the default generator, crosscat. 
 
@@ -67,7 +67,7 @@ CREATE GENERATOR satellites_cc FOR satellites
 -- `CYCLIC`; `Name IGNORE` means that we would like crosscat to ignore the 
 -- `Name` column during analyses and not to assign it a statistical data type.
 
--- We can see how well the system guess the types of our columns by using the
+-- We can see how well the system guessed the types of our columns by using the
 -- `.describe command.
 
 .describe columns satellites_cc
