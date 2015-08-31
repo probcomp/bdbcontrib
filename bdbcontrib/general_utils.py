@@ -119,7 +119,7 @@ def mdread(f, output_dir, shell):
     output_dir : string
         The name of an output directory where all assets will be saved.
     shell : bayeslite.Shell
-        The shell object from which the funciton was called.
+        The shell object from which the function was called.
 
     Returns
     -------
@@ -130,7 +130,7 @@ def mdread(f, output_dir, shell):
     -----
     When writing a script for mdread, do not use ``--filename`` arguments for
     plotting commands. `mdread` will generate filenames that ensure assets are
-    saves alongside the markdown.
+    saved alongside the markdown.
     """
     if not isinstance(f, file):
         raise TypeError('f should be a file.')
@@ -144,7 +144,7 @@ def mdread(f, output_dir, shell):
 
     # XXX: The first three chracters are stripped from comments, because it is
     # assumed that a space immediately follows '--'. I should probably change
-    # this is future.
+    # this in future.
     line = lines[0]
     last_type = get_line_type(line)
     if last_type == 'code':
