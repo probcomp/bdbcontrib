@@ -66,6 +66,10 @@ def get_line_type(line):
 
 def do_and_cap(shell, cmd):
     assert len(cmd) > 0
+    shell.stderr.write("Performing ")
+    shell.stderr.write(cmd)
+    shell.stderr.write("\n")
+    shell.stderr.flush()
 
     backup = shell.stdout
     stream = StringIO()
