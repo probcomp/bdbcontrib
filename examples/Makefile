@@ -7,7 +7,7 @@ build/satellites/satellites.html: satellites/satellites.bql | build
 	 echo ".readtohtml satellites.bql ../build/satellites/") \
 	| PYTHONPATH=../../:$$PYTHONPATH bayeslite -m --seed 0 -j1
 
-build/satellites.bdb: satellites/data/satellites.utf8.csv build
+build/satellites.bdb: satellites/data/satellites.utf8.csv | build
 	rm -f $@
 	(echo ".csv satellites $<" && \
 	 echo "CREATE DEFAULT GENERATOR satellites_cc FOR satellites \
