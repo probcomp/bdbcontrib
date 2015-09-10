@@ -16,5 +16,12 @@ build/satellites.bdb: satellites/data/satellites.utf8.csv | build
 	 echo "ANALYZE satellites FOR 4 MINUTES WAIT;") \
 	| bayeslite $@ --seed 0
 
+heatmap: build/satellites.bdb
+	(echo ".hook ../bdbcontrib/contrib_util.py" && \
+	 echo ".hook ../bdbcontrib/contrib_plot.py" && \
+	 echo ".hook ../bdbcontrib/contrib_math.py" && \
+	 echo ".heatmap 'ESTIMATE PAIRWISE DEPENDENCE PROBABILITY FROM satellites_cc;'") \
+	| PYTHONPATH=../:$$PYTHONPATH bayeslite $< --seed 0
+
 build:
 	mkdir -p build
