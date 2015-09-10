@@ -131,7 +131,6 @@ def estimate_log_likelihood(self, argin):
             i += 1
         # XXX Wrong: assume joint factors into product of marginals.
         for col, val in zip(target_cols, row):
-            # XXX Wrong: Code will crash, no conditional densities
             if givens:
                 bql = '''
                 ESTIMATE PROBABILITY OF {}=? GIVEN ({}) FROM {} LIMIT 1
