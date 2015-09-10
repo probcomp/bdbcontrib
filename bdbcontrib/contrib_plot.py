@@ -1,12 +1,11 @@
 from sys import platform as _platform
 
 import matplotlib
-if _platform == 'darwin':
-    matplotlib.use('TkAgg')
+#if _platform == 'darwin':
+#    matplotlib.use('TkAgg')
 
 matplotlib.rcParams.update({'figure.autolayout': True,
     'font.weight': 'bold',
-    'font': 'bold',
     'figure.facecolor': 'white'})
 
 import bayeslite.core
