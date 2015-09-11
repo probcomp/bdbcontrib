@@ -2,7 +2,7 @@
 import numpy as np
 from matplotlib.patches import Rectangle
 from matplotlib import pyplot as plt
-import matplotlib as mpl
+import matplotlib
 
 from crosscat_utils import get_column_probabilities, get_row_probabilities
 from crosscat_utils import get_cols_in_view, get_rows_in_cluster
@@ -14,7 +14,7 @@ from bql_utils import get_data_as_list
 from bdbcontrib import plotutils as pu
 
 
-NO_CMAP = mpl.colors.ListedColormap([(1, 1, 1, 1), (1, 1, 1, 1)])
+NO_CMAP = matplotlib.colors.ListedColormap([(1, 1, 1, 1), (1, 1, 1, 1)])
 
 
 def convert_t_do_numerical(T, M_c):

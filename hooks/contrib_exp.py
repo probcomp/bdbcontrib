@@ -20,9 +20,9 @@ experiments = {
     }
 
 @bayesdb_shell_cmd('experiment')
-def run_experiment(self, argin):
+def run_bdb_exp(self, argin):
     '''
-    Launch an experimental inference quality test.
+    Launch an experimental inference quality test (requires the bdbexp module).
     USAGE: .experiment <exp_name> [exp_args ...]
 
     <exp_name>
