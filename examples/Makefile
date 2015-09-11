@@ -55,5 +55,5 @@ heatmap: build/satellites.bdb .PHONY
 	(echo ".hook ../bdbcontrib/contrib_util.py" && \
 	 echo ".hook ../bdbcontrib/contrib_plot.py" && \
 	 echo ".hook ../bdbcontrib/contrib_math.py" && \
-	 echo ".heatmap 'ESTIMATE PAIRWISE DEPENDENCE PROBABILITY FROM satellites_cc;'") \
+	 echo ".heatmap 'ESTIMATE DEPENDENCE PROBABILITY FROM PAIRWISE COLUMNS OF satellites_cc;'") \
 	| PYTHONPATH=../:$$PYTHONPATH bayeslite -j1 --seed 0 build/satellites.bdb

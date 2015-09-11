@@ -181,25 +181,25 @@ SELECT COUNT(*) FROM satellites WHERE dry_mass_kg IS NULL;
 -- between variables is using correlation coefficients.
 -- BayesDB has the ability to compute observed correlation coefficients
 -- and their associated pvalues between all the pairs of columns, using the
--- `ESTIMATE PAIRWISE` command; and because we do not want to look at
+-- `ESTIMATE FROM PAIRWISE` command; and because we do not want to look at
 -- at a very long table, we will visualize it in a heatmap using the `.heatmap`
 -- command. We can visualize using the `.heatmap`.
 
-.heatmap 'ESTIMATE PAIRWISE CORRELATION FROM satellites_cc;'
+.heatmap 'ESTIMATE CORRELATION FROM PAIRWISE COLUMNS OF satellites_cc;'
 
 -- BayesDB has a more powerful notion of dependence called `DEPENDENCE
 -- PROBABILITY`, which is the degree of belief that two columns have
 -- some dependence. First let us see the probability that each column
 -- depdnds on `perigee_km`, and `longitude_radians_of_geo`.
 
-ESTIMATE COLUMNS DEPENDENCE PROBABILITY WITH perigee_km AS
+ESTIMATE DEPENDENCE PROBABILITY WITH perigee_km AS
         "Probability of Dependence with Perigee"
-    FROM satellites_cc
+    FROM COLUMNS OF satellites_cc
     ORDER BY "Probability of Dependence with Perigee" DESC LIMIT 10;
 
-ESTIMATE COLUMNS DEPENDENCE PROBABILITY WITH longitude_radians_of_geo AS
+ESTIMATE DEPENDENCE PROBABILITY WITH longitude_radians_of_geo AS
         "Probability of Dependence with Longitude Radians"
-    FROM satellites_cc
+    FROM COLUMNS OF satellites_cc
     ORDER BY "Probability of Dependence with Longitude Radians" DESC LIMIT 10;
 
 -- Let us now view all pairwise dependencies probabilities using the
@@ -208,7 +208,7 @@ ESTIMATE COLUMNS DEPENDENCE PROBABILITY WITH longitude_radians_of_geo AS
 -- PROBABILITY` determines a richer network of relationships than
 -- standard measures of correlation.
 
-.heatmap 'ESTIMATE PAIRWISE DEPENDENCE PROBABILITY FROM satellites_cc;'
+.heatmap 'ESTIMATE DEPENDENCE PROBABILITY FROM PAIRWISE COLUMNS OF satellites_cc;'
 
 -- Each cell in the heatmap represents the dependence probability
 -- between a pair of columns. Darker cells represent higher dependence
@@ -224,9 +224,9 @@ ESTIMATE COLUMNS DEPENDENCE PROBABILITY WITH longitude_radians_of_geo AS
 -- Which variables predict `anticipated_lifetime` --- which are the
 -- main predictors?
 
-ESTIMATE COLUMNS DEPENDENCE PROBABILITY WITH anticipated_lifetime AS
+ESTIMATE DEPENDENCE PROBABILITY WITH anticipated_lifetime AS
         "Probability of Dependence with Lifetime"
-    FROM satellites_cc
+    FROM COLUMNS OF satellites_cc
     ORDER BY "Probability of Dependence with Lifetime" DESC LIMIT 10;
 
 .show 'SELECT anticipated_lifetime, period_minutes, launch_mass_kg,
@@ -234,9 +234,9 @@ ESTIMATE COLUMNS DEPENDENCE PROBABILITY WITH anticipated_lifetime AS
 
 -- Let us look at the dependencies for other variables such as `purpose`.
 
-ESTIMATE COLUMNS DEPENDENCE PROBABILITY WITH purpose AS
+ESTIMATE DEPENDENCE PROBABILITY WITH purpose AS
         "Probability of Dependence with Purpose"
-    FROM satellites_cc
+    FROM COLUMNS OF satellites_cc
     ORDER BY "Probability of Dependence with Purpose" DESC LIMIT 10;
 
 -- ## Identify satellites with unlikely lifetimes
