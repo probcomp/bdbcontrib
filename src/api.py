@@ -337,6 +337,6 @@ def cardinality(bdb, table, cols=None):
     return counts
 
 
-#XXX Find a better way to expose these functions.
+#XXX These functions are exposed in __init__.py Adding here for completelness.
 nullify = general_utils.nullify
 estimate_log_likelihood = diagnostic_utils.estimate_log_likelihood

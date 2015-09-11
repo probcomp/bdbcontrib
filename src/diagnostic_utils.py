@@ -19,6 +19,15 @@ import math
 import bayeslite.core
 from bayeslite.sqlite3_util import sqlite3_quote_name
 
+
+# TODO: Migrate from hooks/contrib_diagnostics. Need users run experiments?
+# def run_bdb_experiment(bdb, exp_args):
+    # pass
+
+# TODO Bring in estimate_kl_divergence from fsaad-kl-div branch in bayeslite.
+# def estimate_kl_divergence(self, argin):
+
+
 def estimate_log_likelihood(bdb, table, generator, targets=None, givens=None,
         samples=None):
     """Estimate the log likelihood of a dataset.
@@ -107,7 +116,3 @@ def estimate_log_likelihood(bdb, table, generator, targets=None, givens=None,
             ll += math.log(crs.fetchall()[0][0])
 
     print ll
-
-# TODO Bring in estimate_kl_divergence from fsaad-kl-div branch in bayeslite.
-# @bayesdb_shell_cmd('est_kl')
-# def estimate_kl_divergence(self, argin):
