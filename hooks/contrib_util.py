@@ -103,16 +103,13 @@ def nullify(self, argin):
         self.stdout.write('%s' % (e.message,))
         return
 
-    table = args.table
-    value = args.value
+    bdbcontrib.api.nullify(self._bdb, args.table, args.value)
 
-    utils.nullify(self._bdb, table, value)
 
 @bayesdb_shell_cmd('cardinality')
 def cardinality(self, argin):
-    """
-    Display the cardinality of columns in a table
-    USAGE: .cardinality <table> [<column> <column> ...]
+    """Display the cardinality of columns in a table
+    <table> [<column> <column> ...]
 
     Example:
     bayeslite> .cardinality mytable
@@ -130,21 +127,5 @@ def cardinality(self, argin):
         self.stdout.write('%s' % (e.message,))
         return
 
-    table = args.table
-    # If no target columns specified, use all.
-    if args.cols:
-        cols = args.cols
-    else:
-        sql = 'PRAGMA table_info(%s)' % (quote(table),)
-        res = self._bdb.sql_execute(sql)
-        cols = [r[1] for r in res.fetchall()]
-
-    counts = []
-    for col in cols:
-        sql = '''
-            SELECT COUNT (DISTINCT %s) FROM %s
-        ''' % (quote(col), quote(table))
-        res = self._bdb.sql_execute(sql)
-        counts.append((col, res.next()[0]))
-
+    counts = bdbcontrib.api.cardinality(self._bdb, args.table, args.cols)
     pp_list(self.stdout, counts, ['column', 'cardinality'])
