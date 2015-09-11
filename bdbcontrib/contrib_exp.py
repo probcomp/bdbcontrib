@@ -146,3 +146,7 @@ def estimate_log_likelihood(self, argin):
             LL += math.log(crs.fetchall()[0][0])
 
     print LL
+
+# TODO Bring in estimate_kl_divergence from fsaad-kl-div branch in bayeslite.
+# @bayesdb_shell_cmd('est_kl')
+# def estimate_kl_divergence(self, argin):
