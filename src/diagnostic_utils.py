@@ -62,7 +62,7 @@ def estimate_log_likelihood(bdb, table, generator, targets=None, givens=None,
     # If no target columns specified, use all.
     if targets is None:
         generator_id = bayeslite.core.bayesdb_get_generator(bdb, generator)
-        targets = bayeslite.corebayesdb_generator_column_names(bdb,
+        targets = bayeslite.core.bayesdb_generator_column_names(bdb,
             generator_id)
     targets = map(sqlite3_quote_name, targets)
 
@@ -115,4 +115,4 @@ def estimate_log_likelihood(bdb, table, generator, targets=None, givens=None,
             crs = bdb.execute(bql, (val,))
             ll += math.log(crs.fetchall()[0][0])
 
-    print ll
+    return ll
