@@ -317,8 +317,10 @@ def cardinality(bdb, table, cols=None):
     cols : list<str>, optional
         Columns to compute the unique values. Defaults to all.
 
-    Parameters
+    Returns
     ----------
+    counts : list<tuple<str,int>>
+        A list of tuples of the form [(col_1,cardinality_1),...]
     """
     # If no columns specified, use all.
     if not cols:
