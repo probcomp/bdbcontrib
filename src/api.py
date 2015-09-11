@@ -23,6 +23,7 @@ import bayeslite.core
 from bayeslite.sqlite3_util import sqlite3_quote_name as quote
 
 from bdbcontrib import crosscat_utils
+from bdbcontrib import diagnostic_utils
 from bdbcontrib import general_utils
 from bdbcontrib import plot_utils
 from bdbcontrib.facade import do_query
@@ -304,9 +305,6 @@ def plot_crosscat_chain_diagnostics(bdb, diagnostic, generator):
     return figure
 
 
-#XXX Is this okay?
-nullify = general_utils.nullify
-
 def cardinality(bdb, table, cols=None):
     """Compute the number of unique values in the columns in a table
 
@@ -337,3 +335,8 @@ def cardinality(bdb, table, cols=None):
         counts.append((col, res.next()[0]))
 
     return counts
+
+
+#XXX Find a better way to expose these functions.
+nullify = general_utils.nullify
+estimate_log_likelihood = diagnostic_utils.estimate_log_likelihood
