@@ -3,7 +3,8 @@ default-target: .PHONY
 .PHONY:
 
 all: .PHONY
-all: build/satellites/satellites.html
+all: malawi
+all: satellites
 
 clean: .PHONY
 	-rm -rf build
@@ -11,6 +12,9 @@ clean: .PHONY
 build/stamp:
 	mkdir -p build
 	touch build/stamp
+
+satellites: .PHONY
+satellites: build/satellites/satellites.html
 
 build/satellites/satellites.html: satellites/satellites.bql build/stamp
 	rm -rf build/satellites.tmp && \
@@ -32,6 +36,9 @@ build/satellites.bdb: satellites/data/satellites.utf8.csv build/stamp
 	 echo "INITIALIZE 16 MODELS FOR satellites;" && \
 	 echo "ANALYZE satellites FOR 4 MINUTES WAIT;") \
 	| bayeslite -j0 --seed 0 $@.tmp && mv -f $@.tmp $@
+
+malawi: .PHONY
+malawi: build/malawi/malawi.html
 
 build/malawi/malawi.html: malawi/malawi.bql build/stamp
 	rm -rf build/malawi.tmp && \
