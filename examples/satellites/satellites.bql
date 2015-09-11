@@ -17,7 +17,7 @@
 -- command followed by what we want the table to be named --- we will call it
 -- satellites --- followed by the path to the csv.
 
-.csv satellites data/satellites.utf8.csv
+.csv satellites data/satellites.csv
 
 -- Now that we have a table, we can use the `.describe` command to view the
 -- columns in the table.
