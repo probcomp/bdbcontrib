@@ -47,12 +47,11 @@ def mi_hist(bdb, generator, col1, col2, num_samples=1000, bins=5):
     -------
     figure : matplotlib.figure.Figure
     """
-
-    bql = '''
-    SELECT COUNT(modelno) FROM bayesdb_generator_model
-        WHERE generator_id = ?
-    '''
     generator_id = bayeslite.core.bayesdb_get_generator(bdb, generator)
+    bql = '''
+        SELECT COUNT(modelno) FROM bayesdb_generator_model
+        WHERE generator_id = ?
+        '''
     c = bdb.execute(bql, (generator_id,))
     num_models = c.fetchall()[0][0]
 
@@ -61,11 +60,9 @@ def mi_hist(bdb, generator, col1, col2, num_samples=1000, bins=5):
     mis = []
     for modelno in range(num_models):
         bql = '''
-        ESTIMATE MUTUAL INFORMATION OF {} WITH {} USING {} SAMPLES FROM {}
-            USING MODEL {}
-            LIMIT 1;
-        '''.format(col1, col2, num_samples, generator,
-                modelno)
+            ESTIMATE MUTUAL INFORMATION OF {} WITH {} USING {} SAMPLES FROM {}
+            USING MODEL {} LIMIT 1;
+            '''.format(col1, col2, num_samples, generator, modelno)
         c = bdb.execute(bql)
         mi = c.fetchall()[0][0]
         mis.append(mi)
@@ -101,10 +98,8 @@ def heatmap(bdb, bql, vmin=None, vmax=None, row_ordering=None,
     -------
     clustermap: seaborn.clustermap
     """
-    bql = " ".join(bql)
     df = do_query(bdb, bql).as_df()
     df.fillna(0, inplace=True)
-
     c = (df.shape[0]**.5)/4.0
     clustermap_kws = {'linewidths': 0.2, 'vmin': vmin, 'vmax': vmax,
         'figsize':(c, .8*c)}
@@ -147,9 +142,7 @@ def pairplot(bdb, bql, generator_name=None, show_contour=False, colorby=None,
     -------
     figure : matplotlib.figure.Figure
     """
-    bql = " ".join(bql)
     df = do_query(bdb, bql).as_df()
-
     c = len(df.columns)*4
     figure = plot_utils.pairplot(df, bdb=bdb, generator_name=generator_name,
         show_contour=show_contour, colorby=colorby, show_missing=show_missing,
@@ -210,9 +203,7 @@ def histogram(bdb, bql, bins=15, normed=None):
     ----------
     figure: matplotlib.figure.Figure
     """
-    bql = " ".join(bql)
     df = do_query(bdb, bql).as_df()
-
     figure = plot_utils.comparative_hist(df, bdb=bdb, nbins=bins, normed=normed)
 
     return figure
@@ -235,7 +226,6 @@ def barplot(bdb, bql):
     ----------
     figure: matplotlib.figure.Figure
     """
-    bql = " ".join(bql)
     df = do_query(bdb, bql).as_df()
 
     c = df.shape[0]/2.0
@@ -283,19 +273,22 @@ def plot_crosscat_chain_diagnostics(bdb, diagnostic, generator):
 
     # Get model numbers. Do not rely on there to be a diagnostic for every
     # model.
-    bql = '''SELECT modelno, COUNT(modelno) FROM bayesdb_crosscat_diagnostics
-                WHERE generator_id = ? GROUP BY modelno'''
+    bql = '''
+        SELECT modelno, COUNT(modelno) FROM bayesdb_crosscat_diagnostics
+        WHERE generator_id = ? GROUP BY modelno
+        '''
     df = do_query(bdb, bql, (generator_id,)).as_df()
     models = df['modelno'].astype(int).values
 
     figure, ax = plt.subplots(tight_layout=True, figsize=(10, 5))
     colors = sns.color_palette("GnBu_d", len(models))
     for i, modelno in enumerate(models):
-        bql = '''SELECT {}, iterations FROM bayesdb_crosscat_diagnostics
-                    WHERE modelno = ? AND generator_id = ?
-                    ORDER BY iterations ASC
-                '''.format(diagnostic)
-        df = do_query(self._bdb, bql, (modelno, generator_id,)).as_df()
+        bql = '''
+            SELECT {}, iterations FROM bayesdb_crosscat_diagnostics
+            WHERE modelno = ? AND generator_id = ?
+            ORDER BY iterations ASC
+            '''.format(diagnostic)
+        df = do_query(bdb, bql, (modelno, generator_id,)).as_df()
         ax.plot(df['iterations'].values, df[diagnostic].values,
                  c=colors[modelno], alpha=.7, lw=2)
 
