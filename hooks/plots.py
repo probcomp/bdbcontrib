@@ -284,7 +284,7 @@ def barplot(self, argin):
     plt.close('all')
 
 
-@bayesdb_shell_cmd('chainplotcc')
+@bayesdb_shell_cmd('chainplot')
 def plot_crosscat_chain_diagnostics(self, argin):
     """Plot diagnostics for all models of generator.
 
@@ -299,7 +299,7 @@ def plot_crosscat_chain_diagnostics(self, argin):
     Example:
     bayeslite> .chainplot logscore dha_cc scoreplot.png
     """
-    parser = ArgumentParser(prog='.bar')
+    parser = ArgumentParser(prog='.chainplot')
     parser.add_argument('diagnostic', type=str, help='Diagnostic name')
     parser.add_argument('generator', type=str, help='Generator name.')
     parser.add_argument('-f', '--filename', type=str, default=None,
