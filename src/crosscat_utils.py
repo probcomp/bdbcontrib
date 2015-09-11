@@ -9,7 +9,7 @@ import bayeslite.core
 from crosscat.utils import sample_utils as su
 
 from bdbcontrib import bql_utils as bu
-from bdbcontrib import plotutils as pu
+from bdbcontrib import plot_utils as pu
 
 
 def get_cols_in_view(X_L, view):
