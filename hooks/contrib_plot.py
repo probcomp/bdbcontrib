@@ -1,5 +1,21 @@
-import shlex
+# -*- coding: utf-8 -*-
+
+#   Copyright (c) 2010-2014, MIT Probabilistic Computing Project
+#
+#   Licensed under the Apache License, Version 2.0 (the "License");
+#   you may not use this file except in compliance with the License.
+#   You may obtain a copy of the License at
+#
+#       http://www.apache.org/licenses/LICENSE-2.0
+#
+#   Unless required by applicable law or agreed to in writing, software
+#   distributed under the License is distributed on an "AS IS" BASIS,
+#   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#   See the License for the specific language governing permissions and
+#   limitations under the License.
+
 import argparse
+import shlex
 import textwrap
 from sys import platform as _platform
 
@@ -15,15 +31,18 @@ from bdbcontrib import crosscat_utils
 from bdbcontrib.facade import do_query
 from bdbcontrib.general_utils import ArgparseError, ArgumentParser
 
+
 matplotlib.rcParams.update({'figure.autolayout': True,
     'font.weight': 'bold',
     'figure.facecolor': 'white'})
 
+
 @bayesdb_shell_cmd('mihist')
 def mutual_information_hist_over_models(self, argin):
-    '''plot histogram of mutual information over models
-    <generator> <col1> <col2> [options]
-    '''
+    """
+    Plot histogram of mutual information over models.
+    USAGE: .mihist <generator> <col1> <col2> [options]
+    """
     parser = ArgumentParser(prog='.mihist')
     parser.add_argument('generator', type=str, help='generator name')
     parser.add_argument('col1', type=str, help='first column')
@@ -75,11 +94,11 @@ def mutual_information_hist_over_models(self, argin):
 
 @bayesdb_shell_cmd('heatmap')
 def zmatrix(self, argin):
-    '''create clustered heatmap from BQL query
-    <pairwise bql query> [options]
-
+    """
     Create a clustered heatmap from the BQL query.  Plot graphically
     by default, or to a file if `-f`/`--filename` is specified.
+
+    USAGE: .heatmap <pairwise bql query> [options]
 
     Options
     -------
@@ -97,8 +116,8 @@ def zmatrix(self, argin):
     Example (compare dependence probability and mutual information):
     bayeslite> .heatmap ESTIMATE PAIRWISE DEPENDENCE PROBABILITY FROM mytable
     bayeslite> .heatmap 'ESTIMATE PAIRWISE MUTUAL INFORMATION FROM mytable;' --last-sort
+    """
 
-    '''
     parser = ArgumentParser(prog='.heatmap')
     parser.add_argument('bql', type=str, nargs='+', help='PAIRWISE BQL query')
     parser.add_argument('-f', '--filename', type=str, default=None,
@@ -154,15 +173,15 @@ def zmatrix(self, argin):
 
 @bayesdb_shell_cmd('show')
 def pairplot(self, argin):
-    '''plot pairs of columns in facet grid
-    <bql query> [options]
-
+    """
     Plots continuous-continuous pairs as scatter (optional KDE contour)
     Plots continuous-categorical pairs as violinplot
     Plots categorical-categorical pairs as heatmap
 
+    USAGE: .show <bql query> [options]
+
     Options:
-        -f. --filename: the output filename. If not specified, tries
+        -f, --filename: the output filename. If not specified, tries
                         to draw.
         -g, --generator: the generator name. Providing the generator
                          name make help to plot more intelligently.
@@ -176,7 +195,7 @@ def pairplot(self, argin):
     bayeslite> .show SELECT foo, baz, quux + glorb FROM mytable
         --filename myfile.png
     bayeslite> .show ESTIMATE foo, baz FROM mytable_cc -g mytable_cc
-    '''
+    """
     parser = ArgumentParser(prog='.show')
     parser.add_argument('bql', type=str, nargs='+', help='BQL query')
     parser.add_argument('-f', '--filename', type=str, default=None,
@@ -221,11 +240,12 @@ def pairplot(self, argin):
 # TODO: better name
 @bayesdb_shell_cmd('ccstate')
 def draw_crosscat_state(self, argin):
-    """Draw crosscat state
-    <generator> <modelno> [options]
+    """
+    Draw crosscat state.
+    USAGE: .ccstate <generator> <modelno> [options]
 
-    Options:
-        -f. --filename: the output filename. If not specified, tries to draw.
+    Options
+        -f, --filename: the output filename. If not specified, tries to draw.
 
     Example:
     bayeslite> .ccstate mytable_cc 12 -f state_12.png
@@ -264,16 +284,15 @@ def draw_crosscat_state(self, argin):
 
 @bayesdb_shell_cmd('histogram')
 def histogram(self, argin):
-    '''plot histogram
-    <query> [options]
+    """
+    Plot histogram. If the result of query has two columns, hist uses the second
+    column to divide the data in the first column into colored sub-histograms.
 
-    If the result of query has two columns, hist uses the second column to
-    divide the data in the first column into sub-histograms.
+    USAGE:.histogram <query> [options]
 
-    Example (plot overlapping histograms of height for males and females)
+    Example: (plotS overlapping histograms of height for males and females)
     bayeslite> .histogram SELECT height, sex FROM humans; --normed --bin 31
-    '''
-
+    """
     parser = ArgumentParser(prog='.histogram')
     parser.add_argument('bql', type=str, nargs='+', help='BQL query')
     parser.add_argument('-f', '--filename', type=str, default=None,
@@ -302,12 +321,12 @@ def histogram(self, argin):
 
 @bayesdb_shell_cmd('bar')
 def barplot(self, argin):
-    '''bar plot of two-column query
-    <query> [options]
+    """
+    Bar plot of two-column query. Uses the first column of the query as the bar
+    names and the second column as the bar heights. Ignores other columns.
 
-    Uses the first column of the query as the bar names and the second column
-    as the bar heights. Ignores other columns.
-    '''
+    USAGE: .bar <query> [options]
+    """
     parser = ArgumentParser(prog='.bar')
     parser.add_argument('bql', type=str, nargs='+', help='BQL query')
     parser.add_argument('-f', '--filename', type=str, default=None,
@@ -343,17 +362,20 @@ def barplot(self, argin):
 
 @bayesdb_shell_cmd('chainplot')
 def plot_crosscat_chain_diagnostics(self, argin):
-    '''plot diagnostics for all models of generator
-    <diagnostic> <generator> [output_filename]
+    """
+    Plot diagnostics for all models of generator.
 
-    Valid (crosscat) diagnostics are
+    USAGE: .chainplot <diagnostic> <generator> [output_filename]
+
+    Valid (crosscat) diagnostics
+    are:
         - logscore: log score of the model
         - num_views: the number of views in the model
         - column_crp_alpha: CRP alpha over columns
 
     Example:
-        bayeslite> .chainplot logscore dha_cc scoreplot.png
-    '''
+    bayeslite> .chainplot logscore dha_cc scoreplot.png
+    """
     parser = ArgumentParser(prog='.bar')
     parser.add_argument('diagnostic', type=str, help='diagnostic name')
     parser.add_argument('generator', type=str, help='generator name')

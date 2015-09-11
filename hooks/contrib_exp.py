@@ -1,13 +1,30 @@
+# -*- coding: utf-8 -*-
+
+#   Copyright (c) 2010-2014, MIT Probabilistic Computing Project
+#
+#   Licensed under the Apache License, Version 2.0 (the "License");
+#   you may not use this file except in compliance with the License.
+#   You may obtain a copy of the License at
+#
+#       http://www.apache.org/licenses/LICENSE-2.0
+#
+#   Unless required by applicable law or agreed to in writing, software
+#   distributed under the License is distributed on an "AS IS" BASIS,
+#   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#   See the License for the specific language governing permissions and
+#   limitations under the License.
+
 import argparse
 import math
 import shlex
 
+import bdbexp
 from bayeslite import core
 from bayeslite.shell.hook import bayesdb_shell_cmd
 from bayeslite.sqlite3_util import sqlite3_quote_name
-import bdbexp
 
 from bdbcontrib.general_utils import ArgparseError, ArgumentParser
+
 
 experiments = {
     'haystacks' : bdbexp.haystacks,
@@ -19,9 +36,10 @@ experiments = {
     'univariate_pdf' : bdbexp.univariate_pdf
     }
 
+
 @bayesdb_shell_cmd('experiment')
 def run_bdb_exp(self, argin):
-    '''
+    """
     Launch an experimental inference quality test (requires the bdbexp module).
     USAGE: .experiment <exp_name> [exp_args ...]
 
@@ -38,7 +56,7 @@ def run_bdb_exp(self, argin):
     Examples:
     bayeslite> .experiment predictive_pdf --help
     bayeslite> .experiment haystacks --n_iter=200 --n_distractors=4
-    '''
+    """
     expname = argin.split()[0] if argin != '' else argin
     if expname not in experiments:
         print 'Invalid experiment {}'.format(expname)
@@ -53,15 +71,16 @@ def run_bdb_exp(self, argin):
     except SystemExit:
         return  # This happens when --help is invoked.
 
+
 @bayesdb_shell_cmd('est_ll')
 def estimate_log_likelihood(self, argin):
-    '''
-    Estimate the log likelihood of a dataset using N samples
+    """
+    Estimate the log likelihood of a dataset using N samples.
     USAGE: .est_ll <generator> <table> [<--targets-cols ...>] [<--given-cols ...>] [<--samples> N]
 
     Examples:
     bayeslite> .est_ll my_gen my_table --target-cols height weight --given-cols age nationality 17 --samples 1000
-    '''
+    """
     parser = ArgumentParser(prog='.est_ll')
     parser.add_argument('generator', type=str,
         help='Name of the generator.')

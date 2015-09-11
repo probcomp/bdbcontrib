@@ -1,11 +1,29 @@
+# -*- coding: utf-8 -*-
+
+#   Copyright (c) 2010-2014, MIT Probabilistic Computing Project
+#
+#   Licensed under the Apache License, Version 2.0 (the "License");
+#   you may not use this file except in compliance with the License.
+#   You may obtain a copy of the License at
+#
+#       http://www.apache.org/licenses/LICENSE-2.0
+#
+#   Unless required by applicable law or agreed to in writing, software
+#   distributed under the License is distributed on an "AS IS" BASIS,
+#   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#   See the License for the specific language governing permissions and
+#   limitations under the License.
+
+import markdown2
+import os
+import shutil
+
 from bayeslite.shell.hook import bayesdb_shell_cmd
 from bayeslite.shell.pretty import pp_list
 from bayeslite.sqlite3_util import sqlite3_quote_name as quote
+
 import bdbcontrib.general_utils as utils
 
-import os
-import markdown2
-import shutil
 
 ROOTDIR = os.path.dirname(os.path.abspath(__file__))
 READTOHTML_CSS = os.path.join(ROOTDIR, 'readtohtml.css')
@@ -13,12 +31,13 @@ READTOHTML_CSS = os.path.join(ROOTDIR, 'readtohtml.css')
 
 @bayesdb_shell_cmd('readtohtml')
 def render_bql_as_html(self, argin):
-    '''read BQL file and output to HTML and markdown
-    <bql_file> <output_directory>
+    """
+    Read BQL file and output to HTML and markdown.
+    USAGE: .readtohtml <bql_file> <output_directory>
 
     Example:
     bayeslite> .readtohtml myscript.bql analyses/myanalsis
-    '''
+    """
     args = argin.split()
     bql_file = args[0]
     output_dir = args[1]
@@ -51,13 +70,14 @@ def render_bql_as_html(self, argin):
 
 @bayesdb_shell_cmd('nullify')
 def nullify(self, argin):
-    '''replace a user-specified missing value with NULL
-    <table> <value>
+    """
+    Replace a user-specified missing value with NULL
+    USAGE: .nullify <table> <value>
 
     Example:
     bayeslite> .nullify mytable NaN
     bayeslite> .nullify mytable ''
-    '''
+    """
     args = argin.split()
     table = args[0]
     value = args[1]
@@ -65,13 +85,14 @@ def nullify(self, argin):
 
 @bayesdb_shell_cmd('cardinality')
 def cardinality(self, argin):
-    '''display the cardinality of columns in a table
-    <table> [<column> <column> ...]
+    """
+    Display the cardinality of columns in a table
+    USAGE: .cardinality <table> [<column> <column> ...]
 
     Example:
     bayeslite> .cardinality mytable
     bayeslite> .cardinality mytable col1 col2 col3
-    '''
+    """
     args = argin.split()
     table = args.pop(0)
     if len(args) > 0:
