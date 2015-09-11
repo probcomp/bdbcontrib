@@ -18,12 +18,12 @@ satellites: build/satellites/satellites.html
 
 build/satellites/satellites.html: satellites/satellites.bql build/stamp
 	rm -rf build/satellites.tmp && \
-	cd satellites && \
 	(echo ".hook ../../bdbcontrib/contrib_util.py" && \
 	 echo ".hook ../../bdbcontrib/contrib_plot.py" && \
 	 echo ".hook ../../bdbcontrib/contrib_math.py" && \
 	 echo ".readtohtml satellites.bql ../build/satellites.tmp/") \
-	| PYTHONPATH=../../:$$PYTHONPATH bayeslite -m --seed 0 && \
+	| (cd satellites && \
+	    PYTHONPATH=../../:$$PYTHONPATH bayeslite -j1 -m --seed 0) && \
 	rm -rf build/satellites && \
 	mv build/satellites.tmp build/satellites
 
@@ -42,13 +42,12 @@ malawi: build/malawi/malawi.html
 
 build/malawi/malawi.html: malawi/malawi.bql build/stamp
 	rm -rf build/malawi.tmp && \
-	# Set the working directory because the .bql script depends on it
-	cd malawi && \
 	(echo ".hook ../../bdbcontrib/contrib_util.py" && \
 	 echo ".hook ../../bdbcontrib/contrib_plot.py" && \
 	 echo ".hook ../../bdbcontrib/contrib_math.py" && \
 	 echo ".readtohtml malawi.bql ../build/malawi.tmp/") \
-	| PYTHONPATH=../../:$$PYTHONPATH bayeslite -m --seed 0 && \
+	| (cd malawi && \
+	    PYTHONPATH=../../:$$PYTHONPATH bayeslite -j1 -m --seed 0) && \
 	rm -rf build/malawi && \
 	mv build/malawi.tmp build/malawi
 
@@ -57,4 +56,4 @@ heatmap: build/satellites.bdb .PHONY
 	 echo ".hook ../bdbcontrib/contrib_plot.py" && \
 	 echo ".hook ../bdbcontrib/contrib_math.py" && \
 	 echo ".heatmap 'ESTIMATE PAIRWISE DEPENDENCE PROBABILITY FROM satellites_cc;'") \
-	| PYTHONPATH=../:$$PYTHONPATH bayeslite build/satellites.bdb --seed 0
+	| PYTHONPATH=../:$$PYTHONPATH bayeslite -j1 --seed 0 build/satellites.bdb
