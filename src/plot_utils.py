@@ -27,7 +27,7 @@ def rotate_tick_labels(ax, axis='x', rotation=90):
 
 
 def gen_collapsed_legend_from_dict(hl_colors_dict, loc=0, title=None,
-                                   fontsize='medium', wrap_threshold=1000):
+        fontsize='medium', wrap_threshold=1000):
     """Creates a legend with entries grouped by color.
 
     For example, if a plot has multiple labels associated with the same color
@@ -360,7 +360,7 @@ def do_pair_plot(plot_df, vartypes, **kwargs):
 
 
 def zmatrix(data_df, clustermap_kws=None, row_ordering=None,
-            col_ordering=None):
+        col_ordering=None):
     """Plots a clustermap from an ESTIMATE PAIRWISE query.
 
     Parameters:
@@ -376,7 +376,7 @@ def zmatrix(data_df, clustermap_kws=None, row_ordering=None,
 
     Returns
     -------
-    seaborn.clustermap
+    clustermap: seaborn.clustermap
     """
     if clustermap_kws is None:
         clustermap_kws = {}
@@ -409,14 +409,12 @@ def zmatrix(data_df, clustermap_kws=None, row_ordering=None,
         del clustermap_kws['pivot_kws']
         return sns.heatmap(df, **clustermap_kws), row_ordering, col_ordering
     else:
-        cm = sns.clustermap(data_df, **clustermap_kws)
-        return (cm, cm.dendrogram_row.reordered_ind,
-                cm.dendrogram_row.reordered_ind,)
+        return sns.clustermap(data_df, **clustermap_kws)
 
 
 # TODO: bdb, and table_name should be optional arguments
 def pairplot(df, bdb=None, generator_name=None, use_shortname=False,
-             show_contour=False, colorby=None, show_missing=False, show_full=False):
+        show_contour=False, colorby=None, show_missing=False, show_full=False):
     """Plots the columns in data_df in a facet grid.
 
     Supports the following pairs:
@@ -450,7 +448,7 @@ def pairplot(df, bdb=None, generator_name=None, use_shortname=False,
 
     Returns
     -------
-    plt_grid : matplotlib.gridspec.GridSpec
+    figure : matplotlib.figure.Figure
         A num_columns by num_columns Gridspec of pairplot axes.
 
     Notes
@@ -494,6 +492,7 @@ def pairplot(df, bdb=None, generator_name=None, use_shortname=False,
     all_varnames = [c for c in data_df.columns if c != colorby]
     n_vars = len(all_varnames)
     plt_grid = gridspec.GridSpec(n_vars, n_vars)
+    figure = plt.figure()
 
     # if there is only one variable, just do a hist
     if n_vars == 1:
@@ -527,7 +526,7 @@ def pairplot(df, bdb=None, generator_name=None, use_shortname=False,
         for y_pos, var_name_y in enumerate(all_varnames):
             var_y_type = vartypes[y_pos]
 
-            ax = plt.subplot(plt_grid[y_pos, x_pos])
+            ax = figure.add_subplot(plt_grid[y_pos, x_pos])
             axes[y_pos].append(ax)
 
             if x_pos == y_pos:
@@ -604,9 +603,9 @@ def pairplot(df, bdb=None, generator_name=None, use_shortname=False,
     if not show_full:
         for y_pos in range(n_vars):
             for x_pos in range(y_pos+1, n_vars):
-                plt.gcf().delaxes(axes[y_pos][x_pos])
+                figure.delaxes(axes[y_pos][x_pos])
 
-    return plt_grid
+    return figure
 
 
 def comparative_hist(df, nbins=15, normed=False, bdb=None):
