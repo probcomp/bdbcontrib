@@ -33,6 +33,18 @@ build/satellites.bdb: satellites/data/satellites.utf8.csv build/stamp
 	 echo "ANALYZE satellites FOR 4 MINUTES WAIT;") \
 	| bayeslite -j0 --seed 0 $@.tmp && mv -f $@.tmp $@
 
+build/malawi/malawi.html: malawi/malawi.bql build/stamp
+	rm -rf build/malawi.tmp && \
+	# Set the working directory because the .bql script depends on it
+	cd malawi && \
+	(echo ".hook ../../bdbcontrib/contrib_util.py" && \
+	 echo ".hook ../../bdbcontrib/contrib_plot.py" && \
+	 echo ".hook ../../bdbcontrib/contrib_math.py" && \
+	 echo ".readtohtml malawi.bql ../build/malawi.tmp/") \
+	| PYTHONPATH=../../:$$PYTHONPATH bayeslite -m --seed 0 && \
+	rm -rf build/malawi && \
+	mv build/malawi.tmp build/malawi
+
 heatmap: build/satellites.bdb .PHONY
 	(echo ".hook ../bdbcontrib/contrib_util.py" && \
 	 echo ".hook ../bdbcontrib/contrib_plot.py" && \
