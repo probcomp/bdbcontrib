@@ -17,7 +17,7 @@ A set of utilities for bayesdb.
 Clone the repo and add it to your `PYTHONPATH`
 
 ## Install
-Clone the repo and add the `bdbdcontrib` path to your `PYTHONPATH`
+ Clone the repo and add the `bdbdcontrib` path to your `PYTHONPATH`
 
 **Linux**
 ```
