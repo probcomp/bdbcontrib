@@ -1,13 +1,13 @@
-from bayeslite.api import barplot
-from bayeslite.api import cardinality
-from bayeslite.api import draw_crosscat
-from bayeslite.api import estimate_log_likelihood
-from bayeslite.api import heatmap
-from bayeslite.api import histogram
-from bayeslite.api import mi_hist
-from bayeslite.api import nullify
-from bayeslite.api import pairplot
-from bayeslite.api import plot_crosscat_chain_diagnostics
+from bdbcontrib.api import barplot
+from bdbcontrib.api import cardinality
+from bdbcontrib.api import draw_crosscat
+from bdbcontrib.api import estimate_log_likelihood
+from bdbcontrib.api import heatmap
+from bdbcontrib.api import histogram
+from bdbcontrib.api import mi_hist
+from bdbcontrib.api import nullify
+from bdbcontrib.api import pairplot
+from bdbcontrib.api import plot_crosscat_chain_diagnostics
 
 """Main bdbcontrib API.
 
