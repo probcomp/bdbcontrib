@@ -211,10 +211,9 @@ def nullify(bdb, table, value):
     Examples
     --------
     >>> import bayeslite
-    >>> from bdbcontrib import plotutils
+    >>> from bdbcontrib import plot_utils
     >>> with bayeslite.bayesdb_open('mydb.bdb') as bdb:
-    >>>    utils.nullifty(bdb, 'mytable', 'NaN')
-
+    >>>    utils.nullify(bdb, 'mytable', 'NaN')
     """
     # get a list of columns of the table
     c = bdb.sql_execute('pragma table_info({})'.format(quote(table)))
