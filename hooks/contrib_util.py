@@ -1,28 +1,14 @@
-# -*- coding: utf-8 -*-
-
-#   Copyright (c) 2010-2014, MIT Probabilistic Computing Project
-#
-#   Licensed under the Apache License, Version 2.0 (the "License");
-#   you may not use this file except in compliance with the License.
-#   You may obtain a copy of the License at
-#
-#       http://www.apache.org/licenses/LICENSE-2.0
-#
-#   Unless required by applicable law or agreed to in writing, software
-#   distributed under the License is distributed on an "AS IS" BASIS,
-#   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-#   See the License for the specific language governing permissions and
-#   limitations under the License.
-
 import markdown2
 import os
 import shutil
+import shlex
 
 from bayeslite.shell.hook import bayesdb_shell_cmd
 from bayeslite.shell.pretty import pp_list
 from bayeslite.sqlite3_util import sqlite3_quote_name as quote
 
 import bdbcontrib.general_utils as utils
+from bdbcontrib.general_utils import ArgparseError, ArgumentParser
 
 
 ROOTDIR = os.path.dirname(os.path.abspath(__file__))
@@ -38,9 +24,20 @@ def render_bql_as_html(self, argin):
     Example:
     bayeslite> .readtohtml myscript.bql analyses/myanalsis
     """
-    args = argin.split()
-    bql_file = args[0]
-    output_dir = args[1]
+    parser = ArgumentParser(prog='.readtohtml')
+    parser.add_argument('bql-file', type=str,
+        help='Name of the file containing the bql script.')
+    parser.add_argument('output-dir', type=str,
+        help='Name of the output directory.')
+
+    try:
+        args = parser.parse_args(shlex.split(argin))
+    except ArgparseError as e:
+        self.stdout.write('%s' % (e.message,))
+        return
+
+    bql_file = args.bql_file
+    output_dir = args.output_dir
 
     head = '''
     <html>
@@ -72,15 +69,27 @@ def render_bql_as_html(self, argin):
 def nullify(self, argin):
     """
     Replace a user-specified missing value with NULL
-    USAGE: .nullify <table> <value>
+    USAGE: .nu<table> <value>
 
     Example:
     bayeslite> .nullify mytable NaN
     bayeslite> .nullify mytable ''
     """
-    args = argin.split()
-    table = args[0]
-    value = args[1]
+    parser = ArgumentParser(prog='.nullify')
+    parser.add_argument('table', type=str,
+        help='Name of the table.')
+    parser.add_argument('value', type=str,
+        help='Target string to nullify.')
+
+    try:
+        args = parser.parse_args(shlex.split(argin))
+    except ArgparseError as e:
+        self.stdout.write('%s' % (e.message,))
+        return
+
+    table = args.table
+    value = args.value
+
     utils.nullify(self._bdb, table, value)
 
 @bayesdb_shell_cmd('cardinality')
@@ -93,14 +102,27 @@ def cardinality(self, argin):
     bayeslite> .cardinality mytable
     bayeslite> .cardinality mytable col1 col2 col3
     """
-    args = argin.split()
-    table = args.pop(0)
-    if len(args) > 0:
-        cols = args
+    parser = ArgumentParser(prog='.cardinality')
+    parser.add_argument('table', type=str,
+        help='Name of the table.')
+    parser.add_argument('cols', type=str, nargs='*',
+        help='Target columns for which to compute cardinality.')
+
+    try:
+        args = parser.parse_args(shlex.split(argin))
+    except ArgparseError as e:
+        self.stdout.write('%s' % (e.message,))
+        return
+
+    table = args.table
+    # If no target columns specified, use all.
+    if args.cols:
+        cols = args.cols
     else:
         sql = 'PRAGMA table_info(%s)' % (quote(table),)
         res = self._bdb.sql_execute(sql)
         cols = [r[1] for r in res.fetchall()]
+
     counts = []
     for col in cols:
         sql = '''
