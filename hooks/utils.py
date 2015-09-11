@@ -127,5 +127,5 @@ def cardinality(self, argin):
         self.stdout.write('%s' % (e.message,))
         return
 
-    counts = bdbcontrib.api.cardinality(self._bdb, args.table, args.cols)
+    counts = bdbcontrib.api.cardinality(self._bdb, args.table, cols=args.cols)
     pp_list(self.stdout, counts, ['column', 'cardinality'])

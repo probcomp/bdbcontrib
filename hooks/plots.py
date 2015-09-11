@@ -173,9 +173,9 @@ def pairplot(self, argin):
 
     bql  = " ".join(args.bql)
     figure = bdbcontrib.api.pairplot(self._bdb, bql,
-        generator_name=args.generator, use_shortname=args.shortnames,
-        show_contour=args.show_contour, colorby=args.colorby,
-        show_missing=args.show_missing, show_full=args.show_full)
+        generator_name=args.generator, show_contour=args.show_contour,
+        colorby=args.colorby, show_missing=args.show_missing,
+        show_full=args.show_full)
 
     if args.filename is None:
         plt.show()
@@ -197,7 +197,7 @@ def draw_crosscat(self, argin):
     Example:
     bayeslite> .ccstate mytable_cc 12 -f state_12.png
     """
-    parser = ArgumentParser(prog='.ccstate')
+    parser = ArgumentParser(prog='.drawcc')
     parser.add_argument('generator', type=str, help='Generator')
     parser.add_argument('modelno', type=int, help='Model number to plot.')
     parser.add_argument('-f', '--filename', type=str, default=None,
@@ -210,7 +210,7 @@ def draw_crosscat(self, argin):
         self.stdout.write('%s' % (e.message,))
         return
 
-    figure = bdbcontrib.api.draw_crosscat(self._bdb, table_name, args.generator,
+    figure = bdbcontrib.api.draw_crosscat(self._bdb, args.generator,
         args.modelno, row_label_col=args.row_label_col)
 
     if args.filename is None:
