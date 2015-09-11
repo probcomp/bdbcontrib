@@ -608,7 +608,7 @@ def pairplot(df, bdb=None, generator_name=None, use_shortname=False,
     return figure
 
 
-def comparative_hist(df, nbins=15, normed=False, bdb=None):
+def comparative_hist(df, bdb=None, nbins=15, normed=False):
     """Plot a histogram
 
     Given a one-column pandas.DataFrame, df, plots a simple histogram. Given a
@@ -622,6 +622,10 @@ def comparative_hist(df, nbins=15, normed=False, bdb=None):
     normed : bool
         If True, normalizes the the area of the histogram (or each
         sub-histogram if df has two columns) to 1.
+
+    Returns
+    -------
+    figure: matplotlib.figure.Figure
     """
     df = df.dropna()
 
@@ -644,30 +648,31 @@ def comparative_hist(df, nbins=15, normed=False, bdb=None):
     colorby = None
     if len(df.columns) > 1:
         if len(df.columns) > 2:
-            raise ValueError("I don't know what to do with data with more"
-                             "than two columns")
+            raise ValueError('I do not know what to do with data with more '
+                'than two columns.')
         colorby = df.columns[1]
         colorby_vals = df[colorby].unique()
 
-    plt.figure(tight_layout=False, facecolor='white')
+    figure, ax = plt.subplots(tight_layout=False, facecolor='white')
     if colorby is None:
-        plt.hist(df.ix[:, 0].values, bins=bins, color='#383838',
+        ax.hist(df.ix[:, 0].values, bins=bins, color='#383838',
                  edgecolor='none', normed=normed)
         plot_title = df.columns[0]
     else:
         colors = sns.color_palette('deep', len(colorby_vals))
         for color, cbv in zip(colors, colorby_vals):
             subdf = df[df[colorby] == cbv]
-            plt.hist(subdf.ix[:, 0].values, bins=bins, color=color, alpha=.5,
+            ax.hist(subdf.ix[:, 0].values, bins=bins, color=color, alpha=.5,
                      edgecolor='none', normed=normed, label=str(cbv))
-        plt.legend(loc=0, title=colorby)
+        ax.legend(loc=0, title=colorby)
         plot_title = df.columns[0] + " by " + colorby
 
     if normed:
         plot_title += " (normalized)"
 
-    plt.title(plot_title)
-    plt.xlabel(df.columns[0])
+    ax.set_title(plot_title)
+    ax.set_xlabel(df.columns[0])
+    return figure
 
 
 if __name__ == '__main__':
