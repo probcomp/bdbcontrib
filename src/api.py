@@ -20,8 +20,10 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 import bayeslite.core
+from bayeslite.sqlite3_util import sqlite3_quote_name as quote
 
 from bdbcontrib import crosscat_utils
+from bdbcontrib import general_utils
 from bdbcontrib import plot_utils
 from bdbcontrib.facade import do_query
 
@@ -300,3 +302,38 @@ def plot_crosscat_chain_diagnostics(bdb, diagnostic, generator):
     ax.set_title('%s for each model in %s' % (diagnostic, generator,))
 
     return figure
+
+
+#XXX Is this okay?
+nullify = general_utils.nullify
+
+def cardinality(bdb, table, cols=None):
+    """Compute the number of unique values in the columns in a table
+
+    Parameters
+    ----------
+    bdb : bayeslite.BayesDB
+        Active BayesDB instance.
+    table : str
+        Name of table.
+    cols : list<str>, optional
+        Columns to compute the unique values. Defaults to all.
+
+    Parameters
+    ----------
+    """
+    # If no columns specified, use all.
+    if cols is None:
+        sql = 'PRAGMA table_info(%s)' % (quote(table),)
+        res = bdb.sql_execute(sql)
+        cols = [r[1] for r in res.fetchall()]
+
+    counts = []
+    for col in cols:
+        sql = '''
+            SELECT COUNT (DISTINCT %s) FROM %s
+        ''' % (quote(col), quote(table))
+        res = bdb.sql_execute(sql)
+        counts.append((col, res.next()[0]))
+
+    return counts
