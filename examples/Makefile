@@ -19,7 +19,7 @@ build/satellites/satellites.html: satellites/satellites.bql build/stamp
 	 echo ".hook ../../bdbcontrib/contrib_plot.py" && \
 	 echo ".hook ../../bdbcontrib/contrib_math.py" && \
 	 echo ".readtohtml satellites.bql ../build/satellites.tmp/") \
-	| PYTHONPATH=../../:$$PYTHONPATH bayeslite -m --seed 0 -j1 && \
+	| PYTHONPATH=../../:$$PYTHONPATH bayeslite -m --seed 0 && \
 	mv build/satellites.tmp build/satellites
 
 build/satellites.bdb: satellites/data/satellites.utf8.csv build/stamp
@@ -29,7 +29,7 @@ build/satellites.bdb: satellites/data/satellites.utf8.csv build/stamp
 	       USING crosscat (GUESS(*), name IGNORE);" && \
 	 echo "INITIALIZE 16 MODELS FOR satellites;" && \
 	 echo "ANALYZE satellites FOR 4 MINUTES WAIT;") \
-	| bayeslite --seed 0 $@.tmp && mv -f $@.tmp $@
+	| bayeslite -j0 --seed 0 $@.tmp && mv -f $@.tmp $@
 
 heatmap: build/satellites.bdb .PHONY
 	(echo ".hook ../bdbcontrib/contrib_util.py" && \
