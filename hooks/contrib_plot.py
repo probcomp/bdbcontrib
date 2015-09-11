@@ -1,25 +1,23 @@
+import shlex
+import argparse
+import textwrap
 from sys import platform as _platform
 
 import matplotlib
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+import bayeslite.core
+from bayeslite.shell.hook import bayesdb_shell_cmd
+
+import bdbcontrib.plot_utils as pu
+from bdbcontrib import crosscat_utils
+from bdbcontrib.facade import do_query
+from bdbcontrib.general_utils import ArgparseError, ArgumentParser
 
 matplotlib.rcParams.update({'figure.autolayout': True,
     'font.weight': 'bold',
     'figure.facecolor': 'white'})
-
-import bayeslite.core
-import shlex
-import argparse
-import textwrap
-
-from bdbcontrib.facade import do_query
-from bdbcontrib.draw_cc_state import draw_state
-from bdbcontrib.general_utils import ArgparseError, ArgumentParser
-from bayeslite.shell.hook import bayesdb_shell_cmd
-
-import bdbcontrib.plotutils as pu
-import matplotlib.pyplot as plt
-import seaborn as sns
-
 
 @bayesdb_shell_cmd('mihist')
 def mutual_information_hist_over_models(self, argin):
@@ -223,7 +221,7 @@ def pairplot(self, argin):
 # TODO: better name
 @bayesdb_shell_cmd('ccstate')
 def draw_crosscat_state(self, argin):
-    '''draw crosscat state
+    """Draw crosscat state
     <generator> <modelno> [options]
 
     Options:
@@ -231,7 +229,7 @@ def draw_crosscat_state(self, argin):
 
     Example:
     bayeslite> .ccstate mytable_cc 12 -f state_12.png
-    '''
+    """
     parser = ArgumentParser(prog='.ccstate')
     parser.add_argument('generator', type=str, help='Generator')
     parser.add_argument('modelno', type=int, help='Model number to plot.')
@@ -251,11 +249,11 @@ def draw_crosscat_state(self, argin):
 
     if metamodel.lower() != 'crosscat':
         raise ValueError('Metamodel for generator %s (%s) should be crosscat' %
-                         (args.generator, metamodel))
+            (args.generator, metamodel))
 
     plt.figure(tight_layout=False)
-    draw_state(self._bdb, table_name, args.generator, args.modelno,
-               row_label_col=args.row_label_col)
+    crosscat_utils.draw_state(self._bdb, table_name, args.generator,
+        args.modelno, row_label_col=args.row_label_col)
 
     if args.filename is None:
         plt.show()
