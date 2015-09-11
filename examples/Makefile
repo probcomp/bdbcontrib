@@ -26,6 +26,7 @@ build/satellites/satellites.html: satellites/satellites.bql build/stamp
 build/satellites.bdb: satellites/data/satellites.utf8.csv build/stamp
 	rm -f $@ && \
 	(echo ".csv satellites satellites/data/satellites.utf8.csv" && \
+	 echo ".nullify satellites NaN" && \
 	 echo "CREATE DEFAULT GENERATOR satellites_cc FOR satellites \
 	       USING crosscat (GUESS(*), name IGNORE);" && \
 	 echo "INITIALIZE 16 MODELS FOR satellites;" && \
