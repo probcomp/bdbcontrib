@@ -37,8 +37,8 @@ def get_metadata(bdb, generator_name, modelno):
     try:
         row = cursor.next()
     except StopIteration:
-        raise ValueError('Could not find genrator with '
-            'name {}'.format(generator_name))
+        raise ValueError('Could not find generator with '
+            'name {}, or incorrect model number.'.format(generator_name))
     else:
         return json.loads(row[0])
 
