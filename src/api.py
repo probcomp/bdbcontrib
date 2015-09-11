@@ -70,9 +70,9 @@ def mi_hist(bdb, generator, col1, col2, num_samples=1000, bins=5):
         mi = c.fetchall()[0][0]
         mis.append(mi)
     ax.hist(mis, bins, normed=True)
-    ax.xlabel('Mutual Information')
-    ax.ylabel('Density')
-    ax.title('Mutual information of {} with {}'.format(col1, col2))
+    ax.set_xlabel('Mutual Information')
+    ax.set_ylabel('Density')
+    ax.set_title('Mutual information of {} with {}'.format(col1, col2))
 
     return figure
 
@@ -321,7 +321,7 @@ def cardinality(bdb, table, cols=None):
     ----------
     """
     # If no columns specified, use all.
-    if cols is None:
+    if not cols:
         sql = 'PRAGMA table_info(%s)' % (quote(table),)
         res = bdb.sql_execute(sql)
         cols = [r[1] for r in res.fetchall()]
