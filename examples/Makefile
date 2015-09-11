@@ -13,13 +13,14 @@ build/stamp:
 	touch build/stamp
 
 build/satellites/satellites.html: satellites/satellites.bql build/stamp
-	rm -rf build/satellites build/satellites.tmp && \
+	rm -rf build/satellites.tmp && \
 	cd satellites && \
 	(echo ".hook ../../bdbcontrib/contrib_util.py" && \
 	 echo ".hook ../../bdbcontrib/contrib_plot.py" && \
 	 echo ".hook ../../bdbcontrib/contrib_math.py" && \
 	 echo ".readtohtml satellites.bql ../build/satellites.tmp/") \
 	| PYTHONPATH=../../:$$PYTHONPATH bayeslite -m --seed 0 && \
+	rm -rf build/satellites && \
 	mv build/satellites.tmp build/satellites
 
 build/satellites.bdb: satellites/data/satellites.utf8.csv build/stamp
