@@ -14,5 +14,5 @@ root=`cd -- "$(dirname -- "$0")" && pwd`
 (
     set -Ceu
     cd -- "${root}"
-    "$PY_TEST" "$@"
+    BAYESDB_WIZARD_MODE=1 "$PY_TEST" "$@"
 )
