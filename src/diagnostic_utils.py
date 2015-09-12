@@ -246,7 +246,7 @@ def estimate_kl_divergence(bdb, generatorA, generatorB, targets=None,
 
     kl = 0
     for s in samples:
-        p_a, p_b = 0, 0
+        logp_a, logp_b = 0, 0
         # XXX Assume joint probability factors by summing univariate
         # (conditional) probability of each cell value. This is clearly wrong,
         # until we can evaluate joint densities in BQL.
@@ -255,19 +255,38 @@ def estimate_kl_divergence(bdb, generatorA, generatorB, targets=None,
                 ESTIMATE PROBABILITY OF {}=? FROM {} LIMIT 1
                 '''.format(col, sqlite3_quote_name(generatorA))
             crs = bdb.execute(bql, (val,))
-            p_a += crs.next()[0]
+            p_a = crs.next()[0]
 
             bql = '''
                 ESTIMATE PROBABILITY OF {}=? FROM {} LIMIT 1
                 '''.format(col, sqlite3_quote_name(generatorB))
             crs = bdb.execute(bql, (val,))
-            p_b += crs.next()[0]
+            p_b = crs.next()[0]
 
-        kl += math.log(p_a) - math.log(p_b)
+            # XXX Heuristic to detect when genA is not absolutely continuous wrt
+            # genB
+            if p_a == 0:
+                # How on earth did we simulate a value from genA with zero
+                # density/prob under genA?
+                raise ValueError('Fatal error: simulated a (col,val)=({},{}) '
+                    'from base generatorA ({}) with zero density. Check '
+                    'implementation of simluate and/or logpdf of '
+                    'generator.'.format(col,val,generatorA))
+            if p_b == 0:
+                # Detected failure of absolute continuity
+                # (under assumption that joint factors into marginals)
+                return float('inf')
 
-    # XXX Assertion fails, see TODO in docstring.
+            logp_a += math.log(p_a)
+            logp_b += math.log(p_b)
+
+        kl += (logp_a - logp_b)
+
+    # XXX Assertion may fail, see TODO in docstring.
     # assert kl > 0
     if kl < 0:
         raise ValueError('Cannot compute reasonable value for KL divergence. '
-            'Try increasing the number of samples.')
+            'Try increasing the number of samples (currently using {}'
+            'samples).'.format(n_samples))
+
     return kl / n_samples
