@@ -76,10 +76,10 @@ def run_bdb_experiment(self, argin):
 @bayesdb_shell_cmd('est_ll')
 def estimate_log_likelihood(self, argin):
     """Estimate the log likelihood of a dataset.
-    <table> <generator> [<--targets-cols ...>] [<--given-cols ...>] [<--samples> N]
+    <table> <generator> [<--targets-cols ...>] [<--given-cols ...>] [<--n-samples> N]
 
     Examples:
-    bayeslite> .est_ll people people_gen --targets height --givens age 1 nationality 17 --samples 1000
+    bayeslite> .est_ll people people_gen --targets height --givens age 1 nationality 17 --n-samples 1000
     """
     parser = ArgumentParser(prog='.est_ll')
     parser.add_argument('table', type=str,
@@ -92,7 +92,7 @@ def estimate_log_likelihood(self, argin):
     parser.add_argument('--givens', nargs='*',
         help='Sequence of columns and observed values to condition on. '
         'The required format is [<col> <val>...].')
-    parser.add_argument('--samples', type=int,
+    parser.add_argument('--n-samples', type=int,
         help='Number of rows in the dataset to use in the computation. '
         'Defaults to all rows.')
 
@@ -104,7 +104,7 @@ def estimate_log_likelihood(self, argin):
 
     ll = bdbcontrib.api.estimate_log_likelihood(self._bdb, args.table,
         args.generator, targets=args.targets, givens=args.givens,
-        samples=args.samples)
+        n_samples=args.n_samples)
 
     print ll
 
