@@ -43,7 +43,7 @@ def estimate_log_likelihood(bdb, table, generator, targets=None, givens=None,
     targets : list<str>, optional
         List of columns in the table for which to compute the log-likelihood.
         Defaults to all the columns.
-    targets : list<tuple>, optional
+    givens : list<tuple>, optional
         A list of [(column, value)] pairs on which to condition on. Defaults to
         no conditionals. See example for more details.
 
@@ -55,8 +55,8 @@ def estimate_log_likelihood(bdb, table, generator, targets=None, givens=None,
 
     Example:
     estimate_log_likelihood(bdb, 'people', 'people_gen',
-        targets=['weight','height'],
-        givens=[('nationality','USA'),('age',17)])
+        targets=['weight', 'height'],
+        givens=[('nationality', 'USA'), ('age', 17)])
 
     """
     # If no target columns specified, use all.

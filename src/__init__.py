@@ -11,7 +11,7 @@ from bdbcontrib.api import plot_crosscat_chain_diagnostics
 
 """Main bdbcontrib API.
 
-The bdbcontrib module servers a sandbox for experimental and semi-stable
+The bdbcontrib module serves a sandbox for experimental and semi-stable
 features that are not yet ready for integreation to the bayeslite repository.
 """
 

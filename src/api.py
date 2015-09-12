@@ -306,7 +306,7 @@ def plot_crosscat_chain_diagnostics(bdb, diagnostic, generator):
 
 
 def cardinality(bdb, table, cols=None):
-    """Compute the number of unique values in the columns in a table
+    """Compute the number of unique values in the columns of a table.
 
     Parameters
     ----------
@@ -318,9 +318,9 @@ def cardinality(bdb, table, cols=None):
         Columns to compute the unique values. Defaults to all.
 
     Returns
-    ----------
+    -------
     counts : list<tuple<str,int>>
-        A list of tuples of the form [(col_1,cardinality_1),...]
+        A list of tuples of the form [(col_1, cardinality_1), ...]
     """
     # If no columns specified, use all.
     if not cols:
