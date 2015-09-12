@@ -29,13 +29,14 @@ build/satellites/satellites.html: satellites/satellites.bql build/stamp
 
 build/satellites.bdb: satellites/data/satellites.csv build/stamp
 	rm -f $@ && \
-	(echo ".csv satellites satellites/data/satellites.csv" && \
+	(echo ".hook ../bdbcontrib/contrib_util.py" && \
+	 echo ".csv satellites satellites/data/satellites.csv" && \
 	 echo ".nullify satellites NaN" && \
 	 echo "CREATE DEFAULT GENERATOR satellites_cc FOR satellites \
 	       USING crosscat (GUESS(*), name IGNORE);" && \
 	 echo "INITIALIZE 16 MODELS FOR satellites;" && \
 	 echo "ANALYZE satellites FOR 4 MINUTES WAIT;") \
-	| bayeslite -j0 --seed 0 $@.tmp && mv -f $@.tmp $@
+	| PYTHONPATH=../:$$PYTHONPATH bayeslite -j0 --seed 0 $@.tmp && mv -f $@.tmp $@
 
 malawi: .PHONY
 malawi: build/malawi/malawi.html
