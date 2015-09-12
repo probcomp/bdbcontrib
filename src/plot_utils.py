@@ -89,7 +89,7 @@ def gen_collapsed_legend_from_dict(hl_colors_dict, loc=0, title=None,
         legend_labels.append(label)
 
     legend = plt.legend(legend_artists, legend_labels, loc=loc, title=title,
-                        fontsize=fontsize)
+        fontsize=fontsize)
 
     return legend
 
@@ -100,8 +100,8 @@ def get_bayesdb_col_type(column_name, df_column, bdb=None,
     # of the column will be returned otherwise we guess.
 
     if isinstance(df_column, pd.DataFrame):
-        raise TypeError("Multiple columns in the query result have the same "
-                        "name (%s)." % (column_name,))
+        raise TypeError('Multiple columns in the query result have the same '
+            'name (%s).' % (column_name,))
 
     def guess_column_type(df_column):
         pd_type = df_column.dtype
@@ -126,7 +126,7 @@ def get_bayesdb_col_type(column_name, df_column, bdb=None,
         except IndexError:
             return guess_column_type(df_column)
         except Exception as err:
-            print "Unexpected exception: {}".format(err)
+            print 'Unexpected exception: {}'.format(err)
             raise err
     else:
         return guess_column_type(df_column)
@@ -156,15 +156,15 @@ def do_hist(data_srs, **kwargs):
 
     if dtype is None:
         dtype = get_bayesdb_col_type(data_srs.columns[0], data_srs, bdb=bdb,
-                                     generator_name=generator_name)
+            generator_name=generator_name)
 
     if ax is None:
         ax = plt.gca()
 
     if len(data_srs.shape) > 1:
         if colors is None and data_srs.shape[1] != 1:
-            raise ValueError('If a dummy column is specified, colors must '
-                             'also be specified.')
+            raise ValueError('If a dummy column is specified, colors must also '
+                'be specified.')
 
     data_srs = data_srs.dropna()
 
@@ -179,7 +179,7 @@ def do_hist(data_srs, **kwargs):
                 color_lst.append(color)
                 stacks.append(subval)
             ax.hist(stacks, bins=len(uvals), color=color_lst, alpha=.9,
-                    histtype='barstacked', rwidth=1.0)
+                histtype='barstacked', rwidth=1.0)
         else:
             ax.hist(vals, bins=len(uvals))
         ax.set_xticks(range(len(uvals)))
@@ -273,18 +273,17 @@ def do_violinplot(plot_df, vartypes, **kwargs):
                 positions.append(base_width*i + order_key[v] + base_width/2
                                  - .75/2)
 
-            sns.violinplot(subdf[vals], groupby=subdf[groupby],
-                           order=sub_vals, names=sub_vals, vert=vert,
-                           ax=ax, positions=positions, widths=violin_width,
-                           color=color)
+            sns.violinplot(subdf[vals], groupby=subdf[groupby], order=sub_vals,
+                names=sub_vals, vert=vert, ax=ax, positions=positions,
+                widths=violin_width, color=color)
     else:
         if vert:
             vals = plot_df.columns[1]
         else:
             vals = plot_df.columns[0]
         sns.violinplot(plot_df[vals], groupby=plot_df[groupby],
-                       order=unique_vals, names=unique_vals, vert=vert, ax=ax,
-                       positions=0, color='SteelBlue')
+            order=unique_vals, names=unique_vals, vert=vert, ax=ax, positions=0,
+            color='SteelBlue')
 
     if vert:
         ax.set_xlim([-.5, n_vals-.5])
@@ -322,7 +321,7 @@ def do_kdeplot(plot_df, vartypes, **kwargs):
 
     if not dummy:
         plt.scatter(df.values[:, 0], df.values[:, 1], alpha=.5,
-                    color='steelblue', zorder=2)
+            color='steelblue', zorder=2)
         # plot nulls
         if show_missing:
             nacol_x = null_rows.ix[:, 0].dropna()
@@ -338,7 +337,7 @@ def do_kdeplot(plot_df, vartypes, **kwargs):
         for val, color in colors.iteritems():
             subdf = df.loc[df.ix[:, 2] == val]
             plt.scatter(subdf.values[:, 0], subdf.values[:, 1], alpha=.5,
-                        color=color, zorder=2)
+                color=color, zorder=2)
             subnull = null_rows.loc[null_rows.ix[:, 2] == val]
             if show_missing:
                 nacol_x = subnull.ix[:, 0].dropna()
@@ -515,8 +514,7 @@ def pairplot(df, bdb=None, generator_name=None, use_shortname=False,
         vartype = get_bayesdb_col_type(varname, data_df[varname], bdb=bdb,
                                        generator_name=generator_name)
         do_hist(data_df, dtype=vartype, ax=ax, bdb=bdb,
-                generator_name=generator_name,
-                colors=colors)
+            generator_name=generator_name, colors=colors)
         if vartype == 'categorical':
             rotate_tick_labels(ax)
         return
@@ -529,7 +527,7 @@ def pairplot(df, bdb=None, generator_name=None, use_shortname=False,
     vartypes = []
     for varname in all_varnames:
         vartype = get_bayesdb_col_type(varname, data_df[varname], bdb=bdb,
-                                       generator_name=generator_name)
+            generator_name=generator_name)
         vartypes.append(vartype)
 
     # store each axes; reaccessing ax with plt.subplot(plt_grid[a,b]) may
@@ -548,8 +546,7 @@ def pairplot(df, bdb=None, generator_name=None, use_shortname=False,
                 if colorby is not None:
                     varnames.append(colorby)
                 ax = do_hist(data_df[varnames], dtype=var_x_type, ax=ax,
-                             bdb=bdb, generator_name=generator_name, 
-                             colors=colors)
+                    bdb=bdb, generator_name=generator_name, colors=colors)
             else:
                 varnames = [var_name_x, var_name_y]
                 vartypes_pair = (var_x_type, var_y_type,)
@@ -557,10 +554,9 @@ def pairplot(df, bdb=None, generator_name=None, use_shortname=False,
                     varnames.append(colorby)
                 plot_df = prep_plot_df(data_df, varnames)
                 ax = do_pair_plot(plot_df, vartypes_pair, ax=ax, bdb=bdb,
-                                  generator_name=generator_name,
-                                  show_contour=show_contour,
-                                  show_missing=show_missing,
-                                  colors=colors)
+                    generator_name=generator_name,
+                    show_contour=show_contour, show_missing=show_missing,
+                    colors=colors)
 
                 ymins[y_pos, x_pos] = ax.get_ylim()[0]
                 ymaxs[y_pos, x_pos] = ax.get_ylim()[1]
@@ -670,14 +666,14 @@ def comparative_hist(df, bdb=None, nbins=15, normed=False):
     figure, ax = plt.subplots(tight_layout=False, facecolor='white')
     if colorby is None:
         ax.hist(df.ix[:, 0].values, bins=bins, color='#383838',
-                 edgecolor='none', normed=normed)
+            edgecolor='none', normed=normed)
         plot_title = df.columns[0]
     else:
         colors = sns.color_palette('deep', len(colorby_vals))
         for color, cbv in zip(colors, colorby_vals):
             subdf = df[df[colorby] == cbv]
             ax.hist(subdf.ix[:, 0].values, bins=bins, color=color, alpha=.5,
-                     edgecolor='none', normed=normed, label=str(cbv))
+                edgecolor='none', normed=normed, label=str(cbv))
         ax.legend(loc=0, title=colorby)
         plot_title = df.columns[0] + " by " + colorby
 
