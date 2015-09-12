@@ -72,10 +72,14 @@ def get_column_stattype(bdb, generator_name, column_name):
 
 def get_data_as_list(bdb, table_name, column_list=None):
     if column_list is None:
-        sql = 'SELECT * FROM {};'.format(sqlite3_quote_name(table_name))
+        sql = '''
+            SELECT * FROM {};
+            '''.format(sqlite3_quote_name(table_name))
     else:
-        sql = 'SELECT {} FROM {}'.format(', '.join(map(
-            sqlite3_quote_name, column_list)), table_name)
+        sql = '''
+            SELECT {} FROM {}
+            '''.format(', '.join(map(sqlite3_quote_name, column_list)),
+                    table_name)
     cursor = bdb.sql_execute(sql)
     T = cursor_to_df(cursor).values.tolist()
     return T
@@ -83,12 +87,12 @@ def get_data_as_list(bdb, table_name, column_list=None):
 
 def get_shortnames(bdb, table_name, column_names):
     return get_column_descriptive_metadata(bdb, table_name, column_names,
-                                           'shortname')
+        'shortname')
 
 
 def get_descriptions(bdb, table_name, column_names):
     return get_column_descriptive_metadata(bdb, table_name, column_names,
-                                           'description')
+        'description')
 
 
 def get_column_descriptive_metadata(bdb, table_name, column_names, md_field):
