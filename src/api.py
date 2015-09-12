@@ -172,7 +172,10 @@ def draw_crosscat(bdb, generator, modelno, row_label_col=None):
     ----------
     figure: matplotlib.figure.Figure
     """
-    bql = 'SELECT tabname, metamodel FROM bayesdb_generator WHERE name = ?'
+    bql = '''
+        SELECT tabname, metamodel FROM bayesdb_generator
+        WHERE name = ?
+        '''
     table_name, metamodel = do_query(
         bdb, bql, (generator,)).as_cursor().fetchall()[0]
 
@@ -332,7 +335,7 @@ def cardinality(bdb, table, cols=None):
     for col in cols:
         sql = '''
             SELECT COUNT (DISTINCT %s) FROM %s
-        ''' % (quote(col), quote(table))
+            ''' % (quote(col), quote(table))
         res = bdb.sql_execute(sql)
         counts.append((col, res.next()[0]))
 
