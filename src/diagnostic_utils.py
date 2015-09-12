@@ -176,16 +176,19 @@ def estimate_kl_divergence(bdb, generatorA, generatorB, targets=None,
     necessarily equal to KL(genB||genA).
 
     TODO: Monte Carlo estimation is a terrible way to compute the KL divergence.
-    One illustration of this is that the estimated KL divergence has emperically
-    been shown to obtain negative realizations.
+    (Not to say there are better methods in general). One illustration of this
+    is that the estimated KL divergence has emperically been shown to obtain
+    negative realizations for high-dimensional data.
 
     Computing the KL divergence in general (of high dimensional distributions)
     is a very hard problem; most research uses the structure of the
-    distributions to find good estimators. Aaptive quadrature or exact methods
-    for numerical integration could outperform Monte Carlo.
+    distributions to find good estimators. Adaptive quadrature or exact methods
+    for numerical integration could outperform Monte Carlo?
 
-    TODO: Algorithm for detecting cases where absolute continuity could be
-    a problem? As it stands, Monte Carlo estimates may have infinite variance.
+    TODO: More sophisticated algorithm for detecting cases where absolute
+    continuity could be a problem (currently have a heuristic).
+    As it stands, Monte Carlo estimates may have infinite variance depending
+    on simulated values from generatorA.
 
 
     Parameters
@@ -208,6 +211,7 @@ def estimate_kl_divergence(bdb, generatorA, generatorB, targets=None,
     Returns
     -------
     kl : float
+        The KL divergence. May be infinity.
 
     Example:
     estimate_kl_divergence(bdb, 'crosscat_gen', 'baxcat_gen',
