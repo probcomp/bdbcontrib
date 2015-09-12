@@ -2,6 +2,7 @@ from bdbcontrib.api import barplot
 from bdbcontrib.api import cardinality
 from bdbcontrib.api import draw_crosscat
 from bdbcontrib.api import estimate_log_likelihood
+from bdbcontrib.api import estimate_kl_divergence
 from bdbcontrib.api import heatmap
 from bdbcontrib.api import histogram
 from bdbcontrib.api import mi_hist
@@ -19,6 +20,7 @@ __all__ = [
     'barplot',
     'cardinality',
     'draw_crosscat',
+    'estimate_kl_divergence',
     'estimate_log_likelihood',
     'heatmap',
     'histogram',

@@ -165,3 +165,105 @@ def estimate_log_likelihood(bdb, table, generator, targets=None, givens=None,
 
     return ll
 
+def estimate_kl_divergence(bdb, generatorA, generatorB, targets=None,
+        givens=None, n_samples=None):
+    """Estimate the KL divergence between the distributions on targets columns,
+    conditioned on the givens, carried by generatorA and generatorB.
+
+    The KL divergence is a mesaure of the "information lost" when generatorB
+    (the approximating generator) is used to approximate generatorA (the base
+    generator). KL divergence is not symmetric in, and KL(genA||genB) is not
+    necessarily equal to KL(genB||genA).
+
+    TODO: Monte Carlo estimation is a terrible way to compute the KL divergence.
+    One illustration of this is that the estimated KL divergence has emperically
+    been shown to obtain negative realizations.
+
+    Computing the KL divergence in general (of high dimensional distributions)
+    is a very hard problem; most research uses the structure of the
+    distributions to find good estimators. Aaptive quadrature or exact methods
+    for numerical integration could outperform Monte Carlo.
+
+    TODO: Algorithm for detecting cases where absolute continuity could be
+    a problem? As it stands, Monte Carlo estimates may have infinite variance.
+
+
+    Parameters
+    ----------
+    bdb : bayeslite.BayesDB
+        Active BayesDB instance.
+    generatorA : str
+        Name of base generator.
+    generatorB : str
+        Name of approximating generator.
+    targets : list<str>, optional
+        List of columns in the table for which to compute the log-likelihood.
+        Defaults to all the columns.
+    givens : list<tuple>, optional
+        A list of [(column, value)] pairs on which to condition on. Defaults to
+        no conditionals. See example for more details.
+    n_samples: int, optional
+        Number of simulated samples to use in the Monte Carlo estimate.
+
+    Returns
+    -------
+    kl : float
+
+    Example:
+    estimate_kl_divergence(bdb, 'crosscat_gen', 'baxcat_gen',
+        targets=['weight', 'height'],
+        givens=[('nationality', 'USA'), ('age', 17)])
+
+    """
+    # XXX Default to 10,000 samples
+    if n_samples is None:
+        n_samples = 10000
+
+    # Defaults to all columns if targets is None.
+    targets = extract_target_cols(bdb, generatorA, targets=targets)
+
+    # Defaults to no givens if givens is None
+    givens = extract_given_cols_vals(givens=givens)
+    givens = ','.join(['{}={}'.format(c,v) for (c,v) in givens])
+
+    # Obtain samples from the base distribution.
+    if givens:
+        # XXX TODO write GIVEN in this query using bindings.
+        bql = '''
+            SIMULATE {} FROM {} GIVEN {} LIMIT {}
+            '''.format(','.join(targets), sqlite3_quote_name(generatorA),
+                    givens, n_samples)
+    else:
+        bql = '''
+            SIMULATE {} FROM {} LIMIT {}
+            '''.format(','.join(targets), sqlite3_quote_name(generatorA),
+                    n_samples)
+    samples = bdb.execute(bql)
+
+    kl = 0
+    for s in samples:
+        p_a, p_b = 0, 0
+        # XXX Assume joint probability factors by summing univariate
+        # (conditional) probability of each cell value. This is clearly wrong,
+        # until we can evaluate joint densities in BQL.
+        for col, val in zip(targets, s):
+            bql = '''
+                ESTIMATE PROBABILITY OF {}=? FROM {} LIMIT 1
+                '''.format(col, sqlite3_quote_name(generatorA))
+            crs = bdb.execute(bql, (val,))
+            p_a += crs.next()[0]
+
+            bql = '''
+                ESTIMATE PROBABILITY OF {}=? FROM {} LIMIT 1
+                '''.format(col, sqlite3_quote_name(generatorB))
+            crs = bdb.execute(bql, (val,))
+            p_b += crs.next()[0]
+
+        kl += math.log(p_a) - math.log(p_b)
+
+    # XXX Assertion fails, see TODO in docstring.
+    # assert kl > 0
+    if kl < 0:
+        raise ValueError('Cannot compute reasonable value for KL divergence. '
+            'Try increasing the number of samples.')
+    return kl / n_samples

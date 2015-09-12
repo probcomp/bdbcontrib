@@ -108,6 +108,38 @@ def estimate_log_likelihood(self, argin):
 
     print ll
 
-# TODO Bring in estimate_kl_divergence from fsaad-kl-div branch in bayeslite.
-# @bayesdb_shell_cmd('est_kl')
-# def estimate_kl_divergence(self, argin):
+
+@bayesdb_shell_cmd('est_kl')
+def estimate_kl_divergence(self, argin):
+    """Estimate the kl divergence.
+    <table> <generator-a> <generator-b> [<--targets-cols ...>] [<--given-cols ...>] [<--n-samples> N]
+
+    Examples:
+    bayeslite> .est_kl crosscat baxcat --targets height --givens age 1 nationality 17 --n-samples 1000
+    """
+    parser = ArgumentParser(prog='.est_kl')
+    parser.add_argument('generator_a', type=str,
+        help='Name of the base generator.')
+    parser.add_argument('generator_b', type=str,
+        help='Name of the approximating generator.')
+    parser.add_argument('--targets', nargs='*',
+        help='Sequence of target columns to evaluate the log likelhood. '
+        'By default, all columns in <table> will be used.')
+    parser.add_argument('--givens', nargs='*',
+        help='Sequence of columns and observed values to condition on. '
+        'The required format is [<col> <val>...].')
+    parser.add_argument('--n-samples', type=int,
+        help='Number of rows in the dataset to use in the computation. '
+        'Defaults to all rows.')
+
+    try:
+        args = parser.parse_args(shlex.split(argin))
+    except ArgparseError as e:
+        self.stdout.write('%s' % (e.message,))
+        return
+
+    kl = bdbcontrib.api.estimate_kl_divergence(self._bdb, args.generator_a,
+        args.generator_b, targets=args.targets, givens=args.givens,
+        n_samples=args.n_samples)
+
+    print kl
