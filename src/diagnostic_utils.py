@@ -26,7 +26,6 @@ def extract_target_cols(bdb, generator, targets=None):
     If targets is None, then a list of all sqlite3 quoted column names from
     generator are returned.
 
-
     Parameters
     ----------
     bdb : bayeslite.BayesDB
@@ -48,12 +47,11 @@ def extract_target_cols(bdb, generator, targets=None):
 
 
 def extract_given_cols_vals(givens=None):
-    """Extract target columns (helper for LL/KL).
+    """Extract given columns and values (helper for LL/KL).
 
     If givens is None, then an empty list is returned. Otherwise an appropriate
     list of tuples is returned, where the first element is the sqlite3 quoted
     name and the second element is the constraint value.
-
 
     Parameters
     ----------
@@ -70,21 +68,12 @@ def extract_given_cols_vals(givens=None):
     given_cols = map(sqlite3_quote_name, givens[::2])
     given_vals = givens[1::2]
     assert len(given_cols) == len(given_vals)
-
     return zip(given_cols, given_vals)
-
-
-# TODO: Migrate from hooks/contrib_diagnostics. Need users run experiments?
-# def run_bdb_experiment(bdb, exp_args):
-    # pass
-
-# TODO Bring in estimate_kl_divergence from fsaad-kl-div branch in bayeslite.
-# def estimate_kl_divergence(self, argin):
 
 
 def estimate_log_likelihood(bdb, table, generator, targets=None, givens=None,
         n_samples=None):
-    """Estimate the log likelihood of a dataset.
+    """Estimate the log likelihood of obsevations in a table.
 
     Parameters
     ----------
@@ -190,7 +179,6 @@ def estimate_kl_divergence(bdb, generatorA, generatorB, targets=None,
     As it stands, Monte Carlo estimates may have infinite variance depending
     on simulated values from generatorA.
 
-
     Parameters
     ----------
     bdb : bayeslite.BayesDB
@@ -290,3 +278,8 @@ def estimate_kl_divergence(bdb, generatorA, generatorB, targets=None,
             'samples).'.format(n_samples))
 
     return kl / n_samples
+
+
+# TODO: Migrate from hooks/contrib_diagnostics. Need users run experiments?
+# def run_bdb_experiment(bdb, exp_args):
+    # pass
