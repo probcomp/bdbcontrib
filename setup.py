@@ -24,6 +24,7 @@ setup(
     version='1.0',
     packages=[
         'bdbcontrib',
+        'bdbcontrib.foreign'
     ],
     package_dir={
         'bdbcontrib': 'src',
