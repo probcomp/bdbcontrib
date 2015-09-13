@@ -19,7 +19,9 @@ import pandas as pd
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.preprocessing import Imputer
 
-class SatRandomForest(object):
+from bdbcontrib.foreign import predictor
+
+class SatRandomForest(predictor.IForeignPredictor):
     """
     A "foreign predictor" trained on the satellites.csv dataset. The
     SatRandomForest is trained to predict
@@ -225,6 +227,11 @@ class SatRandomForest(object):
 
         return distribution[0], classes
 
+    def get_targets(self):
+        return self.targets
+
+    def get_conditions(self):
+        return self.features
 
     def simulate(self, n_samples, **kwargs):
         """Simulates n_samples of target|kwargs from the distribution learned
