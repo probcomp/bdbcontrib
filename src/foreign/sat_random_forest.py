@@ -25,10 +25,16 @@ class SatRandomForest(predictor.IForeignPredictor):
     """
     A "foreign predictor" trained on the satellites.csv dataset. The
     SatRandomForest is trained to predict
+
         `Type_of_Orbit`
+
     conditioned on
+
         `Perigee_km, `Apogee_km`, `Eccentricity`, `Period_minutes`,
         `Launch_Mass_kg`, `Power_watts`, `Anticipated_Lifetime`.
+
+    by default (optimized and tested). The target and conditional columns
+    can be overridden by setting kwargs in the constructor (mildly tested).
 
     Example
     -------
@@ -71,7 +77,8 @@ class SatRandomForest(predictor.IForeignPredictor):
     target = ['Type_of_Orbit']
 
 
-    def __init__(self, sat_df):
+    def __init__(self, sat_df, conditions_numerical=None,
+            conditions_categorical=None):
         """Initializes SatRandomForest forest using the pandas dataframe sat_df.
         The SRF is automatically trained.
         """
@@ -86,6 +93,12 @@ class SatRandomForest(predictor.IForeignPredictor):
         # Random Forests.
         self.rf_partial = RandomForestClassifier(n_estimators=100)
         self.rf_full = RandomForestClassifier(n_estimators=100)
+
+        # Check if conditionals are overridden
+        if conditions_numerical:
+            self.features_numerical = conditions_numerical
+        if conditions_categorical:
+            self.features_categorical = conditions_categorical
 
         # Build the foreign predictor.
         self._init_dataset(sat_df)
