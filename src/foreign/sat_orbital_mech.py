@@ -41,7 +41,7 @@ class SatOrbitalMechanics(predictor.IForeignPredictor):
     probability(period_mins, apogee_km, perigee_km)
         Compute P(period_mins|kwargs).
     """
-    conditionals =['Apogee_km', 'Perigee_km']
+    conditions =['Apogee_km', 'Perigee_km']
     target = ['Period_minutes']
 
     @staticmethod
@@ -58,8 +58,8 @@ class SatOrbitalMechanics(predictor.IForeignPredictor):
         """Initializes SatOrbitalMechanics, and learns a noise model for the
         period.
         """
-        self.dataset = sat_df[self.conditionals + self.target].dropna()
-        X = self.dataset[self.conditionals].as_matrix()
+        self.dataset = sat_df[self.conditions + self.target].dropna()
+        X = self.dataset[self.conditions].as_matrix()
         actual_period = self.dataset[self.target].as_matrix().ravel()
 
         theoretical_period = self._compute_period(X[:,0], X[:,1])/60.
@@ -72,14 +72,14 @@ class SatOrbitalMechanics(predictor.IForeignPredictor):
         return self.target
 
     def get_conditions(self):
-        return self.conditionals
+        return self.conditions
 
     def simulate(self, n_samples, **kwargs):
         """Simulates period_val|kwargs under Kepler's Third Law and Gaussian
         noise model. kwargs must be of the form apogee_km=a, perigee_km=p.
         """
-        period = self._compute_period(kwargs[self.conditionals[0]],
-            kwargs[self.conditionals[1]])
+        period = self._compute_period(kwargs[self.conditions[0]],
+            kwargs[self.conditions[1]])
         return period/60. + np.random.normal(scale=self.noise,
             size=n_samples)
 
@@ -88,7 +88,7 @@ class SatOrbitalMechanics(predictor.IForeignPredictor):
         Kepler's Third Law and Gaussian noise model.
         kwargs must be of the form Apogee_km=a, Perigee_km=p.
         """
-        period = self._compute_period(kwargs[self.conditionals[0]],
-            kwargs[self.conditionals[1]]) / 60.
+        period = self._compute_period(kwargs[self.conditions[0]],
+            kwargs[self.conditions[1]]) / 60.
         return 1./(self.noise * np.sqrt(2*np.pi)) * \
             np.exp(-(period_val-period)**2 / (2*self.noise**2))
