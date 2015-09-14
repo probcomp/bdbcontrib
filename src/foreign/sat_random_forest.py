@@ -108,7 +108,6 @@ class SatRandomForest(predictor.IForeignPredictor):
         self._init_Y()
         self._train_rf()
 
-
     def _init_dataset(self, sat_df):
         """Create the dataframe of the satellites dataset. `NaN` strings are
         converted to Python `None`.
