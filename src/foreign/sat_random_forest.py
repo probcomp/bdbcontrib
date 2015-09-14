@@ -32,7 +32,7 @@ class SatRandomForest(predictor.IForeignPredictor):
 
     Example
     -------
-    >> sat_df = pd.read_csv('/your/path/to/bdbcontrib/examples/satellites/data/satellites.csv')
+    >> sat_df = pd.read_csv('/path/to/satellites.csv')
     >> srf = SatRandomForest(sat_df)
     >> srf.probability('Intermediate', Perigee_km=535, Apogee_km=551,
             Eccentricity=0.00116, Period_minutes=95.5, Launch_Mass_kg=293,
@@ -88,15 +88,15 @@ class SatRandomForest(predictor.IForeignPredictor):
         self.rf_full = RandomForestClassifier(n_estimators=100)
 
         # Build the foreign predictor.
-        self._create_dataset(sat_df)
-        self._create_categorical_lookup()
-        self._create_X_categorical()
-        self._create_X_numerical()
-        self._create_Y()
+        self._init_dataset(sat_df)
+        self._init_categorical_lookup()
+        self._init_X_categorical()
+        self._init_X_numerical()
+        self._init_Y()
         self._train_rf()
 
 
-    def _create_dataset(self, sat_df):
+    def _init_dataset(self, sat_df):
         """Create the dataframe of the satellites dataset. `NaN` strings are
         converted to Python `None`.
         Creates: self.dataset.
@@ -105,7 +105,7 @@ class SatRandomForest(predictor.IForeignPredictor):
         self.dataset = sat_df[self.features + self.target].dropna(
             subset=self.target)
 
-    def _create_categorical_lookup(self):
+    def _init_categorical_lookup(self):
         """Builds a dictionary of dictionaries. Each dictionary contains the
         mapping category -> code for the corresponding categorical feature.
         Creates: self.lookup
@@ -114,7 +114,7 @@ class SatRandomForest(predictor.IForeignPredictor):
             self.lookup[categorical] = {val:code for (code,val) in
                 enumerate(self.dataset[categorical].unique())}
 
-    def _create_X_categorical(self):
+    def _init_X_categorical(self):
         """Converts each categorical column i (Ki categories, N rows) into an
         N x Ki matrix. Each row in the matrix is a binary vector.
 
@@ -123,19 +123,12 @@ class SatRandomForest(predictor.IForeignPredictor):
         concatenated).
 
         Example
-
-            Nationality  Gender
-            -----------  ------
-            USA          M
-            France       F
-            France       M
-            Germany      M
-
-            -----|-
-            1 0 0 1
-            0 1 0 0
-            0 1 0 1
-            0 0 1 1
+            Nationality|Gender
+            -----------+------      -----+-
+            USA        | M          1,0,0,1
+            France     | F          0,1,0,0
+            France     | M          0,1,0,1
+            Germany    | M          0,0,1,1
 
         Creates: self.X_categorical
         """
@@ -162,7 +155,7 @@ class SatRandomForest(predictor.IForeignPredictor):
             binary_data.extend(encoding)
         return binary_data
 
-    def _create_X_numerical(self):
+    def _init_X_numerical(self):
         """Extract numerical columns from the dataset into a matrix.
         Creates: self.X_numerical
         """
@@ -174,7 +167,7 @@ class SatRandomForest(predictor.IForeignPredictor):
         # is independent.
         self.X_numerical = Imputer().fit_transform(X_numerical)
 
-    def _create_Y(self):
+    def _init_Y(self):
         """Extracts the target column.
         Creates: self.Y
         """
