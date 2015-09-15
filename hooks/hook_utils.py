@@ -23,7 +23,7 @@ from bayeslite.shell.hook import bayesdb_shell_cmd
 from bayeslite.shell.pretty import pp_list
 
 import bdbcontrib
-import bdbcontrib.general_utils as utils
+import bdbcontrib.shell_utils as utils
 
 
 ROOTDIR = os.path.dirname(os.path.abspath(__file__))

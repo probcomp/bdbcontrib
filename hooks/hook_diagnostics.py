@@ -20,7 +20,7 @@ import bdbexp
 from bayeslite.shell.hook import bayesdb_shell_cmd
 
 import bdbcontrib
-from bdbcontrib.general_utils import ArgparseError, ArgumentParser
+from bdbcontrib.shell_utils import ArgparseError, ArgumentParser
 
 
 experiments = {
