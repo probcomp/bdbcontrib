@@ -7,10 +7,10 @@ bdbcontrib Reference
 .. automodule:: bdbcontrib.facade
  :members:
 
-:mod:`plotutils`: common plotting functionality
------------------------------------------------
+:mod:`plot_utils`: common plotting functionality
+------------------------------------------------
 
-.. automodule:: bdbcontrib.plotutils
+.. automodule:: bdbcontrib.plot_utils
  :members:
 
 :mod:`shell_utils`: bayeslite shell utilities
@@ -19,8 +19,8 @@ bdbcontrib Reference
 .. automodule:: bdbcontrib.shell_utils
  :members:
 
-:mod:`draw_cc_state`: draw CrossCat states
-------------------------------------------
+:mod:`crosscat_utils`: draw CrossCat states
+-------------------------------------------
 
-.. automodule:: bdbcontrib.draw_cc_state
+.. automodule:: bdbcontrib.crosscat_utils
  :members:
