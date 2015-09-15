@@ -36,8 +36,10 @@ experiments = {
 
 @bayesdb_shell_cmd('experiment')
 def run_bdb_experiment(self, argin):
-    """ Launch an experimental inference quality test (requires bdbexp module).
+    """launch experimental inference quality test
     <exp_name> [exp_args ...]
+
+    (Requires bdbexp module.)
 
     <exp_name>
         permute         univariate_kl
@@ -72,8 +74,8 @@ def run_bdb_experiment(self, argin):
 
 @bayesdb_shell_cmd('est_ll')
 def estimate_log_likelihood(self, argin):
-    """Estimate the log likelihood of a dataset.
-    <table> <generator> [<--targets-cols ...>] [<--given-cols ...>] [<--n-samples> N]
+    """estimate log likelihood for a dataset
+    <table> <generator> [--targets-cols <...>] [--given-cols <...>] [--n-samples <N>]
 
     Examples:
     bayeslite> .est_ll people people_gen --targets height --givens age 1 nationality 17 --n-samples 1000
@@ -108,15 +110,15 @@ def estimate_log_likelihood(self, argin):
 
 @bayesdb_shell_cmd('est_kl')
 def estimate_kl_divergence(self, argin):
-    """Estimate the kl divergence.
-    <table> <generator-a> <generator-b> [<--targets-cols ...>] [<--given-cols ...>] [<--n-samples> N]
+    """estimate KL divergence of generator from reference
+    <table> <generator-a> <generator-b> [--targets-cols <...>] [--given-cols <...>] [--n-samples <N>]
 
     Examples:
     bayeslite> .est_kl crosscat baxcat --targets height --givens age 1 nationality 17 --n-samples 1000
     """
     parser = ArgumentParser(prog='.est_kl')
     parser.add_argument('generator_a', type=str,
-        help='Name of the base generator.')
+        help='Name of the reference generator.')
     parser.add_argument('generator_b', type=str,
         help='Name of the approximating generator.')
     parser.add_argument('--targets', nargs='*',

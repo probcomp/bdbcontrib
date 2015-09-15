@@ -32,11 +32,10 @@ matplotlib.rcParams.update({'figure.autolayout': True,
 
 @bayesdb_shell_cmd('mihist')
 def mi_hist(self, argin):
-    """Plot histogram of mutual information over models.
+    """plot histogram of mutual information over generator's models
+    <generator> <col1> <col2> [<options>]
 
-    <generator> <col1> <col2> [options]
-
-    Example
+    Example:
     bayeslite> .mihist sat_generator dry_mass launch_mass -n=1000
     """
     parser = ArgumentParser(prog='.mihist')
@@ -67,10 +66,8 @@ def mi_hist(self, argin):
 
 @bayesdb_shell_cmd('heatmap')
 def heatmap(self, argin):
-    """Create a clustered heatmap from the BQL query.  Plot graphically
-    by default, or to a file if `-f`/`--filename` is specified.
-
-    <pairwise bql query> [options]
+    """plot clustered heatmap of pairwise matrix
+    <query> [<options>]
 
     Options
     -------
@@ -80,14 +77,9 @@ def heatmap(self, argin):
         Minimun value of the colormap.
     --vmax: float
         Maximum value of the colormap.
-    --last-sort: flag
-        Sort the heatmap the same as the last heatmap. Used to compare heatmaps
-        generated with different metrics. Must be used after heatmap has been
-        run once on a table of the same size.
 
-    Example (compare dependence probability and mutual information):
-    bayeslite> .heatmap ESTIMATE PAIRWISE DEPENDENCE PROBABILITY FROM mytable
-    bayeslite> .heatmap 'ESTIMATE PAIRWISE MUTUAL INFORMATION FROM mytable;' --last-sort
+    Example:
+    bayeslite> .heatmap ESTIMATE DEPENDENCE PROBABILITY FROM PAIRWISE COLUMNS OF mytable
     """
 
     parser = ArgumentParser(prog='.heatmap')
@@ -118,12 +110,12 @@ def heatmap(self, argin):
 
 @bayesdb_shell_cmd('show')
 def pairplot(self, argin):
-    """
-    Plots continuous-continuous pairs as scatter (optional KDE contour)
-    Plots continuous-categorical pairs as violinplot
-    Plots categorical-categorical pairs as heatmap
+    """plot array of plots for all pairs of columns
+    <query> [<options>]
 
-    USAGE: .show <bql query> [options]
+    - continuous-continuous as scatter (optional KDE contour)
+    - continuous-categorical as violinplot
+    - categorical-categorical as heatmap
 
     Options:
         -f, --filename: the output filename. If not specified, tries
@@ -179,9 +171,8 @@ def pairplot(self, argin):
 
 @bayesdb_shell_cmd('drawcc')
 def draw_crosscat(self, argin):
-    """
-    Draw crosscat state.
-    USAGE: .drawcc <generator> <modelno> [options]
+    """plot crosscat state
+    <generator> <modelno> [<options>]
 
     Options
         -f, --filename: the output filename. If not specified, tries to draw.
@@ -214,13 +205,13 @@ def draw_crosscat(self, argin):
 
 @bayesdb_shell_cmd('histogram')
 def histogram(self, argin):
-    """Plot histogram. If the result of query has two columns, hist uses
-    the second column to divide the data in the first column into colored
-    sub-histograms.
+    """plot histogram of one- or two-column table
+    <query> [<options>]
 
-    USAGE: .histogram <query> [options]
+    If two-column, subdivide the first column according to labels in
+    the second column.
 
-    Example: (plots overlapping histograms of height for males and females)
+    Example (plots overlapping histograms of height for males and females):
     bayeslite> .histogram SELECT height, sex FROM humans; --normed --bin 31
     """
     parser = ArgumentParser(prog='.histogram')
@@ -250,11 +241,10 @@ def histogram(self, argin):
 
 @bayesdb_shell_cmd('barplot')
 def barplot(self, argin):
-    """
-    Bar plot of two-column query. Uses the first column of the query as the bar
-    names and the second column as the bar heights. Ignores other columns.
+    """plot bar-plot of query giving categories and heights
+    <query> [<options>]
 
-    USAGE: .bar <query> [options]
+    First column specifies names; second column specifies heights.
     """
     parser = ArgumentParser(prog='.bar')
     parser.add_argument('bql', type=str, nargs='+', help='BQL query')
@@ -278,12 +268,10 @@ def barplot(self, argin):
 
 @bayesdb_shell_cmd('chainplot')
 def plot_crosscat_chain_diagnostics(self, argin):
-    """Plot diagnostics for all models of generator.
-
+    """plot crosscat diagnostic for all models of generator
     <diagnostic> <generator> [output_filename]
 
-    Valid (crosscat) diagnostics
-    are:
+    Valid (crosscat) diagnostics are:
         - logscore: log score of the model
         - num_views: the number of views in the model
         - column_crp_alpha: CRP alpha over columns
