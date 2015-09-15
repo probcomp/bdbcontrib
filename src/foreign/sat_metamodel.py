@@ -39,6 +39,8 @@ class SatellitesMetamodel(bayeslite.metamodel.IBayesDBMetamodel):
 
     def register(self, bdb):
         # XXX Figure out what to do.
+        # XXX Causes serialization problem, should only be called if
+        # satcat has never been reigstered before.
         bdb.sql_execute("""
             INSERT INTO bayesdb_metamodel (name, version)
                 VALUES ('satcat', 1);
@@ -48,14 +50,14 @@ class SatellitesMetamodel(bayeslite.metamodel.IBayesDBMetamodel):
                 generator_id INTEGER NOT NULL PRIMARY KEY
                         REFERENCES bayesdb_generator(id),
                 crosscat_generator_id INTEGER NOT NULL
-                    REFERENCES bayesdb_generator(id)
+                        REFERENCES bayesdb_generator(id)
             );
             """)
 
     def create_generator(self, bdb, table, schema, instantiate):
         # XXX Hardcoded schema forever.
-        self.cc_name = 'satcat_cc'
-        cc_schema = [
+        # XXX Get this name from the sche
+        schema = [
             ('Country_of_Operator', 'CATEGORICAL'),
             ('Operator_Owner', 'CATEGORICAL'),
             ('Users', 'CATEGORICAL'),
@@ -75,24 +77,29 @@ class SatellitesMetamodel(bayeslite.metamodel.IBayesDBMetamodel):
             ('Launch_Vehicle', 'CATEGORICAL'),
             ('Source_Used_for_Orbital_Data', 'CATEGORICAL'),
             ('longitude_radians_of_geo', 'NUMERICAL'),
-            ('Inclination_radians', 'NUMERICAL')]
+            ('Inclination_radians', 'NUMERICAL'),
+            ('Class_of_orbit', 'CATEGORICAL'),  # Remove from internal CC
+            ('Period_minutes', 'NUMERICAL')     # Remove from internal CC
+            ]
 
-        # Convert the schema into a comma serpated list.
+        # First instantiate **this** generator.
+        generator_id, _ = instantiate(schema)
+        self.cc_name = bayeslite.core.bayesdb_generator_name(bdb,
+            generator_id) + '_cc'
+
+        # Create the internal crosscat generator.
+        cc_schema = schema[:-2]
         txt = ','.join(['{} {}'.format(pair[0], pair[1]) for pair in cc_schema])
         bql = """
             CREATE GENERATOR {} FOR satellites USING crosscat(
                 GUESS(*), Class_of_orbit IGNORE, Period_minutes IGNORE,
                 {}
-            )
+            );
             """.format(self.cc_name, txt)
         bdb.execute(bql)
 
-        # Now we need to instantiate **THIS** metamodel.
-        cc_schema.extend([('Class_of_orbit', 'CATEGORICAL'),
-            ('Period_minutes', 'NUMERICAL')])
-        instantiate(cc_schema)
-
-        # Obtain the generator_id of satcat_cc
+        # Obtain the generator_id of satcat_cc. Should be stored in the database
+        # table bayesdb_satcat_crosscat_lookup not as `self`.
         self.cc_id = bayeslite.core.bayesdb_get_generator(bdb, self.cc_name)
         # Obtain the crosscat metamodel object
         self.cc = bayeslite.core.bayesdb_generator_metamodel(bdb, self.cc_id)
