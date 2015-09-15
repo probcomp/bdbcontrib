@@ -28,13 +28,12 @@ import bayeslite.core
 import bql_utils as bqlu
 from facade import do_query
 
-################################################################################
-###                                    PUBLIC                                ###
-################################################################################
+###############################################################################
+###                                   PUBLIC                                ###
+###############################################################################
 
 def mi_hist(bdb, generator, col1, col2, num_samples=1000, bins=5):
-    """Plots a histogram of the mutual information over the models of a
-    generator.
+    """Plot histogram of mutual information over generator's models.
 
     Parameters
     ----------
@@ -56,8 +55,8 @@ def mi_hist(bdb, generator, col1, col2, num_samples=1000, bins=5):
     generator_id = bayeslite.core.bayesdb_get_generator(bdb, generator)
     bql = '''
         SELECT COUNT(modelno) FROM bayesdb_generator_model
-        WHERE generator_id = ?
-        '''
+            WHERE generator_id = ?
+    '''
     c = bdb.execute(bql, (generator_id,))
     num_models = c.fetchall()[0][0]
 
@@ -67,8 +66,8 @@ def mi_hist(bdb, generator, col1, col2, num_samples=1000, bins=5):
     for modelno in range(num_models):
         bql = '''
             ESTIMATE MUTUAL INFORMATION OF {} WITH {} USING {} SAMPLES FROM {}
-            USING MODEL {} LIMIT 1;
-            '''.format(col1, col2, num_samples, generator, modelno)
+                USING MODEL {} LIMIT 1
+        '''.format(col1, col2, num_samples, generator, modelno)
         c = bdb.execute(bql)
         mi = c.fetchall()[0][0]
         mis.append(mi)
@@ -82,7 +81,7 @@ def mi_hist(bdb, generator, col1, col2, num_samples=1000, bins=5):
 
 def heatmap(bdb, bql, vmin=None, vmax=None, row_ordering=None,
         col_ordering=None):
-    """Create a clustered heatmap from the BQL query.
+    """Plot clustered heatmap of pairwise matrix.
 
     Parameters
     ----------
@@ -118,7 +117,7 @@ def heatmap(bdb, bql, vmin=None, vmax=None, row_ordering=None,
 
 def pairplot(bdb, bql, generator_name=None, show_contour=False, colorby=None,
         show_missing=False, show_full=False):
-    """Perform a pairplot of the table returned by the bql query.
+    """Plot array of plots for all pairs of columns.
 
     Plots continuous-continuous pairs as scatter (optional KDE contour).
     Plots continuous-categorical pairs as violinplot.
@@ -160,9 +159,10 @@ def pairplot(bdb, bql, generator_name=None, show_contour=False, colorby=None,
 
 
 def histogram(bdb, bql, bins=15, normed=None):
-    """Plot histogram. If the result of query has two columns, hist uses
-    the second column to divide the data in the first column into colored
-    sub-histograms.
+    """Plot histogram of one- or two-column table.
+
+    If two-column, subdivide the first column according to labels in
+    the second column
 
     Parameters
     ----------
@@ -186,10 +186,9 @@ def histogram(bdb, bql, bins=15, normed=None):
 
 
 def barplot(bdb, bql):
-    """Bar plot of two-column query.
+    """Plot bar-plot of query giving categories and heights.
 
-    Uses the first column of the query as the bar names and the second column as
-    the bar heights. Ignores other columns.
+    First column specifies names; second column specifies heights.
 
     Parameters
     ----------
@@ -219,9 +218,9 @@ def barplot(bdb, bql):
     return figure
 
 
-################################################################################
-###                               INTERNAL                                   ###
-################################################################################
+###############################################################################
+###                              INTERNAL                                   ###
+###############################################################################
 
 MODEL_TO_TYPE_LOOKUP = {
     'normal_inverse_gamma': 'numerical',
@@ -362,8 +361,8 @@ def do_hist(data_srs, **kwargs):
 
     if len(data_srs.shape) > 1:
         if colors is None and data_srs.shape[1] != 1:
-            raise ValueError('If a dummy column is specified, colors must also '
-                'be specified.')
+            raise ValueError('If a dummy column is specified, colors must also'
+                ' be specified.')
 
     data_srs = data_srs.dropna()
 
@@ -919,7 +918,7 @@ if __name__ == '__main__':
     remove_violin_bql = """
         DELETE FROM plottest
             WHERE zero_5 = "B"
-            AND (four_8 = 2 OR four_8 = 1);
+                AND (four_8 = 2 OR four_8 = 1);
     """
     cc_client.bdb.sql_execute(remove_violin_bql)
     df = cc_client('SELECT one_n, zero_5, five_c, four_8 FROM plottest')

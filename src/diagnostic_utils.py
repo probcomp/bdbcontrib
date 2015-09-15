@@ -73,7 +73,7 @@ def extract_given_cols_vals(givens=None):
 
 def estimate_log_likelihood(bdb, table, generator, targets=None, givens=None,
         n_samples=None):
-    """Estimate the log likelihood of obsevations in a table.
+    """Estimate the log likelihood for obsevations in a table.
 
     Parameters
     ----------
@@ -103,7 +103,6 @@ def estimate_log_likelihood(bdb, table, generator, targets=None, givens=None,
     estimate_log_likelihood(bdb, 'people', 'people_gen',
         targets=['weight', 'height'],
         givens=[('nationality', 'USA'), ('age', 17)])
-
     """
     # Defaults to all columns if targets is None.
     targets = extract_target_cols(bdb, generator, targets=targets)
@@ -116,14 +115,14 @@ def estimate_log_likelihood(bdb, table, generator, targets=None, givens=None,
     table = sqlite3_quote_name(table.strip(';'))
     sql = '''
         SELECT {} FROM {};
-        '''.format(','.join(targets), table)
+    '''.format(','.join(targets), table)
     dataset = bdb.execute(sql)
 
     # Obtain number of rows in the dataset and samples to use.
     n_samples = n_samples
     n_rows = bdb.execute('''
         SELECT COUNT(*) FROM {}
-        '''.format(table)).fetchall()[0][0]
+    '''.format(table)).fetchall()[0][0]
     if n_samples is None or n_rows < n_samples:
         n_samples = n_rows
 
@@ -142,11 +141,11 @@ def estimate_log_likelihood(bdb, table, generator, targets=None, givens=None,
             if givens:
                 # XXX TODO write GIVEN in this query using bindings.
                 bql = '''
-                ESTIMATE PROBABILITY OF {}=? GIVEN ({}) FROM {} LIMIT 1
+                    ESTIMATE PROBABILITY OF {}=? GIVEN ({}) FROM {} LIMIT 1
                 '''.format(col, givens, sqlite3_quote_name(generator))
             else:
                 bql = '''
-                ESTIMATE PROBABILITY OF {}=? FROM {} LIMIT 1
+                    ESTIMATE PROBABILITY OF {}=? FROM {} LIMIT 1
                 '''.format(col, sqlite3_quote_name(generator))
 
             crs = bdb.execute(bql, (val,))
@@ -156,8 +155,7 @@ def estimate_log_likelihood(bdb, table, generator, targets=None, givens=None,
 
 def estimate_kl_divergence(bdb, generatorA, generatorB, targets=None,
         givens=None, n_samples=None):
-    """Estimate the KL divergence between the distributions on targets columns,
-    conditioned on the givens, carried by generatorA and generatorB.
+    """Estimate the KL divergence.
 
     The KL divergence is a mesaure of the "information lost" when generatorB
     (the approximating generator) is used to approximate generatorA (the base
@@ -205,7 +203,6 @@ def estimate_kl_divergence(bdb, generatorA, generatorB, targets=None,
     estimate_kl_divergence(bdb, 'crosscat_gen', 'baxcat_gen',
         targets=['weight', 'height'],
         givens=[('nationality', 'USA'), ('age', 17)])
-
     """
     # XXX Default to 10,000 samples
     if n_samples is None:
@@ -223,12 +220,12 @@ def estimate_kl_divergence(bdb, generatorA, generatorB, targets=None,
         # XXX TODO write GIVEN in this query using bindings.
         bql = '''
             SIMULATE {} FROM {} GIVEN {} LIMIT {}
-            '''.format(','.join(targets), sqlite3_quote_name(generatorA),
-                    givens, n_samples)
+        '''.format(','.join(targets), sqlite3_quote_name(generatorA),
+            givens, n_samples)
     else:
         bql = '''
             SIMULATE {} FROM {} LIMIT {}
-            '''.format(','.join(targets), sqlite3_quote_name(generatorA),
+        '''.format(','.join(targets), sqlite3_quote_name(generatorA),
                     n_samples)
     samples = bdb.execute(bql)
 
@@ -241,18 +238,18 @@ def estimate_kl_divergence(bdb, generatorA, generatorB, targets=None,
         for col, val in zip(targets, s):
             bql = '''
                 ESTIMATE PROBABILITY OF {}=? FROM {} LIMIT 1
-                '''.format(col, sqlite3_quote_name(generatorA))
+            '''.format(col, sqlite3_quote_name(generatorA))
             crs = bdb.execute(bql, (val,))
             p_a = crs.next()[0]
 
             bql = '''
                 ESTIMATE PROBABILITY OF {}=? FROM {} LIMIT 1
-                '''.format(col, sqlite3_quote_name(generatorB))
+            '''.format(col, sqlite3_quote_name(generatorB))
             crs = bdb.execute(bql, (val,))
             p_b = crs.next()[0]
 
-            # XXX Heuristic to detect when genA is not absolutely continuous wrt
-            # genB
+            # XXX Heuristic to detect when genA is not absolutely
+            # continuous wrt genB
             if p_a == 0:
                 # How on earth did we simulate a value from genA with zero
                 # density/prob under genA?

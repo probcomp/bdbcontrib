@@ -20,9 +20,9 @@ import bayeslite.core
 from bayeslite.sqlite3_util import sqlite3_quote_name as quote
 
 
-################################################################################
-###                                  PUBLIC                                  ###
-################################################################################
+###############################################################################
+###                                 PUBLIC                                  ###
+###############################################################################
 
 def cardinality(bdb, table, cols=None):
     """Compute the number of unique values in the columns of a table.
@@ -51,7 +51,7 @@ def cardinality(bdb, table, cols=None):
     for col in cols:
         sql = '''
             SELECT COUNT (DISTINCT %s) FROM %s
-            ''' % (quote(col), quote(table))
+        ''' % (quote(col), quote(table))
         res = bdb.sql_execute(sql)
         counts.append((col, res.next()[0]))
 
@@ -59,7 +59,7 @@ def cardinality(bdb, table, cols=None):
 
 
 def nullify(bdb, table, value):
-    """Relace specified values in a SQL table with ``NULL``.
+    """Replace specified values in a SQL table with ``NULL``.
 
     Parameters
     ----------
@@ -82,12 +82,12 @@ def nullify(bdb, table, value):
     for col in columns:
         if value in ["''", '""']:
             bql = '''
-            UPDATE {} SET {} = NULL WHERE {} = '';
+                UPDATE {} SET {} = NULL WHERE {} = '';
             '''.format(quote(table), quote(col), quote(col))
             bdb.sql_execute(bql)
         else:
             bql = '''
-            UPDATE {} SET {} = NULL WHERE {} = ?;
+                UPDATE {} SET {} = NULL WHERE {} = ?;
             '''.format(quote(table), quote(col), quote(col))
             bdb.sql_execute(bql, (value,))
 
@@ -200,9 +200,9 @@ def describe_generator_models(bdb, generator_name):
     return bdb.sql_execute(sql, bindings=(generator_id,))
 
 
-################################################################################
-###                               INTERNAL                                   ###
-################################################################################
+###############################################################################
+###                              INTERNAL                                   ###
+###############################################################################
 
 def get_column_info(bdb, generator_name):
     generator_id = bayeslite.core.bayesdb_get_generator(bdb, generator_name)
@@ -216,7 +216,7 @@ def get_column_info(bdb, generator_name):
                 AND gc.colno = c.colno
                 AND c.tabname = g.tabname
             ORDER BY c.colno
-        '''
+    '''
     cursor = bdb.sql_execute(sql, (generator_id,))
     column_info = cursor.fetchall()
     return column_info
@@ -235,7 +235,7 @@ def get_column_stattype(bdb, generator_name, column_name):
                 AND c.name = ?
                 AND c.tabname = g.tabname
             ORDER BY c.colno
-        '''
+    '''
     cursor = bdb.sql_execute(sql, (generator_id, column_name,))
     stattype = cursor.fetchall()[0][1]
     return stattype
@@ -245,12 +245,11 @@ def get_data_as_list(bdb, table_name, column_list=None):
     if column_list is None:
         sql = '''
             SELECT * FROM {};
-            '''.format(quote(table_name))
+        '''.format(quote(table_name))
     else:
         sql = '''
             SELECT {} FROM {}
-            '''.format(', '.join(map(quote, column_list)),
-                    table_name)
+        '''.format(', '.join(map(quote, column_list)), table_name)
     cursor = bdb.sql_execute(sql)
     T = cursor_to_df(cursor).values.tolist()
     return T
@@ -270,10 +269,8 @@ def get_column_descriptive_metadata(bdb, table_name, column_names, md_field):
     short_names = []
     # XXX: this is indefensibly wasteful.
     bql = '''
-        SELECT colno, name, {}
-            FROM  bayesdb_column
-            WHERE tabname = ?
-        '''.format(md_field)
+        SELECT colno, name, {} FROM bayesdb_column WHERE tabname = ?
+    '''.format(md_field)
     curs = bdb.sql_execute(bql, (table_name,))
     records = curs.fetchall()
 
