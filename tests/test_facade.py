@@ -16,6 +16,7 @@
 
 import os
 import pandas
+import pytest
 import tempfile
 
 from bdbcontrib import facade
