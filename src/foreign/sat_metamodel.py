@@ -104,6 +104,10 @@ class SatellitesMetamodel(bayeslite.metamodel.IBayesDBMetamodel):
         # Obtain the crosscat metamodel object
         self.cc = bayeslite.core.bayesdb_generator_metamodel(bdb, self.cc_id)
 
+        # Now convert the table to a dataframe to train the foreign predictors.
+        table_df = bdbcontrib.cursor_to_df(bdb.sql_execute(
+            'SELECT * FROM {}'.format(table)))
+
     def drop_generator(self, bdb, generator_id):
         # Delegate
         self.cc.drop_generator(bdb, self.cc_id)
