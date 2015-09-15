@@ -21,7 +21,7 @@ except ImportError:
 
 setup(
     name='bdbcontrib',
-    version='1.0',
+    version='0.1.dev',
     packages=[
         'bdbcontrib',
     ],
