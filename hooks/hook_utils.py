@@ -21,10 +21,9 @@ import shlex
 
 from bayeslite.shell.hook import bayesdb_shell_cmd
 from bayeslite.shell.pretty import pp_list
-from bayeslite.sqlite3_util import sqlite3_quote_name as quote
 
+import bdbcontrib
 import bdbcontrib.general_utils as utils
-from bdbcontrib.general_utils import ArgparseError, ArgumentParser
 
 
 ROOTDIR = os.path.dirname(os.path.abspath(__file__))
@@ -40,7 +39,7 @@ def render_bql_as_html(self, argin):
     Example:
     bayeslite> .readtohtml myscript.bql analyses/myanalsis
     """
-    parser = ArgumentParser(prog='.readtohtml')
+    parser = utils.ArgumentParser(prog='.readtohtml')
     parser.add_argument('bql-file', type=str,
         help='Name of the file containing the bql script.')
     parser.add_argument('output-dir', type=str,
@@ -48,7 +47,7 @@ def render_bql_as_html(self, argin):
 
     try:
         args = parser.parse_args(shlex.split(argin))
-    except ArgparseError as e:
+    except utils.ArgparseError as e:
         self.stdout.write('%s' % (e.message,))
         return
 
@@ -91,7 +90,7 @@ def nullify(self, argin):
     bayeslite> .nullify mytable NaN
     bayeslite> .nullify mytable ''
     """
-    parser = ArgumentParser(prog='.nullify')
+    parser = utils.ArgumentParser(prog='.nullify')
     parser.add_argument('table', type=str,
         help='Name of the table.')
     parser.add_argument('value', type=str,
@@ -99,11 +98,11 @@ def nullify(self, argin):
 
     try:
         args = parser.parse_args(shlex.split(argin))
-    except ArgparseError as e:
+    except utils.ArgparseError as e:
         self.stdout.write('%s' % (e.message,))
         return
 
-    bdbcontrib.api.nullify(self._bdb, args.table, args.value)
+    bdbcontrib.nullify(self._bdb, args.table, args.value)
 
 
 @bayesdb_shell_cmd('cardinality')
@@ -115,7 +114,7 @@ def cardinality(self, argin):
     bayeslite> .cardinality mytable
     bayeslite> .cardinality mytable col1 col2 col3
     """
-    parser = ArgumentParser(prog='.cardinality')
+    parser = utils.ArgumentParser(prog='.cardinality')
     parser.add_argument('table', type=str,
         help='Name of the table.')
     parser.add_argument('cols', type=str, nargs='*',
@@ -123,9 +122,9 @@ def cardinality(self, argin):
 
     try:
         args = parser.parse_args(shlex.split(argin))
-    except ArgparseError as e:
+    except utils.ArgparseError as e:
         self.stdout.write('%s' % (e.message,))
         return
 
-    counts = bdbcontrib.api.cardinality(self._bdb, args.table, cols=args.cols)
+    counts = bdbcontrib.cardinality(self._bdb, args.table, cols=args.cols)
     pp_list(self.stdout, counts, ['column', 'cardinality'])

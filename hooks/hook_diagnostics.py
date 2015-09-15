@@ -14,15 +14,12 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
-import argparse
-import math
 import shlex
 
 import bdbexp
-from bayeslite import core
 from bayeslite.shell.hook import bayesdb_shell_cmd
-from bayeslite.sqlite3_util import sqlite3_quote_name
 
+import bdbcontrib
 from bdbcontrib.general_utils import ArgparseError, ArgumentParser
 
 
@@ -102,7 +99,7 @@ def estimate_log_likelihood(self, argin):
         self.stdout.write('%s' % (e.message,))
         return
 
-    ll = bdbcontrib.api.estimate_log_likelihood(self._bdb, args.table,
+    ll = bdbcontrib.estimate_log_likelihood(self._bdb, args.table,
         args.generator, targets=args.targets, givens=args.givens,
         n_samples=args.n_samples)
 
@@ -138,7 +135,7 @@ def estimate_kl_divergence(self, argin):
         self.stdout.write('%s' % (e.message,))
         return
 
-    kl = bdbcontrib.api.estimate_kl_divergence(self._bdb, args.generator_a,
+    kl = bdbcontrib.estimate_kl_divergence(self._bdb, args.generator_a,
         args.generator_b, targets=args.targets, givens=args.givens,
         n_samples=args.n_samples)
 

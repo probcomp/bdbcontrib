@@ -14,24 +14,15 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
-import argparse
 import shlex
-import textwrap
-from sys import platform as _platform
 
 import matplotlib
 import matplotlib.pyplot as plt
-import seaborn as sns
 
-import bayeslite.core
 from bayeslite.shell.hook import bayesdb_shell_cmd
 
-import bdbcontrib.api
+import bdbcontrib
 from bdbcontrib.general_utils import ArgparseError, ArgumentParser
-
-import bdbcontrib.plot_utils as pu
-from bdbcontrib import crosscat_utils
-from bdbcontrib.facade import do_query
 
 
 matplotlib.rcParams.update({'figure.autolayout': True,
@@ -64,7 +55,7 @@ def mi_hist(self, argin):
         self.stdout.write('%s' % (e.message,))
         return
 
-    fig = bdbcontrib.api.mi_hist(self._bdb, args.generator, args.col1,
+    fig = bdbcontrib.mi_hist(self._bdb, args.generator, args.col1,
         args.col2, num_samples=args.num_samples, bins=args.bins)
 
     if args.filename is None:
@@ -72,6 +63,7 @@ def mi_hist(self, argin):
     else:
         fig.savefig(args.filename)
     plt.close('all')
+
 
 @bayesdb_shell_cmd('heatmap')
 def heatmap(self, argin):
@@ -114,7 +106,7 @@ def heatmap(self, argin):
         return
 
     bql = " ".join(args.bql)
-    clustermap = bdbcontrib.api.heatmap(self._bdb, bql, vmin=args.vmin,
+    clustermap = bdbcontrib.heatmap(self._bdb, bql, vmin=args.vmin,
         vmax=args.vmax)
 
     if args.filename is None:
@@ -122,6 +114,7 @@ def heatmap(self, argin):
     else:
         clustermap.savefig(args.filename)
     plt.close('all')
+
 
 @bayesdb_shell_cmd('show')
 def pairplot(self, argin):
@@ -172,7 +165,7 @@ def pairplot(self, argin):
         return
 
     bql  = " ".join(args.bql)
-    figure = bdbcontrib.api.pairplot(self._bdb, bql,
+    figure = bdbcontrib.pairplot(self._bdb, bql,
         generator_name=args.generator, show_contour=args.show_contour,
         colorby=args.colorby, show_missing=args.show_missing,
         show_full=args.show_full)
@@ -184,7 +177,6 @@ def pairplot(self, argin):
     plt.close('all')
 
 
-# TODO: better name
 @bayesdb_shell_cmd('drawcc')
 def draw_crosscat(self, argin):
     """
@@ -210,7 +202,7 @@ def draw_crosscat(self, argin):
         self.stdout.write('%s' % (e.message,))
         return
 
-    figure = bdbcontrib.api.draw_crosscat(self._bdb, args.generator,
+    figure = bdbcontrib.draw_crosscat(self._bdb, args.generator,
         args.modelno, row_label_col=args.row_label_col)
 
     if args.filename is None:
@@ -246,7 +238,7 @@ def histogram(self, argin):
         return
 
     bql = " ".join(args.bql)
-    figure = bdbcontrib.api.histogram(self._bdb, bql, args.bins,
+    figure = bdbcontrib.histogram(self._bdb, bql, args.bins,
         args.normed)
 
     if args.filename is None:
@@ -275,7 +267,7 @@ def barplot(self, argin):
         return
 
     bql = " ".join(args.bql)
-    figure = bdbcontrib.api.barplot(self._bdb, bql)
+    figure = bdbcontrib.barplot(self._bdb, bql)
 
     if args.filename is None:
         plt.show()
@@ -310,7 +302,7 @@ def plot_crosscat_chain_diagnostics(self, argin):
         self.stdout.write('%s' % (e.message,))
         return
 
-    figure = bdbcontrib.api.plot_crosscat_chain_diagnostics(self._bdb,
+    figure = bdbcontrib.plot_crosscat_chain_diagnostics(self._bdb,
         args.diagnostic, args.generator)
 
     if args.filename is None:
