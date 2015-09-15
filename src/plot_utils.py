@@ -15,14 +15,213 @@
 #   limitations under the License.
 
 import copy
+from textwrap import wrap
+
 import matplotlib.gridspec as gridspec
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import seaborn as sns
-from textwrap import wrap
 
-import bdbcontrib.bql_utils as bqlu
+import bayeslite.core
+
+import bql_utils as bqlu
+from facade import do_query
+
+################################################################################
+###                                    PUBLIC                                ###
+################################################################################
+
+def mi_hist(bdb, generator, col1, col2, num_samples=1000, bins=5):
+    """Plots a histogram of the mutual information over the models of a
+    generator.
+
+    Parameters
+    ----------
+    bdb : bayeslite.BayesDB
+        Active BayesDB instance.
+    generator : str
+        Name of the generator to compute MI(col1;col2)
+    col1, col2 : str
+        Name of the columns to compute MI(col1;col2)
+    num_samples : int, optional
+        Number of samples to use in the Monte Carlo estimate of MI.
+    bins : int, optional
+        Number of bins in the histogram.
+
+    Returns
+    -------
+    figure : matplotlib.figure.Figure
+    """
+    generator_id = bayeslite.core.bayesdb_get_generator(bdb, generator)
+    bql = '''
+        SELECT COUNT(modelno) FROM bayesdb_generator_model
+        WHERE generator_id = ?
+        '''
+    c = bdb.execute(bql, (generator_id,))
+    num_models = c.fetchall()[0][0]
+
+    figure, ax = plt.subplots(figsize=(6, 6))
+
+    mis = []
+    for modelno in range(num_models):
+        bql = '''
+            ESTIMATE MUTUAL INFORMATION OF {} WITH {} USING {} SAMPLES FROM {}
+            USING MODEL {} LIMIT 1;
+            '''.format(col1, col2, num_samples, generator, modelno)
+        c = bdb.execute(bql)
+        mi = c.fetchall()[0][0]
+        mis.append(mi)
+    ax.hist(mis, bins, normed=True)
+    ax.set_xlabel('Mutual Information')
+    ax.set_ylabel('Density')
+    ax.set_title('Mutual information of {} with {}'.format(col1, col2))
+
+    return figure
+
+
+def heatmap(bdb, bql, vmin=None, vmax=None, row_ordering=None,
+        col_ordering=None):
+    """Create a clustered heatmap from the BQL query.
+
+    Parameters
+    ----------
+    bdb : bayeslite.BayesDB
+        Active BayesDB instance.
+    bql : str
+        The BQL to run and plot. Must be a PAIRWISE BQL query.
+    vmin: float
+        Minimun value of the colormap.
+    vmax: float
+        Maximum value of the colormap.
+    row_ordering, col_ordering: list<int>
+        Specify the order of labels on the x and y axis of the heatmap. To
+        access the row and column indices from a clustermap object, use:
+        clustermap.dendrogram_row.reordered_ind  (for rows)
+        clustermap.dendrogram_col.reordered_ind (for cols)
+
+    Returns
+    -------
+    clustermap: seaborn.clustermap
+    """
+    df = do_query(bdb, bql).as_df()
+    df.fillna(0, inplace=True)
+    c = (df.shape[0]**.5)/4.0
+    clustermap_kws = {'linewidths': 0.2, 'vmin': vmin, 'vmax': vmax,
+        'figsize':(c, .8*c)}
+
+    clustermap = zmatrix(df, clustermap_kws=clustermap_kws,
+        row_ordering=row_ordering, col_ordering=col_ordering)
+
+    return clustermap
+
+
+def pairplot(bdb, bql, generator_name=None, show_contour=False, colorby=None,
+        show_missing=False, show_full=False):
+    """Perform a pairplot of the table returned by the bql query.
+
+    Plots continuous-continuous pairs as scatter (optional KDE contour).
+    Plots continuous-categorical pairs as violinplot.
+    Plots categorical-categorical pairs as heatmap.
+
+    Parameters
+    ----------
+    bdb : bayeslite.BayesDB
+        Active BayesDB instance.
+    bql : str
+        The BQL to run and pairplot.
+    generator_name : str, optional
+        The name of generator; explicitly passing in provides optimizations.
+    show_contour : bool, optional
+        If True, KDE contours are plotted on top of scatter plots
+        and histograms.
+    show_missing : bool, optional
+        If True, rows with one missing value are plotted as lines on scatter
+        plots.
+    colorby : str, optional
+        Name of a column to use to color data points in histograms and scatter
+        plots.
+    show_full : bool, optional
+        Show full pairwise plots, rather than only lower triangular plots.
+
+    Returns
+    -------
+    figure : matplotlib.figure.Figure
+    """
+    df = do_query(bdb, bql).as_df()
+    c = len(df.columns)*4
+    figure = _pairplot(df, bdb=bdb, generator_name=generator_name,
+        show_contour=show_contour, colorby=colorby, show_missing=show_missing,
+        show_full=show_full)
+    figure.tight_layout()
+    figure.set_size_inches((c,c))
+
+    return figure
+
+
+def histogram(bdb, bql, bins=15, normed=None):
+    """Plot histogram. If the result of query has two columns, hist uses
+    the second column to divide the data in the first column into colored
+    sub-histograms.
+
+    Parameters
+    ----------
+    bdb : bayeslite.BayesDB
+        Active BayesDB instance.
+    bql : str
+        The BQL to run and histogram.
+    bins : int, optional
+        Number of bins in the histogram.
+    normed : bool, optional
+        Normalize the histograms?
+
+    Returns
+    ----------
+    figure: matplotlib.figure.Figure
+    """
+    df = do_query(bdb, bql).as_df()
+    figure = comparative_hist(df, bdb=bdb, nbins=bins, normed=normed)
+
+    return figure
+
+
+def barplot(bdb, bql):
+    """Bar plot of two-column query.
+
+    Uses the first column of the query as the bar names and the second column as
+    the bar heights. Ignores other columns.
+
+    Parameters
+    ----------
+    bdb : bayeslite.BayesDB
+        Active BayesDB instance.
+    bql : str
+        The BQL to run and histogram.
+
+    Returns
+    ----------
+    figure: matplotlib.figure.Figure
+    """
+    df = do_query(bdb, bql).as_df()
+
+    c = df.shape[0]/2.0
+    figure, ax = plt.subplots(figsize=(c, 5))
+
+    ax.bar([x-.5 for x in range(df.shape[0])], df.ix[:, 1].values,
+        color='#333333', edgecolor='#333333')
+    ax.set_xticks(range(df.shape[0]))
+    ax.set_xticklabels(df.ix[:, 0].values, rotation=90)
+    ax.set_xlim([-1, df.shape[0]-.5])
+    ax.set_ylabel(df.columns[1])
+    ax.set_xlabel(df.columns[0])
+    ax.set_title('\n    '.join(wrap(bql, 80)))
+
+    return figure
+
+
+################################################################################
+###                               INTERNAL                                   ###
+################################################################################
 
 MODEL_TO_TYPE_LOOKUP = {
     'normal_inverse_gamma': 'numerical',
@@ -426,7 +625,7 @@ def zmatrix(data_df, clustermap_kws=None, row_ordering=None,
 
 
 # TODO: bdb, and table_name should be optional arguments
-def pairplot(df, bdb=None, generator_name=None, use_shortname=False,
+def _pairplot(df, bdb=None, generator_name=None, use_shortname=False,
         show_contour=False, colorby=None, show_missing=False, show_full=False):
     """Plots the columns in data_df in a facet grid.
 

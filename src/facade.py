@@ -23,8 +23,8 @@ from bayeslite.sqlite3_util import sqlite3_quote_name as sqlquote
 from crosscat.LocalEngine import LocalEngine
 from crosscat.MultiprocessingEngine import MultiprocessingEngine
 
-from bdbcontrib import bql_utils
-from bdbcontrib import crosscat_utils
+import bql_utils
+import crosscat_utils
 
 
 class BQLQueryResult(object):
