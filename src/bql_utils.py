@@ -235,7 +235,13 @@ def get_column_stattype(bdb, generator_name, column_name):
             ORDER BY c.colno
     '''
     cursor = bdb.sql_execute(sql, (generator_id, column_name,))
-    return cursor.next()[0]
+    try:
+        row = cursor.next()
+    except StopIteration:
+        # XXX Temporary kludge for broken callers.
+        raise IndexError
+    else:
+        return row[0]
 
 
 def get_data_as_list(bdb, table_name, column_list=None):
