@@ -139,9 +139,18 @@ def get_rows_in_cluster(X_D, view, cluster):
 
 def get_M_c(bdb, generator_name):
     generator_id = bayeslite.core.bayesdb_get_generator(bdb, generator_name)
-    column_info = bu.get_column_info(bdb, generator_name)
-    M_c = bayeslite.crosscat.create_metadata(bdb, generator_id, column_info)
-    return M_c
+    sql = '''
+        SELECT metadata_json FROM bayesdb_crosscat_metadata
+            WHERE generator_id = ?
+    '''
+    cursor = bdb.sql_execute(sql, (generator_id,))
+    try:
+        row = cursor.next()
+    except StopIteration:
+        raise ValueError(bdb, 'No crosscat metadata for generator: %s'
+            % (generator_name,))
+    else:
+        return json.loads(row[0])
 
 
 def get_metadata(bdb, generator_name, modelno):
