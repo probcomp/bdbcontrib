@@ -26,7 +26,107 @@ from crosscat.utils import sample_utils as su
 
 from bdbcontrib import bql_utils as bu
 from bdbcontrib import plot_utils as pu
+from bdbcontrib.facade import do_query
 
+################################################################################
+###                                  PUBLIC                                  ###
+################################################################################
+
+def draw_crosscat(bdb, generator, modelno, row_label_col=None):
+    """Draw crosscat model from the specified generator.
+
+    Parameters
+    ----------
+    bdb : bayeslite.BayesDB
+        Active BayesDB instance.
+    generator_name : str
+        Name of generator.
+    modelno: int
+        Number of model to draw.
+
+    Returns
+    ----------
+    figure: matplotlib.figure.Figure
+    """
+    bql = '''
+        SELECT tabname, metamodel FROM bayesdb_generator
+        WHERE name = ?
+        '''
+    table_name, metamodel = do_query(
+        bdb, bql, (generator,)).as_cursor().fetchall()[0]
+
+    if metamodel.lower() != 'crosscat':
+        raise ValueError('Metamodel for generator %s (%s) should be crosscat' %
+            (generator, metamodel))
+
+    figure, axes = plt.subplots(tight_layout=False)
+    crosscat_utils.draw_state(bdb, table_name, generator,
+        modelno, ax=axes, row_label_col=row_label_col)
+
+    return figure
+
+
+def plot_crosscat_chain_diagnostics(bdb, diagnostic, generator):
+    """
+    Plot diagnostics for all models of generator.
+
+    Parameters
+    ----------
+    bdb : bayeslite.BayesDB
+        Active BayesDB instance.
+    diagnostic : str
+        Valid (crosscat) diagnostics are:
+            - logscore: log score of the model
+            - num_views: the number of views in the model
+            - column_crp_alpha: CRP alpha over columns
+    generator : str
+        Name of the generator to diagnose.
+
+    Returns
+    ----------
+    figure: matplotlib.figure.Figure
+    """
+    valid_diagnostics = ['logscore', 'num_views', 'column_crp_alpha']
+    if diagnostic not in valid_diagnostics:
+        raise ValueError('I do not know what to do with %s.\n'
+                    'Please chosse one of the following instead: %s\n'
+                    % ', '.join(valid_diagnostics))
+
+    generator_id = bayeslite.core.bayesdb_get_generator(bdb, generator)
+
+    # Get model numbers. Do not rely on there to be a diagnostic for every
+    # model.
+    bql = '''
+        SELECT modelno, COUNT(modelno) FROM bayesdb_crosscat_diagnostics
+        WHERE generator_id = ? GROUP BY modelno
+        '''
+    df = do_query(bdb, bql, (generator_id,)).as_df()
+    models = df['modelno'].astype(int).values
+
+    figure, ax = plt.subplots(tight_layout=True, figsize=(10, 5))
+    colors = sns.color_palette("GnBu_d", len(models))
+    for i, modelno in enumerate(models):
+        bql = '''
+            SELECT {}, iterations FROM bayesdb_crosscat_diagnostics
+            WHERE modelno = ? AND generator_id = ?
+            ORDER BY iterations ASC
+            '''.format(diagnostic)
+        df = do_query(bdb, bql, (modelno, generator_id,)).as_df()
+        ax.plot(df['iterations'].values, df[diagnostic].values,
+                 c=colors[modelno], alpha=.7, lw=2)
+
+        ax.text(df['iterations'].values[-1], df[diagnostic].values[-1],
+                str(modelno), color=colors[i])
+
+    ax.set_xlabel('Iteration')
+    ax.set_ylabel(diagnostic)
+    ax.set_title('%s for each model in %s' % (diagnostic, generator,))
+
+    return figure
+
+################################################################################
+###                               INTERNAL                                   ###
+################################################################################
 
 def get_cols_in_view(X_L, view):
     return [c for c, v in enumerate(X_L['column_partition']['assignments'])

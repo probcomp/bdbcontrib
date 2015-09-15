@@ -19,8 +19,6 @@ import os
 import string
 from cStringIO import StringIO
 
-from bayeslite.sqlite3_util import sqlite3_quote_name as quote
-
 
 PLOTTING_COMMANDS = ['.heatmap', '.histogram', '.show',
                      '.chainplot', '.ccstate', '.bar',
@@ -211,41 +209,6 @@ def mdread(f, output_dir, shell):
         f.write(mdstr)
 
     return mdstr
-
-
-def nullify(bdb, table, value):
-    """Relace specified values in a SQL table with ``NULL``
-
-    Parameters
-    ----------
-    bdb : bayeslite.BayesDB
-        bayesdb database object
-    table : str
-        The name of the table on which to act
-    value : stringable
-        The value to replace with ``NULL``
-
-    Examples
-    --------
-    >>> import bayeslite
-    >>> from bdbcontrib import plot_utils
-    >>> with bayeslite.bayesdb_open('mydb.bdb') as bdb:
-    >>>    utils.nullify(bdb, 'mytable', 'NaN')
-    """
-    # get a list of columns of the table
-    c = bdb.sql_execute('pragma table_info({})'.format(quote(table)))
-    columns = [r[1] for r in c.fetchall()]
-    for col in columns:
-        if value in ["''", '""']:
-            bql = '''
-            UPDATE {} SET {} = NULL WHERE {} = '';
-            '''.format(quote(table), quote(col), quote(col))
-            bdb.sql_execute(bql)
-        else:
-            bql = '''
-            UPDATE {} SET {} = NULL WHERE {} = ?;
-            '''.format(quote(table), quote(col), quote(col))
-            bdb.sql_execute(bql, (value,))
 
 
 def unicorn():

@@ -1,31 +1,43 @@
-from bdbcontrib.api import barplot
-from bdbcontrib.api import cardinality
-from bdbcontrib.api import draw_crosscat
-from bdbcontrib.api import estimate_log_likelihood
-from bdbcontrib.api import estimate_kl_divergence
-from bdbcontrib.api import heatmap
-from bdbcontrib.api import histogram
-from bdbcontrib.api import mi_hist
-from bdbcontrib.api import nullify
-from bdbcontrib.api import pairplot
-from bdbcontrib.api import plot_crosscat_chain_diagnostics
+from bdbcontrib.bql_utils import cardinality
+from bdbcontrib.bql_utils import nullify
 
-"""Main bdbcontrib API.
+from bdbcontrib.crosscat_utils import draw_crosscat
+from bdbcontrib.crosscat_utils import plot_crosscat_chain_diagnostics
+
+from bdbcontrib.diagnostic_utils import estimate_kl_divergence
+from bdbcontrib.diagnostic_utils import estimate_log_likelihood
+
+from bdbcontrib.facade import do_query
+
+from bdbcontrib.plot_utils import barplot
+from bdbcontrib.plot_utils import heatmap
+from bdbcontrib.plot_utils import histogram
+from bdbcontrib.plot_utils import mi_hist
+from bdbcontrib.plot_utils import pairplot
+
+"""
+Main bdbcontrib API.
 
 The bdbcontrib module serves a sandbox for experimental and semi-stable
 features that are not yet ready for integreation to the bayeslite repository.
 """
 
 __all__ = [
-    'barplot',
-    'cardinality',
-    'draw_crosscat',
-    'estimate_kl_divergence',
-    'estimate_log_likelihood',
-    'heatmap',
-    'histogram',
-    'mi_hist',
-    'nullify',
-    'pairplot',
-    'plot_crosscat_chain_diagnostics'
+    # bql_utils
+        'cardinality',
+        'nullify',
+    # crosscat_utils
+        'draw_crosscat',
+        'plot_crosscat_chain_diagnostics',
+    # diagnostic_utils
+        'estimate_kl_divergence',
+        'estimate_log_likelihood',
+    # facade
+        'do_query',
+    # plot_utils
+        'barplot',
+        'heatmap',
+        'histogram',
+        'mi_hist',
+        'pairplot',
 ]

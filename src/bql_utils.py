@@ -17,8 +17,50 @@
 import pandas as pd
 
 import bayeslite.core
-from bayeslite.sqlite3_util import sqlite3_quote_name
+from bayeslite.sqlite3_util import sqlite3_quote_name as quote
 
+
+################################################################################
+###                                  PUBLIC                                  ###
+################################################################################
+
+def cardinality(bdb, table, cols=None):
+    """Compute the number of unique values in the columns of a table.
+
+    Parameters
+    ----------
+    bdb : bayeslite.BayesDB
+        Active BayesDB instance.
+    table : str
+        Name of table.
+    cols : list<str>, optional
+        Columns to compute the unique values. Defaults to all.
+
+    Returns
+    -------
+    counts : list<tuple<str,int>>
+        A list of tuples of the form [(col_1, cardinality_1), ...]
+    """
+    # If no columns specified, use all.
+    if not cols:
+        sql = 'PRAGMA table_info(%s)' % (quote(table),)
+        res = bdb.sql_execute(sql)
+        cols = [r[1] for r in res.fetchall()]
+
+    counts = []
+    for col in cols:
+        sql = '''
+            SELECT COUNT (DISTINCT %s) FROM %s
+            ''' % (quote(col), quote(table))
+        res = bdb.sql_execute(sql)
+        counts.append((col, res.next()[0]))
+
+    return counts
+
+
+################################################################################
+###                               INTERNAL                                   ###
+################################################################################
 
 def cursor_to_df(cursor):
     """ Converts SQLite3 cursor to a pandas DataFrame """
@@ -74,11 +116,11 @@ def get_data_as_list(bdb, table_name, column_list=None):
     if column_list is None:
         sql = '''
             SELECT * FROM {};
-            '''.format(sqlite3_quote_name(table_name))
+            '''.format(quote(table_name))
     else:
         sql = '''
             SELECT {} FROM {}
-            '''.format(', '.join(map(sqlite3_quote_name, column_list)),
+            '''.format(', '.join(map(quote, column_list)),
                     table_name)
     cursor = bdb.sql_execute(sql)
     T = cursor_to_df(cursor).values.tolist()
