@@ -1,14 +1,14 @@
-bdbcontrib reference
-=======================
+bdbcontrib Reference
+====================
 
 :mod:`facade`: bayeslite conveneice facade
------------------------------------------
+------------------------------------------
 
 .. automodule:: bdbcontrib.facade
  :members:
 
-:mod:`plotutils`: common plotting functionality 
-------------------------------------------------
+:mod:`plotutils`: common plotting functionality
+-----------------------------------------------
 
 .. automodule:: bdbcontrib.plotutils
  :members:
@@ -20,7 +20,7 @@ bdbcontrib reference
  :members:
 
 :mod:`draw_cc_state`: draw CrossCat states
-------------------------------------------------
+------------------------------------------
 
 .. automodule:: bdbcontrib.draw_cc_state
  :members:
