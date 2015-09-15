@@ -53,8 +53,8 @@ def draw_crosscat(bdb, generator, modelno, row_label_col=None):
         SELECT tabname, metamodel FROM bayesdb_generator
             WHERE name = ?
     '''
-    table_name, metamodel = do_query(
-        bdb, bql, (generator,)).as_cursor().fetchall()[0]
+    cursor = bdb.execute(bql, (generator,))
+    table_name, metamodel = cursor.next()
 
     if metamodel.lower() != 'crosscat':
         raise ValueError('Metamodel for generator %s (%s) should be crosscat' %

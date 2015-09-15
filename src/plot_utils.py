@@ -58,7 +58,7 @@ def mi_hist(bdb, generator, col1, col2, num_samples=1000, bins=5):
             WHERE generator_id = ?
     '''
     c = bdb.execute(bql, (generator_id,))
-    num_models = c.fetchall()[0][0]
+    num_models = c.next()[0]
 
     figure, ax = plt.subplots(figsize=(6, 6))
 
@@ -69,7 +69,7 @@ def mi_hist(bdb, generator, col1, col2, num_samples=1000, bins=5):
                 USING MODEL {} LIMIT 1
         '''.format(col1, col2, num_samples, generator, modelno)
         c = bdb.execute(bql)
-        mi = c.fetchall()[0][0]
+        mi = c.next()[0]
         mis.append(mi)
     ax.hist(mis, bins, normed=True)
     ax.set_xlabel('Mutual Information')

@@ -120,9 +120,7 @@ def estimate_log_likelihood(bdb, table, generator, targets=None, givens=None,
 
     # Obtain number of rows in the dataset and samples to use.
     n_samples = n_samples
-    n_rows = bdb.execute('''
-        SELECT COUNT(*) FROM {}
-    '''.format(table)).fetchall()[0][0]
+    n_rows = bdb.execute('''SELECT COUNT(*) FROM {}'''.format(table)).next()[0]
     if n_samples is None or n_rows < n_samples:
         n_samples = n_rows
 
@@ -148,8 +146,7 @@ def estimate_log_likelihood(bdb, table, generator, targets=None, givens=None,
                     ESTIMATE PROBABILITY OF {}=? FROM {} LIMIT 1
                 '''.format(col, sqlite3_quote_name(generator))
 
-            crs = bdb.execute(bql, (val,))
-            ll += math.log(crs.fetchall()[0][0])
+            ll += math.log(bdb.execute(bql, (val,)).next()[0])
 
     return ll
 

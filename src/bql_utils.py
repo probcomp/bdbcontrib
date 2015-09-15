@@ -45,7 +45,7 @@ def cardinality(bdb, table, cols=None):
     if not cols:
         sql = 'PRAGMA table_info(%s)' % (quote(table),)
         res = bdb.sql_execute(sql)
-        cols = [r[1] for r in res.fetchall()]
+        cols = [r[1] for r in res]
 
     counts = []
     for col in cols:
@@ -78,7 +78,7 @@ def nullify(bdb, table, value):
     """
     # get a list of columns of the table
     c = bdb.sql_execute('pragma table_info({})'.format(quote(table)))
-    columns = [r[1] for r in c.fetchall()]
+    columns = [r[1] for r in c]
     for col in columns:
         if value in ["''", '""']:
             bql = '''
@@ -94,7 +94,7 @@ def nullify(bdb, table, value):
 
 def cursor_to_df(cursor):
     """Converts SQLite3 cursor to a pandas DataFrame."""
-    df = pd.DataFrame.from_records(cursor.fetchall(), coerce_float=True)
+    df = pd.DataFrame.from_records(list(cursor), coerce_float=True)
     df.columns = [desc[0] for desc in cursor.description]
     for col in df.columns:
         try:
@@ -217,15 +217,13 @@ def get_column_info(bdb, generator_name):
                 AND c.tabname = g.tabname
             ORDER BY c.colno
     '''
-    cursor = bdb.sql_execute(sql, (generator_id,))
-    column_info = cursor.fetchall()
-    return column_info
+    return list(bdb.sql_execute(sql, (generator_id,)))
 
 
 def get_column_stattype(bdb, generator_name, column_name):
     generator_id = bayeslite.core.bayesdb_get_generator(bdb, generator_name)
     sql = '''
-        SELECT c.name, gc.stattype
+        SELECT gc.stattype
             FROM bayesdb_generator AS g,
                 bayesdb_generator_column AS gc,
                 bayesdb_column AS c
@@ -237,8 +235,7 @@ def get_column_stattype(bdb, generator_name, column_name):
             ORDER BY c.colno
     '''
     cursor = bdb.sql_execute(sql, (generator_id, column_name,))
-    stattype = cursor.fetchall()[0][1]
-    return stattype
+    return cursor.next()[0]
 
 
 def get_data_as_list(bdb, table_name, column_list=None):
@@ -271,8 +268,7 @@ def get_column_descriptive_metadata(bdb, table_name, column_names, md_field):
     bql = '''
         SELECT colno, name, {} FROM bayesdb_column WHERE tabname = ?
     '''.format(md_field)
-    curs = bdb.sql_execute(bql, (table_name,))
-    records = curs.fetchall()
+    records = list(bdb.sql_execute(bql, (table_name,)))
 
     # hack for case sensitivity problems
     column_names = [c.upper().lower() for c in column_names]
