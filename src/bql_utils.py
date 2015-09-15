@@ -58,6 +58,39 @@ def cardinality(bdb, table, cols=None):
     return counts
 
 
+def nullify(bdb, table, value):
+    """Relace specified values in a SQL table with ``NULL``
+    Parameters
+    ----------
+    bdb : bayeslite.BayesDB
+        bayesdb database object
+    table : str
+        The name of the table on which to act
+    value : stringable
+        The value to replace with ``NULL``
+    Examples
+    --------
+    >>> import bayeslite
+    >>> from bdbcontrib import plotutils
+    >>> with bayeslite.bayesdb_open('mydb.bdb') as bdb:
+    >>>    utils.nullifty(bdb, 'mytable', 'NaN')
+    """
+    # get a list of columns of the table
+    c = bdb.sql_execute('pragma table_info({})'.format(quote(table)))
+    columns = [r[1] for r in c.fetchall()]
+    for col in columns:
+        if value in ["''", '""']:
+            bql = '''
+            UPDATE {} SET {} = NULL WHERE {} = '';
+            '''.format(quote(table), quote(col), quote(col))
+            bdb.sql_execute(bql)
+        else:
+            bql = '''
+            UPDATE {} SET {} = NULL WHERE {} = ?;
+            '''.format(quote(table), quote(col), quote(col))
+            bdb.sql_execute(bql, (value,))
+
+
 ################################################################################
 ###                               INTERNAL                                   ###
 ################################################################################
