@@ -97,16 +97,16 @@ def test_nullify_no_missing(data, value, num_nulls_expected):
         bql_utils.nullify(bdb, 't', value)
 
         c = bdb.execute('SELECT COUNT(*) FROM t WHERE one IS NULL;')
-        assert c.fetchall()[0][0] == num_nulls_expected[0]
+        assert c.next()[0] == num_nulls_expected[0]
 
         c = bdb.execute('SELECT COUNT(*) FROM t WHERE two IS NULL;')
-        assert c.fetchall()[0][0] == num_nulls_expected[1]
+        assert c.next()[0] == num_nulls_expected[1]
 
         c = bdb.execute('SELECT COUNT(*) FROM t WHERE three IS NULL;')
-        assert c.fetchall()[0][0] == num_nulls_expected[2]
+        assert c.next()[0] == num_nulls_expected[2]
 
         c = bdb.execute('SELECT COUNT(*) FROM t WHERE four IS NULL;')
-        assert c.fetchall()[0][0] == num_nulls_expected[3]
+        assert c.next()[0] == num_nulls_expected[3]
     temp.close()
 
 
