@@ -15,10 +15,10 @@
 #   limitations under the License.
 
 import bayeslite
-import bayeslite.crosscat
 import bayeslite.guess
 import bayeslite.read_pandas
 
+from bayeslite.metamodels.crosscat import CrosscatMetamodel
 from bayeslite.sqlite3_util import sqlite3_quote_name as sqlquote
 from crosscat.LocalEngine import LocalEngine
 from crosscat.MultiprocessingEngine import MultiprocessingEngine
@@ -83,15 +83,16 @@ class BayesDBClient(object):
 
     def __init__(self, bdb_filename, no_mp=False):
         if no_mp:
-            self.engine = bayeslite.crosscat.CrosscatMetamodel(LocalEngine())
+            self.engine = CrosscatMetamodel(LocalEngine())
         else:
-            self.engine = bayeslite.crosscat.CrosscatMetamodel(MultiprocessingEngine())
+            self.engine = CrosscatMetamodel(MultiprocessingEngine())
 
         if bdb_filename is None:
             print "WARNING: bdb_filename is None, all analyses will be " \
                   "conducted in memory"
 
-        self.bdb = bayeslite.bayesdb_open(pathname=bdb_filename)
+        self.bdb = bayeslite.bayesdb_open(pathname=bdb_filename,
+            builtin_metamodels=False)
         bayeslite.bayesdb_register_metamodel(self.bdb,  self.engine)
 
     def __call__(self, bql_query_str):
