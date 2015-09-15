@@ -1,14 +1,226 @@
+# -*- coding: utf-8 -*-
 
-import bdbcontrib.bql_utils as bqlu
+#   Copyright (c) 2010-2014, MIT Probabilistic Computing Project
+#
+#   Licensed under the Apache License, Version 2.0 (the "License");
+#   you may not use this file except in compliance with the License.
+#   You may obtain a copy of the License at
+#
+#       http://www.apache.org/licenses/LICENSE-2.0
+#
+#   Unless required by applicable law or agreed to in writing, software
+#   distributed under the License is distributed on an "AS IS" BASIS,
+#   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#   See the License for the specific language governing permissions and
+#   limitations under the License.
 
-from textwrap import wrap
-import matplotlib.pyplot as plt
-import matplotlib.gridspec as gridspec
-import seaborn as sns
 import copy
-import pandas as pd
-import numpy as np
+from textwrap import wrap
 
+import matplotlib.gridspec as gridspec
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import seaborn as sns
+
+import bayeslite.core
+
+import bql_utils as bqlu
+from facade import do_query
+
+###############################################################################
+###                                   PUBLIC                                ###
+###############################################################################
+
+def mi_hist(bdb, generator, col1, col2, num_samples=1000, bins=5):
+    """Plot histogram of mutual information over generator's models.
+
+    Parameters
+    ----------
+    bdb : bayeslite.BayesDB
+        Active BayesDB instance.
+    generator : str
+        Name of the generator to compute MI(col1;col2)
+    col1, col2 : str
+        Name of the columns to compute MI(col1;col2)
+    num_samples : int, optional
+        Number of samples to use in the Monte Carlo estimate of MI.
+    bins : int, optional
+        Number of bins in the histogram.
+
+    Returns
+    -------
+    figure : matplotlib.figure.Figure
+    """
+    generator_id = bayeslite.core.bayesdb_get_generator(bdb, generator)
+    bql = '''
+        SELECT COUNT(modelno) FROM bayesdb_generator_model
+            WHERE generator_id = ?
+    '''
+    c = bdb.execute(bql, (generator_id,))
+    num_models = c.next()[0]
+
+    figure, ax = plt.subplots(figsize=(6, 6))
+
+    mis = []
+    for modelno in range(num_models):
+        bql = '''
+            ESTIMATE MUTUAL INFORMATION OF {} WITH {} USING {} SAMPLES FROM {}
+                USING MODEL {} LIMIT 1
+        '''.format(col1, col2, num_samples, generator, modelno)
+        c = bdb.execute(bql)
+        mi = c.next()[0]
+        mis.append(mi)
+    ax.hist(mis, bins, normed=True)
+    ax.set_xlabel('Mutual Information')
+    ax.set_ylabel('Density')
+    ax.set_title('Mutual information of {} with {}'.format(col1, col2))
+
+    return figure
+
+
+def heatmap(bdb, bql, vmin=None, vmax=None, row_ordering=None,
+        col_ordering=None):
+    """Plot clustered heatmap of pairwise matrix.
+
+    Parameters
+    ----------
+    bdb : bayeslite.BayesDB
+        Active BayesDB instance.
+    bql : str
+        The BQL to run and plot. Must be a PAIRWISE BQL query.
+    vmin: float
+        Minimun value of the colormap.
+    vmax: float
+        Maximum value of the colormap.
+    row_ordering, col_ordering: list<int>
+        Specify the order of labels on the x and y axis of the heatmap. To
+        access the row and column indices from a clustermap object, use:
+        clustermap.dendrogram_row.reordered_ind  (for rows)
+        clustermap.dendrogram_col.reordered_ind (for cols)
+
+    Returns
+    -------
+    clustermap: seaborn.clustermap
+    """
+    df = do_query(bdb, bql).as_df()
+    df.fillna(0, inplace=True)
+    c = (df.shape[0]**.5)/4.0
+    clustermap_kws = {'linewidths': 0.2, 'vmin': vmin, 'vmax': vmax,
+        'figsize':(c, .8*c)}
+
+    clustermap = zmatrix(df, clustermap_kws=clustermap_kws,
+        row_ordering=row_ordering, col_ordering=col_ordering)
+
+    return clustermap
+
+
+def pairplot(bdb, bql, generator_name=None, show_contour=False, colorby=None,
+        show_missing=False, show_full=False):
+    """Plot array of plots for all pairs of columns.
+
+    Plots continuous-continuous pairs as scatter (optional KDE contour).
+    Plots continuous-categorical pairs as violinplot.
+    Plots categorical-categorical pairs as heatmap.
+
+    Parameters
+    ----------
+    bdb : bayeslite.BayesDB
+        Active BayesDB instance.
+    bql : str
+        The BQL to run and pairplot.
+    generator_name : str, optional
+        The name of generator; explicitly passing in provides optimizations.
+    show_contour : bool, optional
+        If True, KDE contours are plotted on top of scatter plots
+        and histograms.
+    show_missing : bool, optional
+        If True, rows with one missing value are plotted as lines on scatter
+        plots.
+    colorby : str, optional
+        Name of a column to use to color data points in histograms and scatter
+        plots.
+    show_full : bool, optional
+        Show full pairwise plots, rather than only lower triangular plots.
+
+    Returns
+    -------
+    figure : matplotlib.figure.Figure
+    """
+    df = do_query(bdb, bql).as_df()
+    c = len(df.columns)*4
+    figure = _pairplot(df, bdb=bdb, generator_name=generator_name,
+        show_contour=show_contour, colorby=colorby, show_missing=show_missing,
+        show_full=show_full)
+    figure.tight_layout()
+    figure.set_size_inches((c,c))
+
+    return figure
+
+
+def histogram(bdb, bql, bins=15, normed=None):
+    """Plot histogram of one- or two-column table.
+
+    If two-column, subdivide the first column according to labels in
+    the second column
+
+    Parameters
+    ----------
+    bdb : bayeslite.BayesDB
+        Active BayesDB instance.
+    bql : str
+        The BQL to run and histogram.
+    bins : int, optional
+        Number of bins in the histogram.
+    normed : bool, optional
+        Normalize the histograms?
+
+    Returns
+    ----------
+    figure: matplotlib.figure.Figure
+    """
+    df = do_query(bdb, bql).as_df()
+    figure = comparative_hist(df, bdb=bdb, nbins=bins, normed=normed)
+
+    return figure
+
+
+def barplot(bdb, bql):
+    """Plot bar-plot of query giving categories and heights.
+
+    First column specifies names; second column specifies heights.
+
+    Parameters
+    ----------
+    bdb : bayeslite.BayesDB
+        Active BayesDB instance.
+    bql : str
+        The BQL to run and histogram.
+
+    Returns
+    ----------
+    figure: matplotlib.figure.Figure
+    """
+    df = do_query(bdb, bql).as_df()
+
+    c = df.shape[0]/2.0
+    figure, ax = plt.subplots(figsize=(c, 5))
+
+    ax.bar([x-.5 for x in range(df.shape[0])], df.ix[:, 1].values,
+        color='#333333', edgecolor='#333333')
+    ax.set_xticks(range(df.shape[0]))
+    ax.set_xticklabels(df.ix[:, 0].values, rotation=90)
+    ax.set_xlim([-1, df.shape[0]-.5])
+    ax.set_ylabel(df.columns[1])
+    ax.set_xlabel(df.columns[0])
+    ax.set_title('\n    '.join(wrap(bql, 80)))
+
+    return figure
+
+
+###############################################################################
+###                              INTERNAL                                   ###
+###############################################################################
 
 MODEL_TO_TYPE_LOOKUP = {
     'normal_inverse_gamma': 'numerical',
@@ -27,7 +239,7 @@ def rotate_tick_labels(ax, axis='x', rotation=90):
 
 
 def gen_collapsed_legend_from_dict(hl_colors_dict, loc=0, title=None,
-                                   fontsize='medium', wrap_threshold=1000):
+        fontsize='medium', wrap_threshold=1000):
     """Creates a legend with entries grouped by color.
 
     For example, if a plot has multiple labels associated with the same color
@@ -75,7 +287,7 @@ def gen_collapsed_legend_from_dict(hl_colors_dict, loc=0, title=None,
         legend_labels.append(label)
 
     legend = plt.legend(legend_artists, legend_labels, loc=loc, title=title,
-                        fontsize=fontsize)
+        fontsize=fontsize)
 
     return legend
 
@@ -86,8 +298,8 @@ def get_bayesdb_col_type(column_name, df_column, bdb=None,
     # of the column will be returned otherwise we guess.
 
     if isinstance(df_column, pd.DataFrame):
-        raise TypeError("Multiple columns in the query result have the same "
-                        "name (%s)." % (column_name,))
+        raise TypeError('Multiple columns in the query result have the same '
+            'name (%s).' % (column_name,))
 
     def guess_column_type(df_column):
         pd_type = df_column.dtype
@@ -112,7 +324,7 @@ def get_bayesdb_col_type(column_name, df_column, bdb=None,
         except IndexError:
             return guess_column_type(df_column)
         except Exception as err:
-            print "Unexpected exception: {}".format(err)
+            print 'Unexpected exception: {}'.format(err)
             raise err
     else:
         return guess_column_type(df_column)
@@ -142,15 +354,15 @@ def do_hist(data_srs, **kwargs):
 
     if dtype is None:
         dtype = get_bayesdb_col_type(data_srs.columns[0], data_srs, bdb=bdb,
-                                     generator_name=generator_name)
+            generator_name=generator_name)
 
     if ax is None:
         ax = plt.gca()
 
     if len(data_srs.shape) > 1:
         if colors is None and data_srs.shape[1] != 1:
-            raise ValueError('If a dummy column is specified, colors must '
-                             'also be specified.')
+            raise ValueError('If a dummy column is specified, colors must also'
+                ' be specified.')
 
     data_srs = data_srs.dropna()
 
@@ -165,7 +377,7 @@ def do_hist(data_srs, **kwargs):
                 color_lst.append(color)
                 stacks.append(subval)
             ax.hist(stacks, bins=len(uvals), color=color_lst, alpha=.9,
-                    histtype='barstacked', rwidth=1.0)
+                histtype='barstacked', rwidth=1.0)
         else:
             ax.hist(vals, bins=len(uvals))
         ax.set_xticks(range(len(uvals)))
@@ -259,18 +471,17 @@ def do_violinplot(plot_df, vartypes, **kwargs):
                 positions.append(base_width*i + order_key[v] + base_width/2
                                  - .75/2)
 
-            sns.violinplot(subdf[vals], groupby=subdf[groupby],
-                           order=sub_vals, names=sub_vals, vert=vert,
-                           ax=ax, positions=positions, widths=violin_width,
-                           color=color)
+            sns.violinplot(subdf[vals], groupby=subdf[groupby], order=sub_vals,
+                names=sub_vals, vert=vert, ax=ax, positions=positions,
+                widths=violin_width, color=color)
     else:
         if vert:
             vals = plot_df.columns[1]
         else:
             vals = plot_df.columns[0]
         sns.violinplot(plot_df[vals], groupby=plot_df[groupby],
-                       order=unique_vals, names=unique_vals, vert=vert, ax=ax,
-                       positions=0, color='SteelBlue')
+            order=unique_vals, names=unique_vals, vert=vert, ax=ax, positions=0,
+            color='SteelBlue')
 
     if vert:
         ax.set_xlim([-.5, n_vals-.5])
@@ -308,7 +519,7 @@ def do_kdeplot(plot_df, vartypes, **kwargs):
 
     if not dummy:
         plt.scatter(df.values[:, 0], df.values[:, 1], alpha=.5,
-                    color='steelblue', zorder=2)
+            color='steelblue', zorder=2)
         # plot nulls
         if show_missing:
             nacol_x = null_rows.ix[:, 0].dropna()
@@ -324,7 +535,7 @@ def do_kdeplot(plot_df, vartypes, **kwargs):
         for val, color in colors.iteritems():
             subdf = df.loc[df.ix[:, 2] == val]
             plt.scatter(subdf.values[:, 0], subdf.values[:, 1], alpha=.5,
-                        color=color, zorder=2)
+                color=color, zorder=2)
             subnull = null_rows.loc[null_rows.ix[:, 2] == val]
             if show_missing:
                 nacol_x = subnull.ix[:, 0].dropna()
@@ -360,7 +571,7 @@ def do_pair_plot(plot_df, vartypes, **kwargs):
 
 
 def zmatrix(data_df, clustermap_kws=None, row_ordering=None,
-            col_ordering=None):
+        col_ordering=None):
     """Plots a clustermap from an ESTIMATE PAIRWISE query.
 
     Parameters:
@@ -376,7 +587,7 @@ def zmatrix(data_df, clustermap_kws=None, row_ordering=None,
 
     Returns
     -------
-    seaborn.clustermap
+    clustermap: seaborn.clustermap
     """
     if clustermap_kws is None:
         clustermap_kws = {}
@@ -409,14 +620,12 @@ def zmatrix(data_df, clustermap_kws=None, row_ordering=None,
         del clustermap_kws['pivot_kws']
         return sns.heatmap(df, **clustermap_kws), row_ordering, col_ordering
     else:
-        cm = sns.clustermap(data_df, **clustermap_kws)
-        return (cm, cm.dendrogram_row.reordered_ind,
-                cm.dendrogram_row.reordered_ind,)
+        return sns.clustermap(data_df, **clustermap_kws)
 
 
 # TODO: bdb, and table_name should be optional arguments
-def pairplot(df, bdb=None, generator_name=None, use_shortname=False,
-             show_contour=False, colorby=None, show_missing=False, show_full=False):
+def _pairplot(df, bdb=None, generator_name=None, use_shortname=False,
+        show_contour=False, colorby=None, show_missing=False, show_full=False):
     """Plots the columns in data_df in a facet grid.
 
     Supports the following pairs:
@@ -450,7 +659,7 @@ def pairplot(df, bdb=None, generator_name=None, use_shortname=False,
 
     Returns
     -------
-    plt_grid : matplotlib.gridspec.GridSpec
+    figure : matplotlib.figure.Figure
         A num_columns by num_columns Gridspec of pairplot axes.
 
     Notes
@@ -494,6 +703,7 @@ def pairplot(df, bdb=None, generator_name=None, use_shortname=False,
     all_varnames = [c for c in data_df.columns if c != colorby]
     n_vars = len(all_varnames)
     plt_grid = gridspec.GridSpec(n_vars, n_vars)
+    figure = plt.figure()
 
     # if there is only one variable, just do a hist
     if n_vars == 1:
@@ -502,8 +712,7 @@ def pairplot(df, bdb=None, generator_name=None, use_shortname=False,
         vartype = get_bayesdb_col_type(varname, data_df[varname], bdb=bdb,
                                        generator_name=generator_name)
         do_hist(data_df, dtype=vartype, ax=ax, bdb=bdb,
-                generator_name=generator_name,
-                colors=colors)
+            generator_name=generator_name, colors=colors)
         if vartype == 'categorical':
             rotate_tick_labels(ax)
         return
@@ -516,7 +725,7 @@ def pairplot(df, bdb=None, generator_name=None, use_shortname=False,
     vartypes = []
     for varname in all_varnames:
         vartype = get_bayesdb_col_type(varname, data_df[varname], bdb=bdb,
-                                       generator_name=generator_name)
+            generator_name=generator_name)
         vartypes.append(vartype)
 
     # store each axes; reaccessing ax with plt.subplot(plt_grid[a,b]) may
@@ -527,7 +736,7 @@ def pairplot(df, bdb=None, generator_name=None, use_shortname=False,
         for y_pos, var_name_y in enumerate(all_varnames):
             var_y_type = vartypes[y_pos]
 
-            ax = plt.subplot(plt_grid[y_pos, x_pos])
+            ax = figure.add_subplot(plt_grid[y_pos, x_pos])
             axes[y_pos].append(ax)
 
             if x_pos == y_pos:
@@ -535,8 +744,7 @@ def pairplot(df, bdb=None, generator_name=None, use_shortname=False,
                 if colorby is not None:
                     varnames.append(colorby)
                 ax = do_hist(data_df[varnames], dtype=var_x_type, ax=ax,
-                             bdb=bdb, generator_name=generator_name, 
-                             colors=colors)
+                    bdb=bdb, generator_name=generator_name, colors=colors)
             else:
                 varnames = [var_name_x, var_name_y]
                 vartypes_pair = (var_x_type, var_y_type,)
@@ -544,10 +752,9 @@ def pairplot(df, bdb=None, generator_name=None, use_shortname=False,
                     varnames.append(colorby)
                 plot_df = prep_plot_df(data_df, varnames)
                 ax = do_pair_plot(plot_df, vartypes_pair, ax=ax, bdb=bdb,
-                                  generator_name=generator_name,
-                                  show_contour=show_contour,
-                                  show_missing=show_missing,
-                                  colors=colors)
+                    generator_name=generator_name,
+                    show_contour=show_contour, show_missing=show_missing,
+                    colors=colors)
 
                 ymins[y_pos, x_pos] = ax.get_ylim()[0]
                 ymaxs[y_pos, x_pos] = ax.get_ylim()[1]
@@ -604,12 +811,12 @@ def pairplot(df, bdb=None, generator_name=None, use_shortname=False,
     if not show_full:
         for y_pos in range(n_vars):
             for x_pos in range(y_pos+1, n_vars):
-                plt.gcf().delaxes(axes[y_pos][x_pos])
+                figure.delaxes(axes[y_pos][x_pos])
 
-    return plt_grid
+    return figure
 
 
-def comparative_hist(df, nbins=15, normed=False, bdb=None):
+def comparative_hist(df, bdb=None, nbins=15, normed=False):
     """Plot a histogram
 
     Given a one-column pandas.DataFrame, df, plots a simple histogram. Given a
@@ -623,6 +830,10 @@ def comparative_hist(df, nbins=15, normed=False, bdb=None):
     normed : bool
         If True, normalizes the the area of the histogram (or each
         sub-histogram if df has two columns) to 1.
+
+    Returns
+    -------
+    figure: matplotlib.figure.Figure
     """
     df = df.dropna()
 
@@ -645,82 +856,30 @@ def comparative_hist(df, nbins=15, normed=False, bdb=None):
     colorby = None
     if len(df.columns) > 1:
         if len(df.columns) > 2:
-            raise ValueError("I don't know what to do with data with more"
-                             "than two columns")
+            raise ValueError('I do not know what to do with data with more '
+                'than two columns.')
         colorby = df.columns[1]
         colorby_vals = df[colorby].unique()
 
-    plt.figure(tight_layout=False, facecolor='white')
+    figure, ax = plt.subplots(tight_layout=False, facecolor='white')
     if colorby is None:
-        plt.hist(df.ix[:, 0].values, bins=bins, color='#383838',
-                 edgecolor='none', normed=normed)
+        ax.hist(df.ix[:, 0].values, bins=bins, color='#383838',
+            edgecolor='none', normed=normed)
         plot_title = df.columns[0]
     else:
         colors = sns.color_palette('deep', len(colorby_vals))
         for color, cbv in zip(colors, colorby_vals):
             subdf = df[df[colorby] == cbv]
-            plt.hist(subdf.ix[:, 0].values, bins=bins, color=color, alpha=.5,
-                     edgecolor='none', normed=normed, label=str(cbv))
-        plt.legend(loc=0, title=colorby)
+            ax.hist(subdf.ix[:, 0].values, bins=bins, color=color, alpha=.5,
+                edgecolor='none', normed=normed, label=str(cbv))
+        ax.legend(loc=0, title=colorby)
         plot_title = df.columns[0] + " by " + colorby
 
     if normed:
         plot_title += " (normalized)"
 
-    plt.title(plot_title)
-    plt.xlabel(df.columns[0])
+    ax.set_title(plot_title)
+    ax.set_xlabel(df.columns[0])
+    return figure
 
 
-if __name__ == '__main__':
-    from bdbcontrib import facade
-    import os
-
-    if os.path.isfile('plttest.bdb'):
-        os.remove('plttest.bdb')
-
-    df = pd.DataFrame()
-    num_rows = 400
-    alphabet = ['A', 'B', 'C', 'D', 'E']
-    col_0 = np.random.choice(range(5), num_rows,
-                             p=np.array([1, .4, .3, .2, .1])/2.)
-    col_1 = [np.random.randn()+x for x in col_0]
-    col_0 = [alphabet[i] for i in col_0]
-
-    df['zero_5'] = col_0
-    df['one_n'] = col_1
-
-    col_four = np.random.choice(range(4), num_rows, p=[.4, .3, .2, .1])
-    col_five = [(np.random.randn()-2*x)/(1+x) for x in col_four]
-
-    df['three_n'] = np.random.randn(num_rows)
-    df['four_8'] = col_four
-    df['five_c'] = col_five
-
-    filename = 'plottest.csv'
-    df.to_csv(filename)
-
-    cc_client = facade.BayesDBClient.from_csv('plttest.bdb', 'plottest',
-                                              filename)
-
-    # do a plot where a some sub-violins are removed
-    remove_violin_bql = """
-        DELETE FROM plottest
-            WHERE zero_5 = "B"
-            AND (four_8 = 2 OR four_8 = 1);
-    """
-    cc_client.bdb.sql_execute(remove_violin_bql)
-    df = cc_client('SELECT one_n, zero_5, five_c, four_8 FROM plottest')
-    df = df.as_df()
-
-    plt.figure(tight_layout=True, facecolor='white')
-    pairplot(df, bdb=cc_client.bdb, generator_name='plottest_cc',
-             use_shortname=False, colorby='four_8', show_contour=False,
-             show_full=False)
-    plt.show()
-
-    # again, without tril to check that outer axes render correctly
-    plt.figure(tight_layout=True, facecolor='white')
-    pairplot(df, bdb=cc_client.bdb, generator_name='plottest_cc',
-             use_shortname=False, colorby='four_8', show_contour=True,
-             show_fall=False)
-    plt.show()

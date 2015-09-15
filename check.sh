@@ -2,6 +2,7 @@
 
 set -Ceu
 
+: ${PYTHON:=python}
 : ${PY_TEST:=`which py.test`}
 
 if [ ! -x "${PY_TEST}" ]; then
@@ -14,5 +15,7 @@ root=`cd -- "$(dirname -- "$0")" && pwd`
 (
     set -Ceu
     cd -- "${root}"
-    BAYESDB_WIZARD_MODE=1 "$PY_TEST" "$@"
+    rm -rf build
+    ./pythenv.sh "$PYTHON" setup.py build
+    BAYESDB_WIZARD_MODE=1 ./pythenv.sh "$PYTHON" "$PY_TEST" "$@"
 )

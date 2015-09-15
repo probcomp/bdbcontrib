@@ -13,10 +13,10 @@ bdbcontrib reference
 .. automodule:: bdbcontrib.plotutils
  :members:
 
-:mod:`utils`: misc utilities
-----------------------------
+:mod:`shell_utils`: bayeslite shell utilities
+---------------------------------------------
 
-.. automodule:: bdbcontrib.general_utils
+.. automodule:: bdbcontrib.shell_utils
  :members:
 
 :mod:`draw_cc_state`: draw CrossCat states
