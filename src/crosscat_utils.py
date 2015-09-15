@@ -24,9 +24,10 @@ from matplotlib.patches import Rectangle
 import bayeslite.core
 from crosscat.utils import sample_utils as su
 
-from bdbcontrib import bql_utils as bu
-from bdbcontrib import plot_utils as pu
-from bdbcontrib.facade import do_query
+import bql_utils as bu
+import plot_utils as pu
+from facade import do_query
+
 
 ################################################################################
 ###                                  PUBLIC                                  ###

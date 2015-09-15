@@ -25,8 +25,8 @@ import seaborn as sns
 
 import bayeslite.core
 
-import bdbcontrib.bql_utils as bqlu
-from bdbcontrib.facade import do_query
+import bql_utils as bqlu
+from facade import do_query
 
 ################################################################################
 ###                                    PUBLIC                                ###
