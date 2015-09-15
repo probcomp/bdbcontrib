@@ -59,7 +59,8 @@ def cardinality(bdb, table, cols=None):
 
 
 def nullify(bdb, table, value):
-    """Relace specified values in a SQL table with ``NULL``
+    """Relace specified values in a SQL table with ``NULL``.
+
     Parameters
     ----------
     bdb : bayeslite.BayesDB
@@ -73,7 +74,7 @@ def nullify(bdb, table, value):
     >>> import bayeslite
     >>> from bdbcontrib import plotutils
     >>> with bayeslite.bayesdb_open('mydb.bdb') as bdb:
-    >>>    utils.nullifty(bdb, 'mytable', 'NaN')
+    >>>    bdbcontrib.nullify(bdb, 'mytable', 'NaN')
     """
     # get a list of columns of the table
     c = bdb.sql_execute('pragma table_info({})'.format(quote(table)))
@@ -92,7 +93,7 @@ def nullify(bdb, table, value):
 
 
 def cursor_to_df(cursor):
-    """ Converts SQLite3 cursor to a pandas DataFrame """
+    """Converts SQLite3 cursor to a pandas DataFrame."""
     df = pd.DataFrame.from_records(cursor.fetchall(), coerce_float=True)
     df.columns = [desc[0] for desc in cursor.description]
     for col in df.columns:
@@ -102,6 +103,102 @@ def cursor_to_df(cursor):
             pass
 
     return df
+
+
+def describe_table(bdb, table_name):
+    """Returns a SQLite3 cursor containg description of `table_name`.
+    Examples
+    --------
+    >> bdbcontrib.describe_table(bdb, 'employees')
+        tabname   | colno |    name
+        ----------+-------+--------
+        employees |     0 |    name
+        employees |     1 |     age
+        employees |     2 |  weight
+        employees |     3 |  height
+    """
+    if not bayeslite.core.bayesdb_has_table(bdb, table_name):
+            raise NameError('No such table {}'.format(table_name))
+    sql = '''
+        SELECT tabname, colno, name
+            FROM bayesdb_column
+            WHERE tabname=?
+            ORDER BY tabname ASC, colno ASC
+        '''
+    return bdb.sql_execute(sql, bindings=(table_name,))
+
+
+def describe_generator(bdb, generator_name):
+    """Returns a SQLite3 cursor containg description of `generator_name`.
+    Examples
+    --------
+    >> bdbcontrib.describe_generator(bdb, 'employees_gen')
+        id |          name |   tabname | metamodel
+        ---+---------------+-----------+----------
+         3 | employees_gen | employees |  crosscat
+    """
+    if not bayeslite.core.bayesdb_has_generator_default(bdb, generator_name):
+            raise NameError('No such generator {}'.format(generator_name))
+    sql = '''
+            SELECT id, name, tabname, metamodel
+                FROM bayesdb_generator
+                WHERE name = ?
+        '''
+    return bdb.sql_execute(sql, bindings=(generator_name,))
+
+
+def describe_generator_columns(bdb, generator_name):
+    """Returns a SQLite3 cursor containg description of the columns
+    modeled by `generator_name`.
+    Examples
+    --------
+    >> bdbcontrib.describe_generator_columns(bdb, 'employees_gen')
+        colno |    name |     stattype
+        ------+---------+-------------
+            0 |    name |  categorical
+            1 |     age |    numerical
+            2 |  weight |    numerical
+            3 |  height |    numerical
+    """
+    if not bayeslite.core.bayesdb_has_generator_default(bdb, generator_name):
+            raise NameError('No such generator {}'.format(generator_name))
+    sql = '''
+        SELECT c.colno AS colno, c.name AS name,
+                gc.stattype AS stattype
+            FROM bayesdb_generator AS g,
+                (bayesdb_column AS c LEFT OUTER JOIN
+                    bayesdb_generator_column AS gc
+                    USING (colno))
+            WHERE g.id = ? AND g.id = gc.generator_id
+                AND g.tabname = c.tabname
+            ORDER BY colno ASC;
+    '''
+    generator_id = bayeslite.core.bayesdb_get_generator_default(bdb,
+        generator_name)
+    return bdb.sql_execute(sql, bindings=(generator_id,))
+
+
+def describe_generator_models(bdb, generator_name):
+    """Returns a SQLite3 cursor containg description of the models
+    in `generator_name`.
+    Examples
+    --------
+    >> bdbcontrib.describe_generator_models(bdb, 'employees_gen')
+        modelno | iterations
+        --------+-----------
+              0 | 100
+
+    """
+    if not bayeslite.core.bayesdb_has_generator_default(bdb, generator_name):
+            raise NameError('No such generator {}'.format(generator_name))
+    sql = '''
+        SELECT modelno, iterations FROM bayesdb_generator_model
+            WHERE generator_id = ?
+        '''
+    generator_id = bayeslite.core.bayesdb_get_generator_default(bdb,
+        generator_name)
+    return bdb.sql_execute(sql, bindings=(generator_id,))
+
 
 ################################################################################
 ###                               INTERNAL                                   ###
