@@ -91,10 +91,6 @@ def nullify(bdb, table, value):
             bdb.sql_execute(bql, (value,))
 
 
-################################################################################
-###                               INTERNAL                                   ###
-################################################################################
-
 def cursor_to_df(cursor):
     """ Converts SQLite3 cursor to a pandas DataFrame """
     df = pd.DataFrame.from_records(cursor.fetchall(), coerce_float=True)
@@ -107,6 +103,9 @@ def cursor_to_df(cursor):
 
     return df
 
+################################################################################
+###                               INTERNAL                                   ###
+################################################################################
 
 def get_column_info(bdb, generator_name):
     generator_id = bayeslite.core.bayesdb_get_generator(bdb, generator_name)

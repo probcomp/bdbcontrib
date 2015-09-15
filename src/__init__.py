@@ -1,4 +1,5 @@
 from bql_utils import cardinality
+from bql_utils import cursor_to_df
 from bql_utils import nullify
 
 from crosscat_utils import draw_crosscat
@@ -25,6 +26,7 @@ features that are not yet ready for integreation to the bayeslite repository.
 __all__ = [
     # bql_utils
         'cardinality',
+        'cursor_to_df',
         'nullify',
     # crosscat_utils
         'draw_crosscat',
