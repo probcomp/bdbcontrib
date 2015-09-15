@@ -44,16 +44,6 @@ class SatOrbitalMechanics(predictor.IForeignPredictor):
     conditions =['Apogee_km', 'Perigee_km']
     target = ['Period_minutes']
 
-    @staticmethod
-    def _compute_period(apogee_km, perigee_km):
-        """Computes the period of the satellite in seconds given the apogee_km
-        and perigee_km of the satellite.
-        """
-        GM = 398600.4418
-        EARTH_RADIUS = 6378
-        a = 0.5*(apogee_km + perigee_km) + EARTH_RADIUS
-        return 2 * np.pi * np.sqrt(a**3/GM)
-
     def __init__(self, sat_df):
         """Initializes SatOrbitalMechanics, and learns a noise model for the
         period.
@@ -88,7 +78,21 @@ class SatOrbitalMechanics(predictor.IForeignPredictor):
         Kepler's Third Law and Gaussian noise model.
         kwargs must be of the form Apogee_km=a, Perigee_km=p.
         """
+        if not kwargs.keys().issubset(set(self.conditions)):
+            raise ValueError('Must specify values for all the conditionals.\n'
+                'Received: {}\n'
+                'Expected: {}'.format(kwargs, self.conditions))
         period = self._compute_period(kwargs[self.conditions[0]],
             kwargs[self.conditions[1]]) / 60.
         return 1./(self.noise * np.sqrt(2*np.pi)) * \
             np.exp(-(period_val-period)**2 / (2*self.noise**2))
+
+    def _compute_period(self, apogee_km, perigee_km):
+        """Computes the period of the satellite in seconds given the apogee_km
+        and perigee_km of the satellite.
+        """
+        GM = 398600.4418
+        EARTH_RADIUS = 6378
+        a = 0.5*(apogee_km + perigee_km) + EARTH_RADIUS
+        return 2 * np.pi * np.sqrt(a**3/GM)
+

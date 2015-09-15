@@ -206,8 +206,8 @@ class SatRandomForest(predictor.IForeignPredictor):
         distribution and (label mapping for lookup) of the random label:
             self.target|kwargs
         """
-        if set(kwargs.keys()) != set(self.features_numerical +
-                self.features_categorical):
+        if not kwargs.keys().issubset(set(self.features_numerical +
+                self.features_categorical)):
             raise ValueError('Must specify values for all the conditionals.\n'
                 'Received: {}\n'
                 'Expected: {}'.format(kwargs, self.features_numerical +
