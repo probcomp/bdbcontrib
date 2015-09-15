@@ -14,6 +14,12 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
+"""Main bdbcontrib API.
+
+The bdbcontrib module serves a sandbox for experimental and semi-stable
+features that are not yet ready for integreation to the bayeslite repository.
+"""
+
 from bql_utils import cardinality
 from bql_utils import cursor_to_df
 from bql_utils import describe_table
@@ -35,13 +41,6 @@ from plot_utils import heatmap
 from plot_utils import histogram
 from plot_utils import mi_hist
 from plot_utils import pairplot
-
-"""
-Main bdbcontrib API.
-
-The bdbcontrib module serves a sandbox for experimental and semi-stable
-features that are not yet ready for integreation to the bayeslite repository.
-"""
 
 __all__ = [
     # bql_utils
