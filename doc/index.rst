@@ -15,6 +15,8 @@ Contents:
 
    facade
    plot_utils
+   bql
+   diagnostic
    shell
    crosscat
 
