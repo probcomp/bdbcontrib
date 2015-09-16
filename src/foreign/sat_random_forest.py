@@ -233,7 +233,7 @@ class SatRandomForest(predictor.IForeignPredictor):
         return distribution[0], classes
 
     def get_targets(self):
-        return self.targets
+        return self.target
 
     def get_conditions(self):
         return self.features

@@ -18,6 +18,7 @@ import bayeslite.core
 import bayeslite.metamodel
 import bayeslite.bqlfn
 
+import bdbcontrib
 from bdbcontrib.foreign.sat_orbital_mech import SatOrbitalMechanics
 from bdbcontrib.foreign.sat_random_forest import SatRandomForest
 
@@ -39,8 +40,9 @@ class SatellitesMetamodel(bayeslite.metamodel.IBayesDBMetamodel):
 
     def register(self, bdb):
         # XXX Figure out what to do.
-        # XXX Causes serialization problem, should only be called if
-        # satcat has never been reigstered before.
+        # XXX Causes serialization problem, should have v0 of schema which
+        # is only ever before the first time this metamodel is registered
+        # in the history of the bdb.
         bdb.sql_execute("""
             INSERT INTO bayesdb_metamodel (name, version)
                 VALUES ('satcat', 1);
@@ -95,7 +97,7 @@ class SatellitesMetamodel(bayeslite.metamodel.IBayesDBMetamodel):
                 GUESS(*), Class_of_orbit IGNORE, Period_minutes IGNORE,
                 {}
             );
-            """.format(self.cc_name, txt)
+        """.format(self.cc_name, txt)
         bdb.execute(bql)
 
         # Obtain the generator_id of satcat_cc. Should be stored in the database
@@ -104,24 +106,47 @@ class SatellitesMetamodel(bayeslite.metamodel.IBayesDBMetamodel):
         # Obtain the crosscat metamodel object
         self.cc = bayeslite.core.bayesdb_generator_metamodel(bdb, self.cc_id)
 
-        # Now convert the table to a dataframe to train the foreign predictors.
-        table_df = bdbcontrib.cursor_to_df(bdb.sql_execute(
-            'SELECT * FROM {}'.format(table)))
-
     def drop_generator(self, bdb, generator_id):
         # Delegate
-        self.cc.drop_generator(bdb, self.cc_id)
+        bdb.execute('''DROP GENERATOR {}'''.format(self.cc_name))
+        # self.cc.drop_generator(bdb, self.cc_id)
 
     def initialize_models(self, bdb, generator_id, modelnos, model_config):
-        # Delegate
+        # Initialize Crosscat.
         bql = """
             INITIALIZE {} MODELS FOR {};
             """.format(len(modelnos), self.cc_name)
         bdb.execute(bql)
 
+        # Obtain the table as a Pandas df.
+        table = bayeslite.core.bayesdb_generator_table(bdb, generator_id)
+        table_df = bdbcontrib.cursor_to_df(bdb.sql_execute(
+            'SELECT * FROM {}'.format(table)))
+
+        # Initialize the foreign predictors.
+        self.sat_rf = SatRandomForest(table_df)
+        self.sat_om = SatOrbitalMechanics(table_df)
+
+        # Internal colno of RF target.
+        self.sat_rf_target = bayeslite.core.bayesdb_generator_column_number(bdb,
+            generator_id, self.sat_rf.get_targets()[0])
+        # Internal col of RF conditions.
+        self.sat_rf_conditions = \
+            [bayeslite.core.bayesdb_generator_column_number(bdb,
+                generator_id, cond) for cond in self.sat_rf.get_conditions()]
+        # Internal col of OM target.
+        self.sat_om_target = bayeslite.core.bayesdb_generator_column_number(bdb,
+            generator_id, self.sat_om.get_targets()[0])
+        # Internal col of OM conditions.
+        self.sat_om_conditions = \
+            [bayeslite.core.bayesdb_generator_column_number(bdb,
+                generator_id, cond) for cond in self.sat_om.get_conditions()]
+        # Colnos unmodeled by CrossCat.
+        self.unmodeled = [self.sat_rf_target, self.sat_om_target]
+
     def drop_models(self, bdb, generator_id, modelnos=None):
         # Delegate
-        self.cc.drop_models(bdb, self.cc_id, modelnos)
+        raise NotImplementedError()
 
     def analyze_models(self, bdb, generator_id, modelnos=None, iterations=1,
                 max_seconds=None, ckpt_iterations=None, ckpt_seconds=None):
@@ -132,11 +157,65 @@ class SatellitesMetamodel(bayeslite.metamodel.IBayesDBMetamodel):
 
     def column_dependence_probability(self, bdb, generator_id, modelno, colno0,
                 colno1):
-        # Delegate
-        cc_colnos = self._get_internal_cc_colnos(bdb, generator_id,
-            [colno0, colno1])
-        return self.cc.column_dependence_probability(bdb, self.cc_id, modelno,
-            cc_colnos[0], cc_colnos[1])
+        # Determine which object modeled colno0, colno1
+        colno0_foreign = colno0 in self.unmodeled
+        colno1_foreign = colno1 in self.unmodeled
+
+        # If neither col is foreign, delegate to CrossCat
+        if not (colno0_foreign or colno1_foreign):
+            return self.cc.column_dependence_probability(bdb, self.cc_id,
+                modelno,
+                self._get_internal_cc_colno(bdb, generator_id, colno0),
+                self._get_internal_cc_colno(bdb, generator_id, colno1))
+
+        # If (colno0, colno1) form a (target, given) pair, then we explicitly
+        # modeled them as dependent!
+        # TODO: What if an FP determines it is not dependent on one of its
+        # conditions? (ie regression with zero coefficient.)
+        # -- check for RF
+        elif ((colno0 == self.sat_rf_target and colno1 in self.sat_rf_conditions)
+                or (colno0 in self.sat_rf_conditions and colno1 ==
+                    self.sat_rf_target)):
+            return 1
+        # -- check for OM
+        elif ((colno0 == self.sat_om_target and colno1 in self.sat_om_conditions)
+                or (colno0 in self.sat_om_conditions and colno1 ==
+                    self.sat_om_target)):
+            return 1
+
+        # If one col is an FP target and another is modeled by CC, return
+        # the average dependence probability of the CC col with FP's targets.
+        # XXX TODO: Write out the mathematics of the theoretical justification
+        # for this heuristic (not polished).
+        elif (colno0_foreign and not colno1_foreign) or (colno1_foreign and not
+                colno0_foreign):
+            # Obtain foreign column, and its condition columns.
+            foreign_col = colno0 if colno0_foreign else colno1
+            cc_col = colno1 if colno0_foreign else colno0
+
+            deps = 0.
+            for fc in self._get_condition_cols(foreign_col):
+                # If fc is modeled by CC we are golden.
+                if fc not in self.unmodeled:
+                    deps += self.cc.column_dependence_probability(bdb,
+                        self.cc_id, modelno,
+                        self._get_internal_cc_colno(bdb, generator_id, cc_col),
+                        self._get_internal_cc_colno(bdb, generator_id, fc))
+                # Otherwise fc is itself a target of the GPM, do the recursive
+                # call. Will terminate iff the DAG of GPMs is acyclic.
+                # TODO: Prove.
+                else:
+                    deps += self.column_dependence_probability(bdb,
+                        generator_id, modelno, cc_col, fc)
+            return deps / len(self._get_condition_cols(foreign_col))
+
+        # If both colno0 and colno1 are FP targets AND neither is a condition
+        # of the other, we compute the average pairwise dependence probability
+        # of all their targets.
+        elif colno0_foreign and colno1_foreign:
+            assert self._get_condition_cols(colno0) != self.get
+
+
 
     def column_mutual_information(self, bdb, generator_id, modelno, colno0,
                 colno1, numsamples=100):
@@ -145,11 +224,6 @@ class SatellitesMetamodel(bayeslite.metamodel.IBayesDBMetamodel):
             [colno0, colno1])
         return self.cc.column_mutual_information(bdb, self.cc_id, modelno,
             cc_colnos[0], cc_colnos[1], numsamples=numsamples)
-
-    def column_typicality(self, bdb, generator_id, modelno, colno):
-        # Delegate
-        cc_colno = self._get_internal_cc_colno(bdb, generator_id, colno)
-        return self.cc.column_typicality(bdb, self.cc_id, modelno, cc_colno)
 
     def column_value_probability(self, bdb, generator_id, modelno, colno,
                 value, constraints):
@@ -164,10 +238,6 @@ class SatellitesMetamodel(bayeslite.metamodel.IBayesDBMetamodel):
         cc_colnos = self._get_internal_cc_colnos(bdb, generator_id, colnos)
         return self.cc.row_similarity(bdb, self.cc_id, modelno, rowid,
             target_rowid, cc_colnos)
-
-    def row_typicality(self, bdb, generator_id, modelno, rowid):
-        # Delegate
-        return self.cc.row_typicality(self.cc_id, modelno, rowid)
 
     def row_column_predictive_probability(self, bdb, generator_id, modelno,
                 rowid, colno):
@@ -238,3 +308,12 @@ class SatellitesMetamodel(bayeslite.metamodel.IBayesDBMetamodel):
         # Now do the inverse mapping.
         return [bayeslite.core.bayesdb_generator_column_number(bdb, self.cc_id,
             name) for name in colnames]
+
+    def _get_condition_cols(self, col):
+        if col == self.sat_rf_target:
+            return self.sat_rf_conditions
+        elif col == self.sat_om_target:
+            return self.sat_om_conditions
+        else:
+            raise ValueError('Can only obtain the condition column numbers '
+                'for columns modeled by a foreign predictor.')
