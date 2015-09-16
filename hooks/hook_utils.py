@@ -41,7 +41,7 @@ def render_bql_as_html(self, argin):
     parser = utils.ArgumentParser(prog='.readtohtml')
     parser.add_argument('bql_file', metavar='bql-file', type=str,
         help='Name of the file containing the bql script.')
-    parser.add_argument('outpu_dir', metavar='output-dir', type=str,
+    parser.add_argument('output_dir', metavar='output-dir', type=str,
         help='Name of the output directory.')
 
     try:
