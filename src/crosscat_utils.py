@@ -29,9 +29,9 @@ import plot_utils as pu
 from facade import do_query
 
 
-################################################################################
-###                                  PUBLIC                                  ###
-################################################################################
+###############################################################################
+###                                 PUBLIC                                  ###
+###############################################################################
 
 def draw_crosscat(bdb, generator, modelno, row_label_col=None):
     """Draw crosscat model from the specified generator.
@@ -51,10 +51,10 @@ def draw_crosscat(bdb, generator, modelno, row_label_col=None):
     """
     bql = '''
         SELECT tabname, metamodel FROM bayesdb_generator
-        WHERE name = ?
-        '''
-    table_name, metamodel = do_query(
-        bdb, bql, (generator,)).as_cursor().fetchall()[0]
+            WHERE name = ?
+    '''
+    cursor = bdb.execute(bql, (generator,))
+    table_name, metamodel = cursor.next()
 
     if metamodel.lower() != 'crosscat':
         raise ValueError('Metamodel for generator %s (%s) should be crosscat' %
@@ -68,8 +68,7 @@ def draw_crosscat(bdb, generator, modelno, row_label_col=None):
 
 
 def plot_crosscat_chain_diagnostics(bdb, diagnostic, generator):
-    """
-    Plot diagnostics for all models of generator.
+    """Plot diagnostics for all models of generator.
 
     Parameters
     ----------
@@ -90,8 +89,8 @@ def plot_crosscat_chain_diagnostics(bdb, diagnostic, generator):
     valid_diagnostics = ['logscore', 'num_views', 'column_crp_alpha']
     if diagnostic not in valid_diagnostics:
         raise ValueError('I do not know what to do with %s.\n'
-                    'Please chosse one of the following instead: %s\n'
-                    % ', '.join(valid_diagnostics))
+            'Please chosse one of the following instead: %s\n'
+            % ', '.join(valid_diagnostics))
 
     generator_id = bayeslite.core.bayesdb_get_generator(bdb, generator)
 
@@ -99,8 +98,8 @@ def plot_crosscat_chain_diagnostics(bdb, diagnostic, generator):
     # model.
     bql = '''
         SELECT modelno, COUNT(modelno) FROM bayesdb_crosscat_diagnostics
-        WHERE generator_id = ? GROUP BY modelno
-        '''
+            WHERE generator_id = ? GROUP BY modelno
+    '''
     df = do_query(bdb, bql, (generator_id,)).as_df()
     models = df['modelno'].astype(int).values
 
@@ -109,9 +108,9 @@ def plot_crosscat_chain_diagnostics(bdb, diagnostic, generator):
     for i, modelno in enumerate(models):
         bql = '''
             SELECT {}, iterations FROM bayesdb_crosscat_diagnostics
-            WHERE modelno = ? AND generator_id = ?
-            ORDER BY iterations ASC
-            '''.format(diagnostic)
+                WHERE modelno = ? AND generator_id = ?
+                ORDER BY iterations ASC
+        '''.format(diagnostic)
         df = do_query(bdb, bql, (modelno, generator_id,)).as_df()
         ax.plot(df['iterations'].values, df[diagnostic].values,
                  c=colors[modelno], alpha=.7, lw=2)
@@ -125,9 +124,9 @@ def plot_crosscat_chain_diagnostics(bdb, diagnostic, generator):
 
     return figure
 
-################################################################################
-###                               INTERNAL                                   ###
-################################################################################
+###############################################################################
+###                              INTERNAL                                   ###
+###############################################################################
 
 def get_cols_in_view(X_L, view):
     return [c for c, v in enumerate(X_L['column_partition']['assignments'])
@@ -140,16 +139,26 @@ def get_rows_in_cluster(X_D, view, cluster):
 
 def get_M_c(bdb, generator_name):
     generator_id = bayeslite.core.bayesdb_get_generator(bdb, generator_name)
-    column_info = bu.get_column_info(bdb, generator_name)
-    M_c = bayeslite.crosscat.create_metadata(bdb, generator_id, column_info)
-    return M_c
+    sql = '''
+        SELECT metadata_json FROM bayesdb_crosscat_metadata
+            WHERE generator_id = ?
+    '''
+    cursor = bdb.sql_execute(sql, (generator_id,))
+    try:
+        row = cursor.next()
+    except StopIteration:
+        raise ValueError(bdb, 'No crosscat metadata for generator: %s'
+            % (generator_name,))
+    else:
+        return json.loads(row[0])
 
 
 def get_metadata(bdb, generator_name, modelno):
     generator_id = bayeslite.core.bayesdb_get_generator(bdb, generator_name)
     sql = '''
         SELECT theta_json FROM bayesdb_crosscat_theta
-            WHERE generator_id = ? and modelno = ?'''
+            WHERE generator_id = ? and modelno = ?
+    '''
     cursor = bdb.sql_execute(sql, (generator_id, modelno))
     try:
         row = cursor.next()
@@ -161,9 +170,7 @@ def get_metadata(bdb, generator_name, modelno):
 
 
 def get_row_probabilities(X_L, X_D, M_c, T, view):
-    """
-    Returns the predictive probability of the data in each row of T in view.
-    """
+    """Returns predictive probability of the data in each row of T in view."""
     num_rows = len(X_D[0])
     cols_in_view = get_cols_in_view(X_L, view)
     num_clusters = max(X_D[view])+1
@@ -192,9 +199,7 @@ def get_row_probabilities(X_L, X_D, M_c, T, view):
 
 
 def get_column_probabilities(X_L, M_c):
-    """
-    Returns the marginal probability of each column.
-    """
+    """Returns marginal probability of each column."""
     num_cols = len(X_L['column_partition']['assignments'])
     num_views = len(X_L['view_state'])
     logps = np.zeros(num_cols)
@@ -295,7 +300,8 @@ def draw_state(bdb, table_name, generator_name, modelno,
     """
     theta = get_metadata(bdb, generator_name, modelno)
     M_c = get_M_c(bdb, generator_name)
-    # idx_to_name doesn't use an int idx, but a string idx because crosscat. Yep.
+    # idx_to_name doesn't use an int idx, but a string idx because
+    # crosscat.  Yep.
     ordered_columns = [M_c['idx_to_name'][str(idx)] for
                        idx in sorted(M_c['name_to_idx'].values())]
     T = bu.get_data_as_list(bdb, table_name, column_list=ordered_columns)
@@ -395,7 +401,8 @@ def draw_state(bdb, table_name, generator_name, modelno,
         view_x_labels = [M_c['idx_to_name'][str(col)]
                          for col in sorted_cols[view]]
         if short_names:
-            view_x_tick_labels = bu.get_shortnames(bdb, table_name, view_x_labels)
+            view_x_tick_labels = bu.get_shortnames(bdb, table_name,
+                view_x_labels)
         else:
             view_x_tick_labels = view_x_labels
 
@@ -479,7 +486,8 @@ def draw_state(bdb, table_name, generator_name, modelno,
             ax.add_artist(row_legend)
 
         if len(hilight_cols) > 0:
-            col_legend_labels = bu.get_shortnames(bdb, table_name, hilight_cols)
+            col_legend_labels = bu.get_shortnames(bdb, table_name,
+                hilight_cols)
             if descriptions_in_legend:
                 for i, col_id in enumerate(hilight_cols):
                     col_legend_labels[i] += ': ' + bu.get_descriptions(
@@ -541,10 +549,11 @@ class DrawStateUtils(object):
     def sort_state(X_L, X_D, M_c, T):
         """Sorts the metadata for visualization.
 
-        Sort views from largest to smallest. W/in views, sorts columns r->l from
-        highest marginal probability to lowest; and sorts categories largest to
-        smallest from top to bottom. Within categories, sorts rows higest to lowest
-        probability from top to bottom.
+        Sort views from largest to smallest. W/in views, sorts columns
+        r->l from highest marginal probability to lowest; and sorts
+        categories largest to smallest from top to bottom. Within
+        categories, sorts rows higest to lowest probability from top
+        to bottom.
 
         Parameters
         ----------
@@ -566,14 +575,14 @@ class DrawStateUtils(object):
         sorted_views : list
             view indices from largest (most columns) to smallest.
         sorted_clusters : dict<list>
-            sorted_clusters[v] is a sorted list of clusters in view v from largest
-            (most rows) to smallest.
+            sorted_clusters[v] is a sorted list of clusters in view v from
+            largest (most rows) to smallest.
         sorted_cols : dict<list>
-            sorted_columns[v] is a sorted list of columns in view v from higest to
-            lowest probability.
+            sorted_columns[v] is a sorted list of columns in view v from
+            highest to lowest probability.
         sorted_rows : dict<dict<list>>
-            sorted_rows[v][c] is a sorted list of rows in cluster c of view v from
-            higest to lowest probability.
+            sorted_rows[v][c] is a sorted list of rows in cluster c of view v
+            from higest to lowest probability.
         """
         num_views = len(X_L['view_state'])
 
@@ -634,8 +643,9 @@ class DrawStateUtils(object):
             nan_color=(1., 0., 0., 1.)):
         """Returns a color representing the magnitude of a value.
 
-        Higher values are represented with lighter colors. Given the a base color
-        of 50% gray, white represents the max and black represents the min.
+        Higher values are represented with lighter colors. Given the a
+        base color of 50% gray, white represents the max and black
+        represents the min.
 
         Parameters
         ----------
@@ -707,8 +717,9 @@ class DrawStateUtils(object):
 
     @staticmethod
     def gen_blank_sort(num_rows, num_cols):
-        """Generates a 'blank sort' which allows state plotting of the raw data
-        without structure.
+        """Generate 'blank sort'.
+
+        Allows state plotting of raw data without structure.
         """
         sorted_views = [0]
         sorted_clusters = {}
@@ -726,8 +737,9 @@ class DrawStateUtils(object):
     def gen_cell_colors(T, sorted_views, sorted_cols, sorted_clusters,
             sorted_rows, column_partition, cmap, border_width,
             nan_color=(1., 0., 0., 1.)):
-        """Generate a heatmap using the data (allows clusters to ahve different
-        base colors).
+        """Generate heatmap using the data
+
+        Allows clusters to have different base colors.
         """
         num_rows = len(T)
         num_cols = len(T[0])
@@ -774,50 +786,3 @@ class DrawStateUtils(object):
                     y_pos += 1
 
         return cell_colors
-
-
-if __name__ == "__main__":
-    # ad-hoc tests here
-    from crosscat.utils import data_utils as du
-    import random
-    import facade
-    import pandas as pd
-
-    import os
-
-    if os.path.isfile('plttest.bdb'):
-        os.remove('plttest.bdb')
-
-    rng_seed = random.randrange(10000)
-    num_rows = 100
-    num_cols = 50
-    num_splits = 5
-    num_clusters = 5
-
-    nan_prop = .25
-
-    table_name = 'plottest'
-    generator_name = 'plottest_cc'
-
-    # generate some clustered data
-    ccmd = du.generate_clean_state(rng_seed, num_clusters, num_cols, num_rows,
-                                   num_splits)
-    T, M_c, M_r, X_L, X_D = ccmd
-
-    for row in range(num_rows):
-        for col in range(num_cols):
-            if random.random() < nan_prop:
-                T[row][col] = float('nan')
-
-    input_df = pd.DataFrame(T, columns=['col_%i' % i for i in range(num_cols)])
-
-    client = facade.BayesDBClient.from_pandas('plttest.bdb', table_name,
-                                              input_df)
-    client('initialize 4 models for {}'.format(generator_name))
-    client('analyze {} for 10 iterations wait'.format(generator_name))
-
-    plt.figure(facecolor='white', tight_layout=False)
-    ax = draw_state(client.bdb, 'plottest', 'plottest_cc', 0,
-                    separator_width=1, separator_color=(0., 0., 1., 1.),
-                    short_names=False, nan_color=(1, .15, .25, 1.))
-    plt.savefig('state.png')

@@ -20,8 +20,8 @@ except ImportError:
     from distutils.core import setup
 
 setup(
-    name='bayeslite',
-    version='1.0',
+    name='bdbcontrib',
+    version='0.1.dev',
     packages=[
         'bdbcontrib',
         'bdbcontrib.foreign'

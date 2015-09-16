@@ -19,7 +19,8 @@ import tempfile
 
 import bayeslite
 
-from bdbcontrib import general_utils as utils
+from bdbcontrib import bql_utils
+from bdbcontrib import shell_utils
 
 csv_data = '''
 id,one,two,three,four
@@ -93,19 +94,19 @@ def test_nullify_no_missing(data, value, num_nulls_expected):
     with bayeslite.bayesdb_open() as bdb:
         bayeslite.bayesdb_read_csv_file(bdb, 't', temp.name, header=True,
                                         create=True)
-        utils.nullify(bdb, 't', value)
+        bql_utils.nullify(bdb, 't', value)
 
         c = bdb.execute('SELECT COUNT(*) FROM t WHERE one IS NULL;')
-        assert c.fetchall()[0][0] == num_nulls_expected[0]
+        assert c.next()[0] == num_nulls_expected[0]
 
         c = bdb.execute('SELECT COUNT(*) FROM t WHERE two IS NULL;')
-        assert c.fetchall()[0][0] == num_nulls_expected[1]
+        assert c.next()[0] == num_nulls_expected[1]
 
         c = bdb.execute('SELECT COUNT(*) FROM t WHERE three IS NULL;')
-        assert c.fetchall()[0][0] == num_nulls_expected[2]
+        assert c.next()[0] == num_nulls_expected[2]
 
         c = bdb.execute('SELECT COUNT(*) FROM t WHERE four IS NULL;')
-        assert c.fetchall()[0][0] == num_nulls_expected[3]
+        assert c.next()[0] == num_nulls_expected[3]
     temp.close()
 
 
@@ -117,12 +118,12 @@ def test_is_plotting_command():
     cmd5 = 'SELECT a FROM t;'
     cmd6 = '-- .show is a plotting function'
 
-    assert utils.is_plotting_command(cmd1)
-    assert utils.is_plotting_command(cmd2)
-    assert utils.is_plotting_command(cmd3)
-    assert not utils.is_plotting_command(cmd4)
-    assert not utils.is_plotting_command(cmd5)
-    assert not utils.is_plotting_command(cmd6)
+    assert shell_utils.is_plotting_command(cmd1)
+    assert shell_utils.is_plotting_command(cmd2)
+    assert shell_utils.is_plotting_command(cmd3)
+    assert not shell_utils.is_plotting_command(cmd4)
+    assert not shell_utils.is_plotting_command(cmd5)
+    assert not shell_utils.is_plotting_command(cmd6)
 
 
 def test_clean_cmd_filename():
@@ -133,26 +134,27 @@ def test_clean_cmd_filename():
     cmd2 = '.histogram SELECT a FROM t; -f pic.png'
     cmd1_expected = '.histogram SELECT a FROM t; --filename foo/baz/fig_0.png'
 
-    cmd1_ud, _ = utils.clean_cmd_filename(cmd1, fignum, output_dir)
+    cmd1_ud, _ = shell_utils.clean_cmd_filename(cmd1, fignum, output_dir)
     assert cmd1_ud == cmd1_expected
     with pytest.raises(ValueError):
-        utils.clean_cmd_filename(cmd2, fignum, output_dir)
+        shell_utils.clean_cmd_filename(cmd2, fignum, output_dir)
     with pytest.raises(ValueError):
-        utils.clean_cmd_filename(cmd1_expected, fignum, output_dir)
+        shell_utils.clean_cmd_filename(cmd1_expected, fignum, output_dir)
 
 
 def test_is_comment():
-    assert not utils.is_comment('.heatmap ESTIMATE PAIRWISE FOO;')
-    assert utils.is_comment('-- is a comment')
-    assert utils.is_comment('--is a comment')
-    assert utils.is_comment('---is a comment')
+    assert not shell_utils.is_comment('.heatmap ESTIMATE PAIRWISE FOO;')
+    assert shell_utils.is_comment('-- is a comment')
+    assert shell_utils.is_comment('--is a comment')
+    assert shell_utils.is_comment('---is a comment')
 
     # XXX: There is no support for inline comments in BQL scripts
-    assert not utils.is_comment(' -- not a comment')
-    assert not utils.is_comment('.show SELECT a, b FROM t; --no-contour')
+    assert not shell_utils.is_comment(' -- not a comment')
+    assert not shell_utils.is_comment('.show SELECT a, b FROM t;'
+        ' --no-contour')
 
 
 def test_is_dot_command():
-    assert not utils.is_dot_command('-- .show SELECT a, b FROM t;')
-    assert not utils.is_dot_command('SELECT ".show" FROM t;')
-    assert utils.is_dot_command('.show SELECT a, b FROM t;')
+    assert not shell_utils.is_dot_command('-- .show SELECT a, b FROM t;')
+    assert not shell_utils.is_dot_command('SELECT ".show" FROM t;')
+    assert shell_utils.is_dot_command('.show SELECT a, b FROM t;')

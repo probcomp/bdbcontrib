@@ -20,9 +20,9 @@ import bayeslite.core
 from bayeslite.sqlite3_util import sqlite3_quote_name as quote
 
 
-################################################################################
-###                                  PUBLIC                                  ###
-################################################################################
+###############################################################################
+###                                 PUBLIC                                  ###
+###############################################################################
 
 def cardinality(bdb, table, cols=None):
     """Compute the number of unique values in the columns of a table.
@@ -45,13 +45,13 @@ def cardinality(bdb, table, cols=None):
     if not cols:
         sql = 'PRAGMA table_info(%s)' % (quote(table),)
         res = bdb.sql_execute(sql)
-        cols = [r[1] for r in res.fetchall()]
+        cols = [r[1] for r in res]
 
     counts = []
     for col in cols:
         sql = '''
             SELECT COUNT (DISTINCT %s) FROM %s
-            ''' % (quote(col), quote(table))
+        ''' % (quote(col), quote(table))
         res = bdb.sql_execute(sql)
         counts.append((col, res.next()[0]))
 
@@ -59,7 +59,7 @@ def cardinality(bdb, table, cols=None):
 
 
 def nullify(bdb, table, value):
-    """Relace specified values in a SQL table with ``NULL``.
+    """Replace specified values in a SQL table with ``NULL``.
 
     Parameters
     ----------
@@ -78,23 +78,23 @@ def nullify(bdb, table, value):
     """
     # get a list of columns of the table
     c = bdb.sql_execute('pragma table_info({})'.format(quote(table)))
-    columns = [r[1] for r in c.fetchall()]
+    columns = [r[1] for r in c]
     for col in columns:
         if value in ["''", '""']:
             bql = '''
-            UPDATE {} SET {} = NULL WHERE {} = '';
+                UPDATE {} SET {} = NULL WHERE {} = '';
             '''.format(quote(table), quote(col), quote(col))
             bdb.sql_execute(bql)
         else:
             bql = '''
-            UPDATE {} SET {} = NULL WHERE {} = ?;
+                UPDATE {} SET {} = NULL WHERE {} = ?;
             '''.format(quote(table), quote(col), quote(col))
             bdb.sql_execute(bql, (value,))
 
 
 def cursor_to_df(cursor):
     """Converts SQLite3 cursor to a pandas DataFrame."""
-    df = pd.DataFrame.from_records(cursor.fetchall(), coerce_float=True)
+    df = pd.DataFrame.from_records(list(cursor), coerce_float=True)
     df.columns = [desc[0] for desc in cursor.description]
     for col in df.columns:
         try:
@@ -200,9 +200,9 @@ def describe_generator_models(bdb, generator_name):
     return bdb.sql_execute(sql, bindings=(generator_id,))
 
 
-################################################################################
-###                               INTERNAL                                   ###
-################################################################################
+###############################################################################
+###                              INTERNAL                                   ###
+###############################################################################
 
 def get_column_info(bdb, generator_name):
     generator_id = bayeslite.core.bayesdb_get_generator(bdb, generator_name)
@@ -216,16 +216,14 @@ def get_column_info(bdb, generator_name):
                 AND gc.colno = c.colno
                 AND c.tabname = g.tabname
             ORDER BY c.colno
-        '''
-    cursor = bdb.sql_execute(sql, (generator_id,))
-    column_info = cursor.fetchall()
-    return column_info
+    '''
+    return list(bdb.sql_execute(sql, (generator_id,)))
 
 
 def get_column_stattype(bdb, generator_name, column_name):
     generator_id = bayeslite.core.bayesdb_get_generator(bdb, generator_name)
     sql = '''
-        SELECT c.name, gc.stattype
+        SELECT gc.stattype
             FROM bayesdb_generator AS g,
                 bayesdb_generator_column AS gc,
                 bayesdb_column AS c
@@ -235,22 +233,26 @@ def get_column_stattype(bdb, generator_name, column_name):
                 AND c.name = ?
                 AND c.tabname = g.tabname
             ORDER BY c.colno
-        '''
+    '''
     cursor = bdb.sql_execute(sql, (generator_id, column_name,))
-    stattype = cursor.fetchall()[0][1]
-    return stattype
+    try:
+        row = cursor.next()
+    except StopIteration:
+        # XXX Temporary kludge for broken callers.
+        raise IndexError
+    else:
+        return row[0]
 
 
 def get_data_as_list(bdb, table_name, column_list=None):
     if column_list is None:
         sql = '''
             SELECT * FROM {};
-            '''.format(quote(table_name))
+        '''.format(quote(table_name))
     else:
         sql = '''
             SELECT {} FROM {}
-            '''.format(', '.join(map(quote, column_list)),
-                    table_name)
+        '''.format(', '.join(map(quote, column_list)), table_name)
     cursor = bdb.sql_execute(sql)
     T = cursor_to_df(cursor).values.tolist()
     return T
@@ -270,12 +272,9 @@ def get_column_descriptive_metadata(bdb, table_name, column_names, md_field):
     short_names = []
     # XXX: this is indefensibly wasteful.
     bql = '''
-        SELECT colno, name, {}
-            FROM  bayesdb_column
-            WHERE tabname = ?
-        '''.format(md_field)
-    curs = bdb.sql_execute(bql, (table_name,))
-    records = curs.fetchall()
+        SELECT colno, name, {} FROM bayesdb_column WHERE tabname = ?
+    '''.format(md_field)
+    records = list(bdb.sql_execute(bql, (table_name,)))
 
     # hack for case sensitivity problems
     column_names = [c.upper().lower() for c in column_names]

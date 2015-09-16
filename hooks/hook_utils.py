@@ -23,7 +23,7 @@ from bayeslite.shell.hook import bayesdb_shell_cmd
 from bayeslite.shell.pretty import pp_list
 
 import bdbcontrib
-import bdbcontrib.general_utils as utils
+import bdbcontrib.shell_utils as utils
 
 
 ROOTDIR = os.path.dirname(os.path.abspath(__file__))
@@ -32,9 +32,8 @@ READTOHTML_CSS = os.path.join(ROOTDIR, 'readtohtml.css')
 
 @bayesdb_shell_cmd('readtohtml')
 def render_bql_as_html(self, argin):
-    """
-    Read BQL file and output to HTML and markdown.
-    USAGE: .readtohtml <bql_file> <output_directory>
+    """read BQL file and output to HTML and markdown
+    <bql_file> <output_directory>
 
     Example:
     bayeslite> .readtohtml myscript.bql analyses/myanalsis
@@ -82,9 +81,8 @@ def render_bql_as_html(self, argin):
 
 @bayesdb_shell_cmd('nullify')
 def nullify(self, argin):
-    """
-    Replace a user-specified missing value with NULL
-    USAGE: .nu<table> <value>
+    """replace user-specified missing value with NULL
+    <table> <value>
 
     Example:
     bayeslite> .nullify mytable NaN
@@ -107,7 +105,7 @@ def nullify(self, argin):
 
 @bayesdb_shell_cmd('cardinality')
 def cardinality(self, argin):
-    """Display the cardinality of columns in a table
+    """show cardinality of columns in table
     <table> [<column> <column> ...]
 
     Example:
