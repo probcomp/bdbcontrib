@@ -26,7 +26,6 @@ import seaborn as sns
 import bayeslite.core
 
 import bql_utils as bqlu
-from facade import do_query
 
 ###############################################################################
 ###                                   PUBLIC                                ###
@@ -103,7 +102,7 @@ def heatmap(bdb, bql, vmin=None, vmax=None, row_ordering=None,
     -------
     clustermap: seaborn.clustermap
     """
-    df = do_query(bdb, bql).as_df()
+    df = bqlu.cursor_to_df(bdb.execute(bql))
     df.fillna(0, inplace=True)
     c = (df.shape[0]**.5)/4.0
     clustermap_kws = {'linewidths': 0.2, 'vmin': vmin, 'vmax': vmax,
@@ -147,7 +146,7 @@ def pairplot(bdb, bql, generator_name=None, show_contour=False, colorby=None,
     -------
     figure : matplotlib.figure.Figure
     """
-    df = do_query(bdb, bql).as_df()
+    df = bqlu.cursor_to_df(bdb.execute(bql))
     c = len(df.columns)*4
     figure = _pairplot(df, bdb=bdb, generator_name=generator_name,
         show_contour=show_contour, colorby=colorby, show_missing=show_missing,
@@ -179,7 +178,7 @@ def histogram(bdb, bql, bins=15, normed=None):
     ----------
     figure: matplotlib.figure.Figure
     """
-    df = do_query(bdb, bql).as_df()
+    df = bqlu.cursor_to_df(bdb.execute(bql))
     figure = comparative_hist(df, bdb=bdb, nbins=bins, normed=normed)
 
     return figure
@@ -201,7 +200,7 @@ def barplot(bdb, bql):
     ----------
     figure: matplotlib.figure.Figure
     """
-    df = do_query(bdb, bql).as_df()
+    df = bqlu.cursor_to_df(bdb.execute(bql))
 
     c = df.shape[0]/2.0
     figure, ax = plt.subplots(figsize=(c, 5))
