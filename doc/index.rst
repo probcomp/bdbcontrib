@@ -13,11 +13,8 @@ Contents:
 .. toctree::
    :maxdepth: 2
 
-   plot_utils
-   bql
-   diagnostic
-   shell
-   crosscat
+   bdbcontrib
+   internal
 
 Indices and tables
 ==================
