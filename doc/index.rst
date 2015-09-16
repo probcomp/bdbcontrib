@@ -13,7 +13,6 @@ Contents:
 .. toctree::
    :maxdepth: 2
 
-   facade
    plot_utils
    bql
    diagnostic
