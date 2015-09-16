@@ -21,7 +21,6 @@ import tempfile
 
 from bayeslite.read_pandas import bayesdb_read_pandas_df
 from bdbcontrib import crosscat_utils
-from bdbcontrib import bql_utils as bu
 
 
 @pytest.fixture
