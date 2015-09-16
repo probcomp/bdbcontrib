@@ -39,9 +39,9 @@ def render_bql_as_html(self, argin):
     bayeslite> .readtohtml myscript.bql analyses/myanalsis
     """
     parser = utils.ArgumentParser(prog='.readtohtml')
-    parser.add_argument('bql-file', type=str,
+    parser.add_argument('bql_file', metavar='bql-file', type=str,
         help='Name of the file containing the bql script.')
-    parser.add_argument('output-dir', type=str,
+    parser.add_argument('output_dir', metavar='output-dir', type=str,
         help='Name of the output directory.')
 
     try:
@@ -52,6 +52,7 @@ def render_bql_as_html(self, argin):
 
     bql_file = args.bql_file
     output_dir = args.output_dir
+
 
     head = '''
     <html>

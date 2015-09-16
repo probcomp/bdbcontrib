@@ -22,6 +22,15 @@ except ImportError:
 setup(
     name='bdbcontrib',
     version='0.1.dev',
+    install_requires=[
+        'markdown2',
+        'matplotlib',
+        'numpy',
+        'numpydoc',
+        'pandas',
+        'seaborn==0.5.1',
+        'sphinx',
+    ],
     packages=[
         'bdbcontrib',
     ],
