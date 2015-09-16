@@ -574,8 +574,8 @@ def zmatrix(data_df, clustermap_kws=None, row_ordering=None,
         col_ordering=None):
     """Plots a clustermap from an ESTIMATE PAIRWISE query.
 
-    Parameters:
-    -----------
+    Parameters
+    ----------
     data_df : pandas.DataFrame
         The result of a PAIRWISE query in pandas.DataFrame.
     clustermap_kws : dict
