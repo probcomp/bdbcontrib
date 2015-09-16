@@ -1,7 +1,0 @@
-markdown2
-matplotlib
-numpy
-numpydoc
-pandas
-seaborn == 0.5.1
-sphinx
