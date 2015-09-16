@@ -17,7 +17,7 @@
 import pandas as pd
 
 import bayeslite.core
-from bayeslite.sqlite3_util import sqlite3_quote_name as quote
+from bayeslite import bql_quote_name as quote
 
 
 ###############################################################################

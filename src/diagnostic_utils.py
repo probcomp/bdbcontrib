@@ -17,7 +17,7 @@
 import math
 
 import bayeslite.core
-from bayeslite.sqlite3_util import sqlite3_quote_name
+from bayeslite import bql_quote_name
 
 
 def extract_target_cols(bdb, generator, targets=None):
@@ -43,7 +43,7 @@ def extract_target_cols(bdb, generator, targets=None):
         generator_id = bayeslite.core.bayesdb_get_generator(bdb, generator)
         targets = bayeslite.core.bayesdb_generator_column_names(bdb,
             generator_id)
-    return map(sqlite3_quote_name, targets)
+    return map(bql_quote_name, targets)
 
 
 def extract_given_cols_vals(givens=None):
@@ -65,7 +65,7 @@ def extract_given_cols_vals(givens=None):
     if givens is None:
         return []
 
-    given_cols = map(sqlite3_quote_name, givens[::2])
+    given_cols = map(bql_quote_name, givens[::2])
     given_vals = givens[1::2]
     assert len(given_cols) == len(given_vals)
     return zip(given_cols, given_vals)
@@ -112,7 +112,7 @@ def estimate_log_likelihood(bdb, table, generator, targets=None, givens=None,
     givens = ','.join(['{}={}'.format(c,v) for (c,v) in givens])
 
     # Obtain the dataset table.
-    table = sqlite3_quote_name(table.strip(';'))
+    table = bql_quote_name(table.strip(';'))
     sql = '''
         SELECT {} FROM {};
     '''.format(','.join(targets), table)
@@ -140,11 +140,11 @@ def estimate_log_likelihood(bdb, table, generator, targets=None, givens=None,
                 # XXX TODO write GIVEN in this query using bindings.
                 bql = '''
                     ESTIMATE PROBABILITY OF {}=? GIVEN ({}) FROM {} LIMIT 1
-                '''.format(col, givens, sqlite3_quote_name(generator))
+                '''.format(col, givens, bql_quote_name(generator))
             else:
                 bql = '''
                     ESTIMATE PROBABILITY OF {}=? FROM {} LIMIT 1
-                '''.format(col, sqlite3_quote_name(generator))
+                '''.format(col, bql_quote_name(generator))
 
             ll += math.log(bdb.execute(bql, (val,)).next()[0])
 
@@ -217,12 +217,12 @@ def estimate_kl_divergence(bdb, generatorA, generatorB, targets=None,
         # XXX TODO write GIVEN in this query using bindings.
         bql = '''
             SIMULATE {} FROM {} GIVEN {} LIMIT {}
-        '''.format(','.join(targets), sqlite3_quote_name(generatorA),
+        '''.format(','.join(targets), bql_quote_name(generatorA),
             givens, n_samples)
     else:
         bql = '''
             SIMULATE {} FROM {} LIMIT {}
-        '''.format(','.join(targets), sqlite3_quote_name(generatorA),
+        '''.format(','.join(targets), bql_quote_name(generatorA),
                     n_samples)
     samples = bdb.execute(bql)
 
@@ -235,13 +235,13 @@ def estimate_kl_divergence(bdb, generatorA, generatorB, targets=None,
         for col, val in zip(targets, s):
             bql = '''
                 ESTIMATE PROBABILITY OF {}=? FROM {} LIMIT 1
-            '''.format(col, sqlite3_quote_name(generatorA))
+            '''.format(col, bql_quote_name(generatorA))
             crs = bdb.execute(bql, (val,))
             p_a = crs.next()[0]
 
             bql = '''
                 ESTIMATE PROBABILITY OF {}=? FROM {} LIMIT 1
-            '''.format(col, sqlite3_quote_name(generatorB))
+            '''.format(col, bql_quote_name(generatorB))
             crs = bdb.execute(bql, (val,))
             p_b = crs.next()[0]
 
