@@ -1,8 +1,5 @@
-Bayeslite Facade
-================
-
-:mod:`facade`: bayeslite conveneice facade
-------------------------------------------
+:mod:`bdbcontrib.facade`: Bayeslite Conveneice Facade
+=====================================================
 
 .. automodule:: bdbcontrib.facade
  :members:

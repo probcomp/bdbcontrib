@@ -1,8 +1,5 @@
-Plotting
-========
-
-:mod:`plot_utils`: common plotting functionality
-------------------------------------------------
+:mod:`bdbcontrib.plot_utils`: Plotting
+======================================
 
 .. automodule:: bdbcontrib.plot_utils
  :members:
