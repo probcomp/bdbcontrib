@@ -34,8 +34,6 @@ from crosscat_utils import plot_crosscat_chain_diagnostics
 from diagnostic_utils import estimate_kl_divergence
 from diagnostic_utils import estimate_log_likelihood
 
-from facade import do_query
-
 from plot_utils import barplot
 from plot_utils import heatmap
 from plot_utils import histogram
@@ -56,8 +54,6 @@ __all__ = [
     # diagnostic_utils
         'estimate_kl_divergence',
         'estimate_log_likelihood',
-    # facade
-        'do_query',
     # plot_utils
         'barplot',
         'heatmap',
