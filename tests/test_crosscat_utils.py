@@ -22,18 +22,6 @@ import tempfile
 from bayeslite.read_pandas import bayesdb_read_pandas_df
 from bdbcontrib import crosscat_utils
 
-
-@pytest.fixture
-def bdb_file(request):
-    f = tempfile.NamedTemporaryFile()
-
-    def fin():
-        f.close()
-
-    request.addfinalizer(fin)
-    return f
-
-
 def get_test_df():
     PANDAS_DF_DATA = [
         {
@@ -98,25 +86,25 @@ def get_test_df():
     return pandas.DataFrame(PANDAS_DF_DATA)
 
 
-def test_get_metadata(bdb_file):
+def test_get_metadata():
     table_name = 'tmp_table'
     generator_name = 'tmp_cc'
     pandas_df = get_test_df()
 
-    bdb = bayeslite.bayesdb_open(bdb_file.name)
-    bayesdb_read_pandas_df(bdb, table_name, pandas_df, create=True)
-    bdb.execute('''
-        create generator {} for {} using crosscat(guess(*))
-    '''.format(generator_name, table_name))
-    with pytest.raises(ValueError):
+    with bayeslite.bayesdb_open() as bdb:
+        bayesdb_read_pandas_df(bdb, table_name, pandas_df, create=True)
+        bdb.execute('''
+            create generator {} for {} using crosscat(guess(*))
+        '''.format(generator_name, table_name))
+        with pytest.raises(ValueError):
+            md = crosscat_utils.get_metadata(bdb, generator_name, 0)
+
+        bdb.execute('INITIALIZE 2 MODELS FOR {}'.format(generator_name))
+
+        with pytest.raises(ValueError):
+            crosscat_utils.get_metadata(bdb, 'Peter_Gabriel', 0)
         md = crosscat_utils.get_metadata(bdb, generator_name, 0)
 
-    bdb.execute('INITIALIZE 2 MODELS FOR {}'.format(generator_name))
-
-    with pytest.raises(ValueError):
-        crosscat_utils.get_metadata(bdb, 'Peter_Gabriel', 0)
-    md = crosscat_utils.get_metadata(bdb, generator_name, 0)
-
-    assert isinstance(md, dict)
-    assert 'X_D' in md.keys()
-    assert 'X_L' in md.keys()
+        assert isinstance(md, dict)
+        assert 'X_D' in md.keys()
+        assert 'X_L' in md.keys()
