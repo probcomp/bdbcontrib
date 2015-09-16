@@ -6,12 +6,17 @@
 Welcome to bdbcontrib's documentation!
 ======================================
 
+Bdbcontrib is a collection of utility functions around BayesDB.
+
 Contents:
 
 .. toctree::
    :maxdepth: 2
 
-
+   facade
+   plot_utils
+   shell
+   crosscat
 
 Indices and tables
 ==================
@@ -19,4 +24,3 @@ Indices and tables
 * :ref:`genindex`
 * :ref:`modindex`
 * :ref:`search`
-
