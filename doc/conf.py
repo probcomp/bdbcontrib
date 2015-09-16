@@ -18,6 +18,7 @@
 
 extensions = [
     'sphinx.ext.autodoc',
+    'numpydoc',
 ]
 
 copyright = '2015, MIT Probabilistic Computing Project'
