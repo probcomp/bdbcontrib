@@ -1,12 +1,6 @@
 bdbcontrib reference
 =======================
 
-:mod:`facade`: bayeslite conveneice facade
------------------------------------------
-
-.. automodule:: bdbcontrib.facade
- :members:
-
 :mod:`plotutils`: common plotting functionality 
 ------------------------------------------------
 
