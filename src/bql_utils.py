@@ -94,7 +94,7 @@ def nullify(bdb, table, value):
 
 def cursor_to_df(cursor):
     """Converts SQLite3 cursor to a pandas DataFrame."""
-    df = pd.DataFrame.from_records(list(cursor), coerce_float=True)
+    df = pd.DataFrame.from_records(cursor, coerce_float=True)
     df.columns = [desc[0] for desc in cursor.description]
     for col in df.columns:
         try:
