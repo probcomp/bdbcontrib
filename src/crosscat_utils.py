@@ -60,7 +60,7 @@ def draw_crosscat(bdb, generator, modelno, row_label_col=None):
             (generator, metamodel))
 
     figure, axes = plt.subplots(tight_layout=False)
-    crosscat_utils.draw_state(bdb, table_name, generator,
+    draw_state(bdb, table_name, generator,
         modelno, ax=axes, row_label_col=row_label_col)
 
     return figure
