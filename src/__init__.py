@@ -22,10 +22,10 @@ features that are not yet ready for integreation to the bayeslite repository.
 
 from bql_utils import cardinality
 from bql_utils import cursor_to_df
-from bql_utils import describe_table
 from bql_utils import describe_generator
 from bql_utils import describe_generator_columns
 from bql_utils import describe_generator_models
+from bql_utils import describe_table
 from bql_utils import nullify
 
 from crosscat_utils import draw_crosscat
@@ -47,6 +47,7 @@ __all__ = [
         'describe_generator',
         'describe_generator_columns',
         'describe_generator_models',
+        'describe_table',
         'nullify',
     # crosscat_utils
         'draw_crosscat',
