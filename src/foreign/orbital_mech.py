@@ -24,7 +24,7 @@ from bdbcontrib.foreign import predictor
 
 class OrbitalMechanics(predictor.IForeignPredictor):
     """
-    A foreign predictor which models Kepler's Third Law for a `target`
+    A foreign predictor which models Kepler's Third Law for a single `targets`
     (period in minutes) and `conditions` (apogee in km, perigee in km).
 
     Attributes
@@ -40,19 +40,19 @@ class OrbitalMechanics(predictor.IForeignPredictor):
     """
     # XXX TEMPORARY HACK for testing purposes.
     conditions =['Apogee_km', 'Perigee_km']
-    target = ['Period_minutes']
+    targets = ['Period_minutes']
 
-    def __init__(self, df, target, conditions):
+    def __init__(self, df, targets, conditions):
         """Initializes OrbitalMechanics.
         """
-        # Obtain the target column.
-        if len(target) != 1:
-            raise ValueError('OrbitalMechanics can only target one '
-                'columns. Received {}'.format(target))
-        if str.lower(target[0][1]) != 'numerical':
-            raise ValueError('OrbitalMechanics can only target a NUMERICAL '
-                'column. Received {}'.format(target))
-        self.target = [target[0][0]]
+        # Obtain the targets column.
+        if len(targets) != 1:
+            raise ValueError('OrbitalMechanics can only targets one '
+                'columns. Received {}'.format(targets))
+        if str.lower(targets[0][1]) != 'numerical':
+            raise ValueError('OrbitalMechanics can only targets a NUMERICAL '
+                'column. Received {}'.format(targets))
+        self.targets = [targets[0][0]]
 
         # Obtain the conditions column.
         if len(conditions) != 2:
@@ -64,11 +64,11 @@ class OrbitalMechanics(predictor.IForeignPredictor):
         self.conditions = [c[0] for c in conditions]
 
         # The dataset.
-        self.dataset = df[self.conditions + self.target].dropna()
+        self.dataset = df[self.conditions + self.targets].dropna()
         X = self.dataset[self.conditions].as_matrix()
 
         # Learn the noise model.
-        actual_period = self.dataset[self.target].as_matrix().ravel()
+        actual_period = self.dataset[self.targets].as_matrix().ravel()
         theoretical_period = self._compute_period(X[:,0], X[:,1])/60.
         errors = np.abs(actual_period-theoretical_period)
         errors = np.mean(np.select(
@@ -76,7 +76,7 @@ class OrbitalMechanics(predictor.IForeignPredictor):
         self.noise = np.sqrt(np.mean(errors**2))
 
     def get_targets(self):
-        return self.target
+        return self.targets
 
     def get_conditions(self):
         return self.conditions

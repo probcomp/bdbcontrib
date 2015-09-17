@@ -23,7 +23,7 @@ from bdbcontrib.foreign import predictor
 
 class RandomForest(predictor.IForeignPredictor):
     """
-    A RandomForest foreign predictor, the `target` must be a categorical
+    A RandomForest foreign predictor, the `targets` must be a single categorical
     statistical type.
 
     Example
@@ -62,19 +62,19 @@ class RandomForest(predictor.IForeignPredictor):
         'Power_watts', 'Anticipated_Lifetime']
     conditions_categorical = ['Class_of_Orbit', 'Purpose', 'Users']
     conditions = conditions_numerical + conditions_categorical
-    target = ['Type_of_Orbit']
+    targets = ['Type_of_Orbit']
 
-    def __init__(self, df, target, conditions):
+    def __init__(self, df, targets, conditions):
         """Initializes and trains the RandomForest.
         """
-        # Obtain the target column.
-        if len(target) != 1:
-            raise ValueError('RandomForest can only target one '
-                'column. Received {}'.format(target))
-        if str.lower(target[0][1]) != 'categorical':
+        # Obtain the targets column.
+        if len(targets) != 1:
+            raise ValueError('RandomForest can only targets one '
+                'column. Received {}'.format(targets))
+        if str.lower(targets[0][1]) != 'categorical':
             raise ValueError('RandomForest can only classify CATEGORICAL '
-                'columns. Received {}'.format(target))
-        self.target = [target[0][0]]
+                'columns. Received {}'.format(targets))
+        self.targets = [targets[0][0]]
 
         # Obtain the condition columns.
         if len(conditions) < 1:
@@ -116,8 +116,8 @@ class RandomForest(predictor.IForeignPredictor):
         Creates: self.dataset.
         """
         df = df.where((pd.notnull(df)), None)
-        self.dataset = df[self.conditions + self.target].dropna(
-            subset=self.target)
+        self.dataset = df[self.conditions + self.targets].dropna(
+            subset=self.targets)
 
     def _init_categorical_lookup(self):
         """Builds a dictionary of dictionaries. Each dictionary contains the
@@ -182,10 +182,10 @@ class RandomForest(predictor.IForeignPredictor):
         self.X_numerical = Imputer().fit_transform(X_numerical)
 
     def _init_Y(self):
-        """Extracts the target column.
+        """Extracts the targets column.
         Creates: self.Y
         """
-        self.Y = self.dataset[self.target].as_matrix().ravel()
+        self.Y = self.dataset[self.targets].as_matrix().ravel()
 
     def _train_rf(self):
         """Trains the random forests classifiers. We train two classifiers,
@@ -203,10 +203,10 @@ class RandomForest(predictor.IForeignPredictor):
         self.rf_full.fit_transform(
             np.hstack((self.X_numerical, self.X_categorical)), self.Y)
 
-    def _compute_target_distribution(self, **kwargs):
+    def _compute_targets_distribution(self, **kwargs):
         """Given kwargs, which is a dict of {feature_col:val}, returns the
         distribution and (label mapping for lookup) of the random label:
-            self.target|kwargs
+            self.targets|kwargs
         """
         if not set(kwargs.keys()).issubset(set(self.conditions_numerical +
                 self.conditions_categorical)):
@@ -235,26 +235,26 @@ class RandomForest(predictor.IForeignPredictor):
         return distribution[0], classes
 
     def get_targets(self):
-        return self.target
+        return self.targets
 
     def get_conditions(self):
         return self.conditions
 
     def simulate(self, n_samples, **kwargs):
-        """Simulates n_samples of target|kwargs from the distribution learned
+        """Simulates n_samples of targets|kwargs from the distribution learned
         by the RandomForest.
         kwargs must be of the form feature_col=val.
         """
-        distribution, classes = self._compute_target_distribution(**kwargs)
+        distribution, classes = self._compute_targets_distribution(**kwargs)
         simulated = np.random.multinomial(1, distribution, size=n_samples)
         return [classes[np.where(s==1)[0][0]] for s in simulated]
 
-    def logpdf(self, target_val, **kwargs):
-        """Computes the logpdf P(target=target_val|kwargs) under
+    def logpdf(self, targets_val, **kwargs):
+        """Computes the logpdf P(targets=targets_val|kwargs) under
         distribution learned by the RandomForest.
         kwargs must be of the form feature_col=val.
         """
-        distribution, classes = self._compute_target_distribution(**kwargs)
-        if target_val not in classes:
+        distribution, classes = self._compute_targets_distribution(**kwargs)
+        if targets_val not in classes:
             return -float('inf')
-        return np.log(distribution[np.where(classes==target_val)[0][0]])
+        return np.log(distribution[np.where(classes==targets_val)[0][0]])
