@@ -19,8 +19,8 @@ import bayeslite.metamodel
 import bayeslite.bqlfn
 
 import bdbcontrib
-from bdbcontrib.foreign.sat_orbital_mech import SatOrbitalMechanics
-from bdbcontrib.foreign.sat_random_forest import SatRandomForest
+from bdbcontrib.foreign.orbital_mech import OrbitalMechanics
+from bdbcontrib.foreign.random_forest import RandomForest
 
 class Composer(bayeslite.metamodel.IBayesDBMetamodel):
 
@@ -56,8 +56,8 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
 
     def create_generator(self, bdb, table, schema, instantiate):
         # TODO: Serialize the mapping from FP names to objects.
-        available_fps = {'random_forest': SatRandomForest,
-            'orbital_mechanics' : SatOrbitalMechanics}
+        available_fps = {'random_forest': RandomForest,
+            'orbital_mechanics' : OrbitalMechanics}
 
         # TODO: Parse the local, foreign, and condition columns from schema.
         schema = [
