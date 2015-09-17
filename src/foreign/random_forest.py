@@ -71,7 +71,7 @@ class RandomForest(predictor.IForeignPredictor):
         if len(targets) != 1:
             raise ValueError('RandomForest can only targets one '
                 'column. Received {}'.format(targets))
-        if str.lower(targets[0][1]) != 'categorical':
+        if targets[0][1].lower() != 'categorical':
             raise ValueError('RandomForest can only classify CATEGORICAL '
                 'columns. Received {}'.format(targets))
         self.targets = [targets[0][0]]
@@ -83,7 +83,7 @@ class RandomForest(predictor.IForeignPredictor):
         self.conditions_categorical = []
         self.conditions_numerical = []
         for c in conditions:
-            if str.lower(c[1]) == 'categorical':
+            if c[1].lower() == 'categorical':
                 self.conditions_categorical.append(c[0])
             else:
                 self.conditions_numerical.append(c[0])
@@ -208,8 +208,7 @@ class RandomForest(predictor.IForeignPredictor):
         distribution and (label mapping for lookup) of the random label:
             self.targets|kwargs
         """
-        if not set(kwargs.keys()).issubset(set(self.conditions_numerical +
-                self.conditions_categorical)):
+        if not set(self.conditions).issubset(set(kwargs.keys())):
             raise ValueError('Must specify values for all the conditionals.\n'
                 'Received: {}\n'
                 'Expected: {}'.format(kwargs, self.conditions_numerical +

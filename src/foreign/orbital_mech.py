@@ -49,7 +49,7 @@ class OrbitalMechanics(predictor.IForeignPredictor):
         if len(targets) != 1:
             raise ValueError('OrbitalMechanics can only targets one '
                 'columns. Received {}'.format(targets))
-        if str.lower(targets[0][1]) != 'numerical':
+        if targets[0][1].lower() != 'numerical':
             raise ValueError('OrbitalMechanics can only targets a NUMERICAL '
                 'column. Received {}'.format(targets))
         self.targets = [targets[0][0]]
@@ -58,7 +58,7 @@ class OrbitalMechanics(predictor.IForeignPredictor):
         if len(conditions) != 2:
             raise ValueError('OrbitalMechanics can only condition on '
                 'two columns. Received {}'.format(conditions))
-        if any(str.lower(c[1]) != 'numerical' for c in conditions):
+        if any(c[1].lower() != 'numerical' for c in conditions):
             raise ValueError('OrbitalMechanics can only condition on '
                 'NUMERICAL columns. Received {}'.format(conditions))
         self.conditions = [c[0] for c in conditions]
@@ -95,7 +95,7 @@ class OrbitalMechanics(predictor.IForeignPredictor):
         Kepler's Third Law and Gaussian noise model.
         kwargs must be of the form Apogee_km=a, Perigee_km=p.
         """
-        if not set(kwargs.keys()).issubset(set(self.conditions)):
+        if not set(set(self.conditions)).issubset(kwargs.keys()):
             raise ValueError('Must specify values for all the conditionals.\n'
                 'Received: {}\n'
                 'Expected: {}'.format(kwargs, self.conditions))
