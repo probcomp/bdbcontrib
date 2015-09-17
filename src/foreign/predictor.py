@@ -16,31 +16,37 @@
 
 class IForeignPredictor(object):
     """BayesDB foreign predictor interface.
-
-    Currently, foreign predictors are closely tied to the underlying datataset.
-    When/if foreign predictors become generic modules, this interface will
-    require redesign.
     """
+    def __init__(self, df, target, conditions):
+        """
+        Initializes and trains the the foriegn predictor.
+        `df` is a pandas DataFrame containing the dataste.
+        `target` and `conditions` are lists of (column_name, stattype),
+        where column_name must be in the `df`.
+        """
+        raise NotImplementedError
+
     def get_targets(self):
-        """Returns an ordered list of target columns this foreign predictor is
-        responsible for generating.
+        """Returns an ordered list of target columns that this foreign predictor
+        is responsible for generating.
         """
         raise NotImplementedError
 
     def get_conditions(self):
         """Returns a list of conditional columns this foreign predictor requires
-        to generate targets.
+        to generate its targets.
         """
         raise NotImplementedError
 
     def simulate(self, n_samples, kwargs):
         """Simulate n_samples times from the conditional distribution
-        P(targets|kwargs) where kwargs are values for conditional columns.
+        P(targets|conditions) where kwargs is a dict of values for conditional
+        columns.
         """
         raise NotImplementedError
 
-    def probability(self, values, kwargs):
-        """Compute P(targets|kwargs) where kwargs are values for
+    def logpdf(self, values, kwargs):
+        """Compute P(targets|conditions) where kwargs is a dict of values for
         conditional columns.
         """
         raise NotImplementedError

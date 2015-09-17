@@ -21,33 +21,23 @@ from sklearn.preprocessing import Imputer
 
 from bdbcontrib.foreign import predictor
 
-class SatRandomForest(predictor.IForeignPredictor):
+class RandomForest(predictor.IForeignPredictor):
     """
-    A "foreign predictor" trained on the satellites.csv dataset. The
-    SatRandomForest is trained to predict
-
-        `Type_of_Orbit`
-
-    conditioned on
-
-        `Perigee_km, `Apogee_km`, `Eccentricity`, `Period_minutes`,
-        `Launch_Mass_kg`, `Power_watts`, `Anticipated_Lifetime`.
-
-    by default (optimized and tested). The target and conditional columns
-    can be overridden by setting kwargs in the constructor (mildly tested).
+    A RandomForest foreign predictor, the `target` must be a categorical
+    statistical type.
 
     Example
     -------
-    >> sat_df = pd.read_csv('/path/to/satellites.csv')
-    >> srf = SatRandomForest(sat_df)
-    >> srf.probability('Intermediate', Perigee_km=535, Apogee_km=551,
+    >> df = pd.read_csv('/path/to/satellites.csv')
+    >> RF = RandomForest(df)
+    >> RF.probability('Intermediate', Perigee_km=535, Apogee_km=551,
             Eccentricity=0.00116, Period_minutes=95.5, Launch_Mass_kg=293,
             Power_watts=414,Anticipated_Lifetime=3, Class_of_Orbit='LEO'
             Purpose='Astrophysics', Users='Government/Civil')
     0.8499
-    >> srf.simulate(10, Perigee_km=535, Apogee_km=551,
+    >> RF.simulate(10, Perigee_km=535, Apogee_km=551,
             Eccentricity=0.00116, Period_minutes=95.5, Launch_Mass_kg=293,
-            Power_watts=414,Anticipated_Lifetime=3, Class_of_Orbit='LEO'
+            Power_watts=414,Anticipated_Lifetime=3, Class_of_Orbit='LEO',
             Purpose='Astrophysics', Users='Government/Civil')
     ['Intermediate', 'Intermediate', 'Intermediate', 'Intermediate',
      'Intermediate', 'Intermediate', 'Intermediate', 'Sun-Synchronous',
@@ -61,27 +51,45 @@ class SatRandomForest(predictor.IForeignPredictor):
     Methods
     -------
     simulate(n_samples, **kwargs)
-        Simulate Type_of_Orbit|kwargs.
-    probability(target_val, **kwargs)
-        Compute P(Type_of_Orbit|kwargs).
+        Simulate target|conditions.
+    logpdf(target_val, **kwargs)
+        Compute P(target_val|conditions).
     """
-    # Declare globals used by all instances of the class. Tried to write the
-    # code such that these can be changed easily. These should be exposed
-    # somehow
-    features_numerical = [
+    # XXX TEMPORARY HACK for testing purposes.
+    conditions_numerical = [
         'Perigee_km', 'Apogee_km',
         'Eccentricity', 'Period_minutes', 'Launch_Mass_kg',
         'Power_watts', 'Anticipated_Lifetime']
-    features_categorical = ['Class_of_Orbit', 'Purpose', 'Users']
-    features = features_numerical + features_categorical
+    conditions_categorical = ['Class_of_Orbit', 'Purpose', 'Users']
+    conditions = conditions_numerical + conditions_categorical
     target = ['Type_of_Orbit']
 
-
-    def __init__(self, sat_df, conditions_numerical=None,
-            conditions_categorical=None):
-        """Initializes SatRandomForest forest using the pandas dataframe sat_df.
-        The SRF is automatically trained.
+    def __init__(self, df, target, conditions):
+        """Initializes and trains the RandomForest.
         """
+        # Obtain the target column.
+        if len(target) != 1:
+            raise ValueError('RandomForest can only target one '
+                'column. Received {}'.format(target))
+        if str.lower(target[0][1]) != 'categorical':
+            raise ValueError('RandomForest can only classify CATEGORICAL '
+                'columns. Received {}'.format(target))
+        self.target = [target[0][0]]
+
+        # Obtain the condition columns.
+        if len(conditions) < 1:
+            raise ValueError('RandomForest requires at least one conditions '
+                'column. Received {}'.format(conditions))
+        self.conditions_categorical = []
+        self.conditions_numerical = []
+        for c in conditions:
+            if str.lower(c[1]) == 'categorical':
+                self.conditions_categorical.append(c[0])
+            else:
+                self.conditions_numerical.append(c[0])
+        self.conditions = self.conditions_numerical + \
+            self.conditions_categorical
+
         # The dataset.
         self.dataset = pd.DataFrame()
         # Lookup for categoricals to code.
@@ -94,27 +102,21 @@ class SatRandomForest(predictor.IForeignPredictor):
         self.rf_partial = RandomForestClassifier(n_estimators=100)
         self.rf_full = RandomForestClassifier(n_estimators=100)
 
-        # Check if conditionals are overridden
-        if conditions_numerical:
-            self.features_numerical = conditions_numerical
-        if conditions_categorical:
-            self.features_categorical = conditions_categorical
-
         # Build the foreign predictor.
-        self._init_dataset(sat_df)
+        self._init_dataset(df)
         self._init_categorical_lookup()
         self._init_X_categorical()
         self._init_X_numerical()
         self._init_Y()
         self._train_rf()
 
-    def _init_dataset(self, sat_df):
+    def _init_dataset(self, df):
         """Create the dataframe of the satellites dataset. `NaN` strings are
         converted to Python `None`.
         Creates: self.dataset.
         """
-        sat_df = sat_df.where((pd.notnull(sat_df)), None)
-        self.dataset = sat_df[self.features + self.target].dropna(
+        df = df.where((pd.notnull(df)), None)
+        self.dataset = df[self.conditions + self.target].dropna(
             subset=self.target)
 
     def _init_categorical_lookup(self):
@@ -122,7 +124,7 @@ class SatRandomForest(predictor.IForeignPredictor):
         mapping category -> code for the corresponding categorical feature.
         Creates: self.lookup
         """
-        for categorical in self.features_categorical:
+        for categorical in self.conditions_categorical:
             self.lookup[categorical] = {val:code for (code,val) in
                 enumerate(self.dataset[categorical].unique())}
 
@@ -130,7 +132,7 @@ class SatRandomForest(predictor.IForeignPredictor):
         """Converts each categorical column i (Ki categories, N rows) into an
         N x Ki matrix. Each row in the matrix is a binary vector.
 
-        If there are J columns in features_categorical, then self.X_categorical
+        If there are J columns in conditions_categorical, then self.X_categorical
         will be N x (J*sum(Ki)) (ie all encoded categorical matrices are
         concatenated).
 
@@ -146,7 +148,7 @@ class SatRandomForest(predictor.IForeignPredictor):
         """
         self.X_categorical = []
         for row in self.dataset.iterrows():
-            data = list(row[1][self.features_categorical])
+            data = list(row[1][self.conditions_categorical])
             binary_data = self._binarize_categorical_row(data)
             self.X_categorical.append(binary_data)
         self.x_categorical = np.asarray(self.X_categorical)
@@ -154,13 +156,13 @@ class SatRandomForest(predictor.IForeignPredictor):
     def _binarize_categorical_row(self, data):
         """Unrolls a row of categorical data into the corresponding binary
         vector version. The order of the columns in `data` must be the same
-        as self.features_categorical.
+        as self.conditions_categorical.
         The `data` must be a list of strings corresponding to the value
         of each categorical column.
         """
-        assert len(data) == len(self.features_categorical)
+        assert len(data) == len(self.conditions_categorical)
         binary_data = []
-        for categorical, value in zip(self.features_categorical, data):
+        for categorical, value in zip(self.conditions_categorical, data):
             K = len(self.lookup[categorical])
             encoding = [0]*K
             encoding[self.lookup[categorical][value]] = 1
@@ -171,7 +173,7 @@ class SatRandomForest(predictor.IForeignPredictor):
         """Extract numerical columns from the dataset into a matrix.
         Creates: self.X_numerical
         """
-        X_numerical = self.dataset[self.features_numerical].as_matrix().astype(
+        X_numerical = self.dataset[self.conditions_numerical].as_matrix().astype(
             float)
         # XXX This is necessary. sklearn cannot deal with missing values and
         # every row in the dataset has at least one missing value. The
@@ -187,12 +189,12 @@ class SatRandomForest(predictor.IForeignPredictor):
 
     def _train_rf(self):
         """Trains the random forests classifiers. We train two classifiers,
-        `partial` which is just trained on `features_numerical`, and `full`
-        which is trained on `features_numerical+features_categorical`.
+        `partial` which is just trained on `conditions_numerical`, and `full`
+        which is trained on `conditions_numerical+conditions_categorical`.
 
         This feature is critical for safe querying; otherwise sklearn would
         crash whenever a categorical value unseen in training due to filtering
-        (but existant in sat_df nevertheless) was passed in.
+        (but existant in df nevertheless) was passed in.
 
         `Full` and `partial` have been shown to produce comparable results, but
         `full` is invariably of higher quality.
@@ -206,25 +208,25 @@ class SatRandomForest(predictor.IForeignPredictor):
         distribution and (label mapping for lookup) of the random label:
             self.target|kwargs
         """
-        if not kwargs.keys().issubset(set(self.features_numerical +
-                self.features_categorical)):
+        if not set(kwargs.keys()).issubset(set(self.conditions_numerical +
+                self.conditions_categorical)):
             raise ValueError('Must specify values for all the conditionals.\n'
                 'Received: {}\n'
-                'Expected: {}'.format(kwargs, self.features_numerical +
-                self.features_categorical))
+                'Expected: {}'.format(kwargs, self.conditions_numerical +
+                self.conditions_categorical))
 
         # Are there any category values in kwargs which never appeared during
         # training? If yes, we need to run the partial RF.
         unseen = any([kwargs[cat] not in self.lookup[cat]
-            for cat in self.features_categorical])
+            for cat in self.conditions_categorical])
 
-        X_numerical = [kwargs[col] for col in self.features_numerical]
+        X_numerical = [kwargs[col] for col in self.conditions_numerical]
 
         if unseen:
             distribution = self.rf_partial.predict_proba(X_numerical)
             classes = self.rf_partial.classes_
         else:
-            X_categorical = [kwargs[col] for col in self.features_categorical]
+            X_categorical = [kwargs[col] for col in self.conditions_categorical]
             X_categorical = self._binarize_categorical_row(X_categorical)
             distribution = self.rf_full.predict_proba(
                 np.hstack((X_numerical,X_categorical)))
@@ -236,23 +238,23 @@ class SatRandomForest(predictor.IForeignPredictor):
         return self.target
 
     def get_conditions(self):
-        return self.features
+        return self.conditions
 
     def simulate(self, n_samples, **kwargs):
         """Simulates n_samples of target|kwargs from the distribution learned
-        by the SatRandomForest.
+        by the RandomForest.
         kwargs must be of the form feature_col=val.
         """
         distribution, classes = self._compute_target_distribution(**kwargs)
         simulated = np.random.multinomial(1, distribution, size=n_samples)
         return [classes[np.where(s==1)[0][0]] for s in simulated]
 
-    def probability(self, target_val, **kwargs):
-        """Computes the probability P(target=target_val|kwargs) under
+    def logpdf(self, target_val, **kwargs):
+        """Computes the logpdf P(target=target_val|kwargs) under
         distribution learned by the RandomForest.
         kwargs must be of the form feature_col=val.
         """
         distribution, classes = self._compute_target_distribution(**kwargs)
         if target_val not in classes:
-            return 0
-        return distribution[np.where(classes==target_val)[0][0]]
+            return -float('inf')
+        return np.log(distribution[np.where(classes==target_val)[0][0]])
