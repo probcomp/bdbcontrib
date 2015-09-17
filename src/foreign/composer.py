@@ -55,8 +55,9 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
             """)
 
     def create_generator(self, bdb, table, schema, instantiate):
-        # TODO: Serialize the mapping from FP names to objects.
-        available_fps = {'random_forest': RandomForest,
+        # TODO: register foreign predictors externally.
+        # TODO: Serialize the mapping from FP names to objects into database.
+        self.fp_constructors = {'random_forest': RandomForest,
             'orbital_mechanics' : OrbitalMechanics}
 
         # TODO: Parse the local, foreign, and condition columns
@@ -91,14 +92,16 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
             # Orbital Mechanics
             'Period_minutes' : ['Apogee_km', 'Perigee_km'],
             # Random Forest
-            'Class_of_orbit' : ['Apogee_km', 'Perigee_km', 'Eccentricity',
+            'Type_of_Orbit' : ['Apogee_km', 'Perigee_km', 'Eccentricity',
                 'Period_minutes', 'Launch_Mass_kg', 'Power_watts',
-                'Anticipated_Lifetime']
+                'Anticipated_Lifetime', 'Class_of_orbit']
         }
-        # Maps target FP columns to their FP object.
+        # Maps target FP columns to their FP, currently these are strings
+        # but will be mapped to actual instances when the initialize_models
+        # is called.
         foreign_lookup = {
-            'Period_minutes' : available_fps['orbital_mechanics'],
-            'Class_of_orbit' : available_fps['random_forest'],
+            'Period_minutes' : 'orbital_mechanics',
+            'Type_of_Orbit' : 'random_forest',
         }
 
         # All other columns shall be modeled by CrossCat.
@@ -149,7 +152,7 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
         # XXX TODO: Additional clean up operations.
 
     def initialize_models(self, bdb, generator_id, modelnos, model_config):
-        # Initialize Crosscat.
+        # Initializeinternal Crosscat.
         bql = """
             INITIALIZE {} MODELS FOR {};
             """.format(len(modelnos), self.cc_name)
@@ -161,8 +164,7 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
             '''.format(bayesdb_generator_table(bdb, generator_id))))
 
         # Initialize the foriegn predictors.
-        for f_target, f_conditions in self.foreign.iteritems():
-            constructor = self.foreign_lookup[f_target]
+        for f_target, f_conditions in self.foreign.items():
             # Convert column numbers to names.
             targets = \
                 [(bayesdb_generator_column_name(bdb, generator_id, f_target),
@@ -171,11 +173,11 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
             [(bayesdb_generator_column_name(bdb, generator_id, f_c),
                 bayesdb_generator_column_stattype(bdb, generator_id, f_c))
                 for f_c in f_conditions]
-            # Instantiate (and train) the FP.
-            import ipdb; ipdb.set_trace()
-            fp = constructor(df, targets, conditions)
 
-            # We no longer need the constructors, so replace with instance.
+            # Replace the string with an actual trained FP instance.
+            self.foreign_lookup[f_target] = \
+                self.fp_constructors[self.foreign_lookup[f_target]](df, targets,
+                conditions)
 
     def drop_models(self, bdb, generator_id, modelnos=None):
         # Delegate
