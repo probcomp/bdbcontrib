@@ -59,7 +59,8 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
         available_fps = {'random_forest': RandomForest,
             'orbital_mechanics' : OrbitalMechanics}
 
-        # TODO: Parse the local, foreign, and condition columns from schema.
+        # TODO: Parse the local, foreign, and condition columns
+        # and (foreign predictors) all from schema.
         schema = [
             ('Country_of_Operator', 'CATEGORICAL'),
             ('Operator_Owner', 'CATEGORICAL'),
@@ -85,7 +86,7 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
             ('Period_minutes', 'NUMERICAL')
         ]
 
-        # Maps target FP columns to their conditions columns.
+        # Maps target FP targets to their conditions columns.
         foreign = {
             # Orbital Mechanics
             'Period_minutes' : ['Apogee_km', 'Perigee_km'],
@@ -154,15 +155,25 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
             """.format(len(modelnos), self.cc_name)
         bdb.execute(bql)
 
+        # Obtain the dataframe for foreign predictors.
+        df = bdbcontrib.cursor_to_df(bdb.execute('''
+            SELECT * FROM {}
+            '''.format(bayesdb_generator_table(bdb, generator_id))))
+
         # Initialize the foriegn predictors.
         for f_target, f_conditions in self.foreign.iteritems():
             constructor = self.foreign_lookup[f_target]
             # Convert column numbers to names.
-            target = bayesdb_generator_column_name(bdb, generator_id, f_target)
-            conditions = [bayesdb_generator_column_name(bdb, generator_id, f_c)
+            targets = \
+                [(bayesdb_generator_column_name(bdb, generator_id, f_target),
+                bayesdb_generator_column_stattype(bdb, generator_id,f_target))]
+            conditions = \
+            [(bayesdb_generator_column_name(bdb, generator_id, f_c),
+                bayesdb_generator_column_stattype(bdb, generator_id, f_c))
                 for f_c in f_conditions]
             # Instantiate (and train) the FP.
-            fp = constructor(target=target,conditions=conditions)
+            import ipdb; ipdb.set_trace()
+            fp = constructor(df, targets, conditions)
 
             # We no longer need the constructors, so replace with instance.
 
