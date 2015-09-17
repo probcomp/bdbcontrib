@@ -2,8 +2,8 @@
 
 A set of utilities for bayesdb.
 
-
 ## Installing
+
 **Requires**
 
 - Matplotlib
@@ -14,37 +14,22 @@ A set of utilities for bayesdb.
 - sphinx (for documentation)
 - numpydoc (for documentation)
 
-Clone the repo and add it to your `PYTHONPATH`
+## Test
+
+To run the paltry automatic tests:
+
+```
+$ ./check.sh
+```
 
 ## Install
-Clone the repo and add the `bdbdcontrib` path to your `PYTHONPATH`
 
-**Linux**
+To install system-wide, or into the current virtual environment:
+
 ```
-$ git clone https://github.com/mit-probabilistic-computing-project/bdbcontrib.git
-$ cd bdbcontrib
-$ echo export PYTHONPATH=\$PYTHONPATH:`pwd` >> ~/.bashrc
+$ python setup.py build
+$ python setup.py install
 ```
-
-**OSX**
-```
-$ git clone https://github.com/mit-probabilistic-computing-project/bdbcontrib.git
-$ cd bdbcontrib
-$ echo export PYTHONPATH=\$PYTHONPATH:`pwd` >> ~/.bash_profile
-```
-
-**Automatically hooking the contrib**
-
-The contrib is split into several files. You can `.hook` individual contrib
-files in the usual way, or to ensure that the entire contrib is automatically
-loaded by the shell, add the following to your `~/.bayesliterc` file
-
-    .hook /absolute/path/to/contrib_math.py
-    .hook /absolute/path/to/contrib_plot.py
-    .hook /absolute/path/to/contrib_util.py
-
-**NOTE:** Leading whitespace is treated as line continuation by the file
-reader. Do not place whitespace before new commands.
 
 ## Documentation
 
@@ -52,14 +37,21 @@ The python documentation is built using [sphinx](http://sphinx-doc.org/) and
 [numpydoc](https://pypi.python.org/pypi/numpydoc).
 
 ```
-$ cd doc && make html
+$ make doc
 ```
 
 Documentation for the shell can be found below and by using the `.help`
 command from within the shell.
 
-
 ## Use
+
+Import `bdbcontrib.plot_utils`, &c.
+
+Load the bayeslite shell commands with
+
+```
+.hook /path/to/bdbcontrib/hooks/hook_plotting.py
+```
 
 ### Shell utilities
 
