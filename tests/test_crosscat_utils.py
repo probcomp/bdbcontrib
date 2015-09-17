@@ -14,24 +14,13 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
+import bayeslite
 import pandas
 import pytest
 import tempfile
 
+from bayeslite.read_pandas import bayesdb_read_pandas_df
 from bdbcontrib import crosscat_utils
-from bdbcontrib import facade
-
-
-@pytest.fixture
-def bdb_file(request):
-    f = tempfile.NamedTemporaryFile()
-
-    def fin():
-        f.close()
-
-    request.addfinalizer(fin)
-    return f
-
 
 def get_test_df():
     PANDAS_DF_DATA = [
@@ -97,22 +86,25 @@ def get_test_df():
     return pandas.DataFrame(PANDAS_DF_DATA)
 
 
-def test_get_metadata(bdb_file):
+def test_get_metadata():
     table_name = 'tmp_table'
     generator_name = 'tmp_cc'
     pandas_df = get_test_df()
 
-    client = facade.BayesDBClient.from_pandas(bdb_file.name, table_name, pandas_df,
-                                              generator_name=generator_name)
-    with pytest.raises(ValueError):
-        md = crosscat_utils.get_metadata(client.bdb, generator_name, 0)
+    with bayeslite.bayesdb_open() as bdb:
+        bayesdb_read_pandas_df(bdb, table_name, pandas_df, create=True)
+        bdb.execute('''
+            create generator {} for {} using crosscat(guess(*))
+        '''.format(generator_name, table_name))
+        with pytest.raises(ValueError):
+            md = crosscat_utils.get_metadata(bdb, generator_name, 0)
 
-    client('INITIALIZE 2 MODELS FOR {}'.format(generator_name))
+        bdb.execute('INITIALIZE 2 MODELS FOR {}'.format(generator_name))
 
-    with pytest.raises(ValueError):
-        crosscat_utils.get_metadata(client.bdb, 'Peter_Gabriel', 0)
-    md = crosscat_utils.get_metadata(client.bdb, generator_name, 0)
+        with pytest.raises(ValueError):
+            crosscat_utils.get_metadata(bdb, 'Peter_Gabriel', 0)
+        md = crosscat_utils.get_metadata(bdb, generator_name, 0)
 
-    assert isinstance(md, dict)
-    assert 'X_D' in md.keys()
-    assert 'X_L' in md.keys()
+        assert isinstance(md, dict)
+        assert 'X_D' in md.keys()
+        assert 'X_L' in md.keys()

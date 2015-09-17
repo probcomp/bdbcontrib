@@ -16,18 +16,17 @@
 
 # XXX AUTOMATE ME XXX
 
+import bayeslite
 import matplotlib.pyplot as plt
 import numpy as np
 import os
 import pandas as pd
 
-from bdbcontrib import facade
+from bayeslite.read_csv import bayesdb_read_csv_file
+from bdbcontrib.bql_utils import cursor_to_df
 from bdbcontrib.plot_utils import _pairplot
 
 def main():
-    if os.path.isfile('plttest.bdb'):
-        os.remove('plttest.bdb')
-
     df = pd.DataFrame()
     num_rows = 400
     alphabet = ['A', 'B', 'C', 'D', 'E']
@@ -49,8 +48,11 @@ def main():
     filename = 'plottest.csv'
     df.to_csv(filename)
 
-    cc_client = facade.BayesDBClient.from_csv('plttest.bdb', 'plottest',
-                                              filename)
+    bdb = bayeslite.bayesdb_open()
+    bayesdb_read_csv_file(bdb, 'plottest', filename, header=True, create=True)
+    bdb.execute('''
+        create generator plottest_cc for plottest using crosscat(guess(*))
+    ''')
 
     # do a plot where a some sub-violins are removed
     remove_violin_bql = """
@@ -58,18 +60,18 @@ def main():
             WHERE zero_5 = "B"
                 AND (four_8 = 2 OR four_8 = 1);
     """
-    df = cc_client('SELECT one_n, zero_5, five_c, four_8 FROM plottest')
-    df = df.as_df()
+    cursor = bdb.execute('SELECT one_n, zero_5, five_c, four_8 FROM plottest')
+    df = cursor_to_df(cursor)
 
     plt.figure(tight_layout=True, facecolor='white')
-    _pairplot(df, bdb=cc_client.bdb, generator_name='plottest_cc',
+    _pairplot(df, bdb=bdb, generator_name='plottest_cc',
              use_shortname=False, colorby='four_8', show_contour=False,
              show_full=False)
     plt.savefig('fig0.png')
 
     # again, without tril to check that outer axes render correctly
     plt.figure(tight_layout=True, facecolor='white')
-    _pairplot(df, bdb=cc_client.bdb, generator_name='plottest_cc',
+    _pairplot(df, bdb=bdb, generator_name='plottest_cc',
              use_shortname=False, colorby='four_8', show_contour=True,
              show_full=False)
     plt.savefig('fig1.png')

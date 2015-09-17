@@ -16,19 +16,17 @@
 
 # XXX AUTOMATE ME XXX
 
-import bdbcontrib.facade as facade
+import bayeslite
 import os
 import pandas as pd
 import random
 
+from bayeslite.read_pandas import bayesdb_read_pandas_df
 from bdbcontrib.crosscat_utils import draw_state
 from crosscat.utils import data_utils as du
 from matplotlib import pyplot as plt
 
 def main():
-    if os.path.isfile('plttest.bdb'):
-        os.remove('plttest.bdb')
-
     rng_seed = random.randrange(10000)
     num_rows = 100
     num_cols = 50
@@ -52,13 +50,15 @@ def main():
 
     input_df = pd.DataFrame(T, columns=['col_%i' % i for i in range(num_cols)])
 
-    client = facade.BayesDBClient.from_pandas('plttest.bdb', table_name,
-                                              input_df)
-    client('initialize 4 models for {}'.format(generator_name))
-    client('analyze {} for 10 iterations wait'.format(generator_name))
-
+    bdb = bayeslite.bayesdb_open()
+    bayesdb_read_pandas_df(bdb, table_name, input_df, create=True)
+    bdb.execute('''
+        create generator {} for {} using crosscat(guess(*))
+    '''.format(generator_name, table_name))
+    bdb.execute('initialize 4 models for {}'.format(generator_name))
+    bdb.execute('analyze {} for 10 iterations wait'.format(generator_name))
     plt.figure(facecolor='white', tight_layout=False)
-    ax = draw_state(client.bdb, 'plottest', 'plottest_cc', 0,
+    ax = draw_state(bdb, 'plottest', 'plottest_cc', 0,
                     separator_width=1, separator_color=(0., 0., 1., 1.),
                     short_names=False, nan_color=(1, .15, .25, 1.))
     plt.savefig('state.png')

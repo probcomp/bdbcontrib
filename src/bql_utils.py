@@ -17,7 +17,7 @@
 import pandas as pd
 
 import bayeslite.core
-from bayeslite.sqlite3_util import sqlite3_quote_name as quote
+from bayeslite import bql_quote_name as quote
 
 
 ###############################################################################
@@ -95,7 +95,10 @@ def nullify(bdb, table, value):
 
 def cursor_to_df(cursor):
     """Converts SQLite3 cursor to a pandas DataFrame."""
-    df = pd.DataFrame.from_records(list(cursor), coerce_float=True)
+    # Do this in a savepoint to enable caching from row to row in BQL
+    # queries.
+    with cursor.connection.savepoint():
+        df = pd.DataFrame.from_records(cursor, coerce_float=True)
     df.columns = [desc[0] for desc in cursor.description]
     for col in df.columns:
         try:
@@ -224,7 +227,7 @@ def get_column_info(bdb, generator_name):
                 AND c.tabname = g.tabname
             ORDER BY c.colno
     '''
-    return list(bdb.sql_execute(sql, (generator_id,)))
+    return bdb.sql_execute(sql, (generator_id,)).fetchall()
 
 
 def get_column_stattype(bdb, generator_name, column_name):
@@ -281,7 +284,7 @@ def get_column_descriptive_metadata(bdb, table_name, column_names, md_field):
     bql = '''
         SELECT colno, name, {} FROM bayesdb_column WHERE tabname = ?
     '''.format(md_field)
-    records = list(bdb.sql_execute(bql, (table_name,)))
+    records = bdb.sql_execute(bql, (table_name,)).fetchall()
 
     # hack for case sensitivity problems
     column_names = [c.upper().lower() for c in column_names]
