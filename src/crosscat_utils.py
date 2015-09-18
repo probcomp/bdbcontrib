@@ -20,6 +20,7 @@ import numpy as np
 import matplotlib
 from matplotlib import pyplot as plt
 from matplotlib.patches import Rectangle
+import seaborn as sns
 
 import bayeslite.core
 from crosscat.utils import sample_utils as su
