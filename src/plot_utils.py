@@ -554,10 +554,10 @@ def do_kdeplot(plot_df, vartypes, **kwargs):
 
 # No support for cyclic at this time
 DO_PLOT_FUNC = dict()
-DO_PLOT_FUNC[hash(('categorical', 'categorical',))] = do_heatmap
-DO_PLOT_FUNC[hash(('categorical', 'numerical',))] = do_violinplot
-DO_PLOT_FUNC[hash(('numerical', 'categorical',))] = do_violinplot
-DO_PLOT_FUNC[hash(('numerical', 'numerical',))] = do_kdeplot
+DO_PLOT_FUNC['categorical', 'categorical'] = do_heatmap
+DO_PLOT_FUNC['categorical', 'numerical'] = do_violinplot
+DO_PLOT_FUNC['numerical', 'categorical'] = do_violinplot
+DO_PLOT_FUNC['numerical', 'numerical'] = do_kdeplot
 
 
 def do_pair_plot(plot_df, vartypes, **kwargs):
@@ -565,7 +565,7 @@ def do_pair_plot(plot_df, vartypes, **kwargs):
     if kwargs.get('ax', None) is None:
         kwargs['ax'] = plt.gca()
 
-    ax = DO_PLOT_FUNC[hash(vartypes)](plot_df, vartypes, **kwargs)
+    ax = DO_PLOT_FUNC[vartypes](plot_df, vartypes, **kwargs)
     return ax
 
 
