@@ -22,6 +22,11 @@ except ImportError:
 setup(
     name='bdbcontrib',
     version='0.1.dev',
+    description='Hodgepodge library of extras for bayeslite',
+    url='http://probcomp.csail.mit.edu/bayesdb',
+    author='MIT Probabilistic Computing Project',
+    author_email='bayesdb@mit.edu',
+    license='Apache License, Version 2.0',
     install_requires=[
         'markdown2',
         'matplotlib',
@@ -37,5 +42,4 @@ setup(
     package_dir={
         'bdbcontrib': 'src',
     },
-    license='Apache License, Version 2.0',
 )
