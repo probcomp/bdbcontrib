@@ -21,7 +21,7 @@ except ImportError:
 
 setup(
     name='bdbcontrib',
-    version='0.1.dev',
+    version='0.1a20150917',
     description='Hodgepodge library of extras for bayeslite',
     url='http://probcomp.csail.mit.edu/bayesdb',
     author='MIT Probabilistic Computing Project',
