@@ -40,6 +40,8 @@ from plot_utils import histogram
 from plot_utils import mi_hist
 from plot_utils import pairplot
 
+from version import __version__
+
 __all__ = [
     # bql_utils
         'cardinality',
@@ -61,4 +63,6 @@ __all__ = [
         'histogram',
         'mi_hist',
         'pairplot',
+    # version
+        '__version__',
 ]

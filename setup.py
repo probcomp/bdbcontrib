@@ -19,9 +19,21 @@ try:
 except ImportError:
     from distutils.core import setup
 
+version = '0.1a20150918'
+
+try:
+    with open('src/version.py', 'rU') as f:
+        version_old = f.readlines()
+except IOError:
+    version_old = None
+version_new = ['__version__ = %s\n' % (repr(version),)]
+if version_old != version_new:
+    with open('src/version.py', 'w') as f:
+        f.writelines(version_new)
+
 setup(
     name='bdbcontrib',
-    version='0.1a20150917',
+    version=version,
     description='Hodgepodge library of extras for bayeslite',
     url='http://probcomp.csail.mit.edu/bayesdb',
     author='MIT Probabilistic Computing Project',
