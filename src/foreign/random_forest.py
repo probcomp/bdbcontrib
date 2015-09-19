@@ -14,6 +14,8 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
+# TODO: Update the interface for multivariate targets.
+
 import numpy as np
 import pandas as pd
 from sklearn.ensemble import RandomForestClassifier
@@ -23,8 +25,7 @@ from bdbcontrib.foreign import predictor
 
 class RandomForest(predictor.IForeignPredictor):
     """
-    A RandomForest foreign predictor, the `targets` must be a single categorical
-    statistical type.
+    A RandomForest FP. The `targets` must be a single categorical stattype.
 
     Example
     -------
@@ -47,13 +48,6 @@ class RandomForest(predictor.IForeignPredictor):
     Attributes
     ----------
     Please do not mess around with any (exploring is ok).
-
-    Methods
-    -------
-    simulate(n_samples, **kwargs)
-        Simulate target|conditions.
-    logpdf(target_val, **kwargs)
-        Compute P(target_val|conditions).
     """
     # XXX TEMPORARY HACK for testing purposes.
     conditions_numerical = [
@@ -65,8 +59,6 @@ class RandomForest(predictor.IForeignPredictor):
     targets = ['Type_of_Orbit']
 
     def __init__(self, df, targets, conditions):
-        """Initializes and trains the RandomForest.
-        """
         # Obtain the targets column.
         if len(targets) != 1:
             raise ValueError('RandomForest can only targets one '
@@ -111,8 +103,10 @@ class RandomForest(predictor.IForeignPredictor):
         self._train_rf()
 
     def _init_dataset(self, df):
-        """Create the dataframe of the satellites dataset. `NaN` strings are
-        converted to Python `None`.
+        """Create the dataframe of the satellites dataset.
+
+        `NaN` strings are converted to Python `None`.
+
         Creates: self.dataset.
         """
         df = df.where((pd.notnull(df)), None)
@@ -122,6 +116,7 @@ class RandomForest(predictor.IForeignPredictor):
     def _init_categorical_lookup(self):
         """Builds a dictionary of dictionaries. Each dictionary contains the
         mapping category -> code for the corresponding categorical feature.
+
         Creates: self.lookup
         """
         for categorical in self.conditions_categorical:
@@ -132,9 +127,9 @@ class RandomForest(predictor.IForeignPredictor):
         """Converts each categorical column i (Ki categories, N rows) into an
         N x Ki matrix. Each row in the matrix is a binary vector.
 
-        If there are J columns in conditions_categorical, then self.X_categorical
-        will be N x (J*sum(Ki)) (ie all encoded categorical matrices are
-        concatenated).
+        If there are J columns in conditions_categorical, then
+        self.X_categorical will be N x (J*sum(Ki)) (ie all encoded categorical
+        matrices are concatenated).
 
         Example
             Nationality|Gender
@@ -155,10 +150,11 @@ class RandomForest(predictor.IForeignPredictor):
 
     def _binarize_categorical_row(self, data):
         """Unrolls a row of categorical data into the corresponding binary
-        vector version. The order of the columns in `data` must be the same
-        as self.conditions_categorical.
-        The `data` must be a list of strings corresponding to the value
-        of each categorical column.
+        vector version.
+
+        The order of the columns in `data` must be the same as
+        self.conditions_categorical. The `data` must be a list of strings
+        corresponding to the value of each categorical column.
         """
         assert len(data) == len(self.conditions_categorical)
         binary_data = []
@@ -171,6 +167,7 @@ class RandomForest(predictor.IForeignPredictor):
 
     def _init_X_numerical(self):
         """Extract numerical columns from the dataset into a matrix.
+
         Creates: self.X_numerical
         """
         X_numerical = self.dataset[self.conditions_numerical].as_matrix().astype(
@@ -183,49 +180,49 @@ class RandomForest(predictor.IForeignPredictor):
 
     def _init_Y(self):
         """Extracts the targets column.
+
         Creates: self.Y
         """
         self.Y = self.dataset[self.targets].as_matrix().ravel()
 
     def _train_rf(self):
-        """Trains the random forests classifiers. We train two classifiers,
-        `partial` which is just trained on `conditions_numerical`, and `full`
-        which is trained on `conditions_numerical+conditions_categorical`.
+        """Trains the random forests classifiers.
 
-        This feature is critical for safe querying; otherwise sklearn would
-        crash whenever a categorical value unseen in training due to filtering
-        (but existant in df nevertheless) was passed in.
+        We train two classifiers, `partial` which is just trained on
+        `conditions_numerical`, and `full` which is trained on
+        `conditions_numerical+conditions_categorical`.
 
-        `Full` and `partial` have been shown to produce comparable results, but
-        `full` is invariably of higher quality.
+        This safe-guard feature is critical for querying; otherwise sklearn
+        would crash whenever a categorical value unseen in training due to
+        filtering (but existant in df nevertheless) was passed in.
         """
         self.rf_partial.fit_transform(self.X_numerical, self.Y)
         self.rf_full.fit_transform(
             np.hstack((self.X_numerical, self.X_categorical)), self.Y)
 
-    def _compute_targets_distribution(self, **kwargs):
-        """Given kwargs, which is a dict of {feature_col:val}, returns the
-        distribution and (label mapping for lookup) of the random label:
-            self.targets|kwargs
+    def _compute_targets_distribution(self, conditions):
+        """Given conditions dict {feature_col:val}, returns the
+        distribution and (class mapping for lookup) of the random label
+        self.targets|conditions.
         """
-        if not set(self.conditions).issubset(set(kwargs.keys())):
+        if not set(self.conditions).issubset(set(conditions.keys())):
             raise ValueError('Must specify values for all the conditionals.\n'
                 'Received: {}\n'
-                'Expected: {}'.format(kwargs, self.conditions_numerical +
+                'Expected: {}'.format(conditions, self.conditions_numerical +
                 self.conditions_categorical))
 
-        # Are there any category values in kwargs which never appeared during
+        # Are there any category values in conditions which never appeared during
         # training? If yes, we need to run the partial RF.
-        unseen = any([kwargs[cat] not in self.lookup[cat]
+        unseen = any([conditions[cat] not in self.lookup[cat]
             for cat in self.conditions_categorical])
 
-        X_numerical = [kwargs[col] for col in self.conditions_numerical]
+        X_numerical = [conditions[col] for col in self.conditions_numerical]
 
         if unseen:
             distribution = self.rf_partial.predict_proba(X_numerical)
             classes = self.rf_partial.classes_
         else:
-            X_categorical = [kwargs[col] for col in self.conditions_categorical]
+            X_categorical = [conditions[col] for col in self.conditions_categorical]
             X_categorical = self._binarize_categorical_row(X_categorical)
             distribution = self.rf_full.predict_proba(
                 np.hstack((X_numerical,X_categorical)))
@@ -239,21 +236,13 @@ class RandomForest(predictor.IForeignPredictor):
     def get_conditions(self):
         return self.conditions
 
-    def simulate(self, n_samples, **kwargs):
-        """Simulates n_samples of targets|kwargs from the distribution learned
-        by the RandomForest.
-        kwargs must be of the form feature_col=val.
-        """
-        distribution, classes = self._compute_targets_distribution(**kwargs)
-        simulated = np.random.multinomial(1, distribution, size=n_samples)
-        return [classes[np.where(s==1)[0][0]] for s in simulated]
+    def simulate(self, n_samples, conditions):
+        distribution, classes = self._compute_targets_distribution(conditions)
+        draws = np.random.multinomial(1, distribution, size=n_samples)
+        return [classes[np.where(d==1)[0][0]] for d in draws]
 
-    def logpdf(self, targets_val, **kwargs):
-        """Computes the logpdf P(targets=targets_val|kwargs) under
-        distribution learned by the RandomForest.
-        kwargs must be of the form feature_col=val.
-        """
-        distribution, classes = self._compute_targets_distribution(**kwargs)
+    def logpdf(self, targets_val, conditions):
+        distribution, classes = self._compute_targets_distribution(conditions)
         if targets_val not in classes:
             return -float('inf')
         return np.log(distribution[np.where(classes==targets_val)[0][0]])

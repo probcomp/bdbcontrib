@@ -14,6 +14,8 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
+# TODO: Update the interface for multivariate targets.
+
 import numpy as np
 import pandas as pd
 from scipy.stats import norm
@@ -25,26 +27,18 @@ from bdbcontrib.foreign import predictor
 class OrbitalMechanics(predictor.IForeignPredictor):
     """
     A foreign predictor which models Kepler's Third Law for a single `targets`
-    (period in minutes) and `conditions` (apogee in km, perigee in km).
+    (period in minutes) and `conditions` (apogee in km, perigee in km). All
+    stattypes are expected to be numerical.
 
     Attributes
     ----------
     Please do not mess around with any (exploring is ok).
-
-    Methods
-    -------
-    simulate(n_samples, apogee_km, perigee_km)
-        Simulate Period_minutes|Apogee_km,Perigee_km
-    probability(period_mins, apogee_km, perigee_km)
-        Compute P(period_mins|kwargs).
     """
     # XXX TEMPORARY HACK for testing purposes.
     conditions =['Apogee_km', 'Perigee_km']
     targets = ['Period_minutes']
 
     def __init__(self, df, targets, conditions):
-        """Initializes OrbitalMechanics.
-        """
         # Obtain the targets column.
         if len(targets) != 1:
             raise ValueError('OrbitalMechanics can only targets one '
@@ -81,27 +75,20 @@ class OrbitalMechanics(predictor.IForeignPredictor):
     def get_conditions(self):
         return self.conditions
 
-    def simulate(self, n_samples, **kwargs):
-        """Simulates period|apogee,perigee under Kepler's Third Law and
-        Gaussian noise model.
-        """
-        period = self._compute_period(kwargs[self.conditions[0]],
-            kwargs[self.conditions[1]])
+    def simulate(self, n_samples, conditions):
+        period = self._compute_period(conditions[self.conditions[0]],
+            conditions[self.conditions[1]])
         return period/60. + np.random.normal(scale=self.noise,
             size=n_samples)
 
-    def logpdf(self, period_val, **kwargs):
-        """Computes the probability density P(period_val|apogee,perigee) under
-        Kepler's Third Law and Gaussian noise model.
-        kwargs must be of the form Apogee_km=a, Perigee_km=p.
-        """
-        if not set(set(self.conditions)).issubset(kwargs.keys()):
+    def logpdf(self, targets_val, conditions):
+        if not set(set(self.conditions)).issubset(conditions.keys()):
             raise ValueError('Must specify values for all the conditionals.\n'
                 'Received: {}\n'
-                'Expected: {}'.format(kwargs, self.conditions))
-        period = self._compute_period(kwargs[self.conditions[0]],
-            kwargs[self.conditions[1]]) / 60.
-        return norm.logpdf(period_val, loc=period, scale=self.noise)
+                'Expected: {}'.format(conditions, self.conditions))
+        period = self._compute_period(conditions[self.conditions[0]],
+            conditions[self.conditions[1]]) / 60.
+        return norm.logpdf(target_val, loc=period, scale=self.noise)
 
     def _compute_period(self, apogee_km, perigee_km):
         """Computes the period of the satellite in seconds given the apogee_km
@@ -111,4 +98,3 @@ class OrbitalMechanics(predictor.IForeignPredictor):
         EARTH_RADIUS = 6378
         a = 0.5*(apogee_km + perigee_km) + EARTH_RADIUS
         return 2 * np.pi * np.sqrt(a**3/GM)
-

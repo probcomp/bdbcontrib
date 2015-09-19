@@ -16,37 +16,88 @@
 
 class IForeignPredictor(object):
     """BayesDB foreign predictor interface.
+
+    A foreign predictor (FP) is itself an independent object which is typically
+    used outside the universe of BayesDB.
+
+    The primitives that an FP must support are:
+
+        - Initialize, given as inputs a
+            Pandas dataframe, which contains the training data.
+            Set of targets, which the FP is responsible for generating.
+            Set of conditions, which the FP may use to generate targets.
+
+        - Simulate targets.
+        - Evaluate the logpdf of targets taking certain values.
+
+        Simulate and logpdf both require a full realization of all `conditions`.
     """
-    def __init__(self, df, target, conditions):
-        """
-        Initializes and trains the the foriegn predictor.
-        `df` is a pandas DataFrame containing the dataste.
-        `target` and `conditions` are lists of (column_name, stattype),
-        where column_name must be in the `df`.
+    def __init__(self, df, targets, conditions):
+        """Initializes and trains the the foriegn predictor.
+
+        Parameters
+        ----------
+        df : pandas.Dataframe
+            Contains the training set.
+
+        targets: list<tuple>
+            A list of `targets` that the FP must learn to generate. The list is
+            of the form [(`colname`, `stattype`),...], where `colname` must be
+            the name of a column in `df`, and `stattype` is the data type.
+
+        conditions: list<tuple>
+            A list of `conditions` that the FP may use to generate `targets`.
+            The list is of the same form as `targets`.
         """
         raise NotImplementedError
 
     def get_targets(self):
-        """Returns an ordered list of target columns that this foreign predictor
-        is responsible for generating.
+        """Obtain the FP's targets.
+
+        Returns
+        -------
+        targets: list<tuple>
+            List of [(colname, stattype),...].
         """
         raise NotImplementedError
 
     def get_conditions(self):
-        """Returns a list of conditional columns this foreign predictor requires
-        to generate its targets.
+        """Obtain the FP's conditions.
+
+        Returns
+        -------
+        conditions: list<tuple>
+            List of [(colname, stattype),...].
+
         """
         raise NotImplementedError
 
-    def simulate(self, n_samples, kwargs):
-        """Simulate n_samples times from the conditional distribution
-        P(targets|conditions) where kwargs is a dict of values for conditional
-        columns.
+    def simulate(self, n_samples, conditions):
+        """Simulate from the distribution `targets`|`conditions`.
+
+        Parameters
+        ----------
+        n_samples : int
+            Number of samples to simulate.
+
+        conditions : dict
+            A dictionary of {'condition':'value'} for all `conditions` required
+            by the FP. Missing `conditions` will result in an error, additional
+            entries will be ignored.
         """
         raise NotImplementedError
 
-    def logpdf(self, values, kwargs):
-        """Compute P(targets|conditions) where kwargs is a dict of values for
-        conditional columns.
+    def logpdf(self, targets_vals, conditions):
+        """Simulate from the distribution `targets`|`conditions`.
+
+        Parameters
+        ----------
+        values : int
+            The value of `target` to query
+
+        conditions : dict
+            A dictionary of {'condition':'value'} for all `conditions` required
+            by the FP. Missing `conditions` will result in an error, additional
+            entries will be ignored.
         """
         raise NotImplementedError
