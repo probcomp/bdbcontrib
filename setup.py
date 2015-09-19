@@ -40,11 +40,8 @@ if version.endswith('+'):
             version += 'unknown'
         else:
             ver, rev, local = match.groups()
-            version = '%s.%s+%s' % (ver, rev, local)
-            # No hyphens before the local version (`+' fragment), per
-            # PEP 440.
-            assert version.find('-') is None or \
-                version.find('+') < version.find('-')
+            version = '%s.%s+%s' % (ver, rev, local.replace('-', '.'))
+            assert '-' not in version
 
 try:
     with open('src/version.py', 'rU') as f:
