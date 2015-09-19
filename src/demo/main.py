@@ -42,7 +42,7 @@ def main():
         print >>sys.stderr, last_error
         sys.exit(1)
     try:
-        os.execlp('ipython', 'notebook')
+        os.execlp('ipython', 'ipython', 'notebook')
     except Exception as e:
         print >>sys.stderr, e
         print >>sys.stderr, 'Failed to launch ipython!'
