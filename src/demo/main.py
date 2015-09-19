@@ -24,29 +24,32 @@ import sys
 import zlib
 
 def main():
-    if 0 < len(os.listdir(os.curdir)):
-        print >>sys.stderr, 'Please run %s in an empty directory!' % \
-            (sys.argv[0],)
-        sys.exit(1)
-    nretry = 3
-    last_error = None
-    while 0 < nretry:
+    fetch_p = len(sys.argv) < 2 or sys.argv[1] == 'fetch'
+    launch_p = len(sys.argv) < 2 or sys.argv[1] == 'launch'
+    if fetch_p:
+        if 0 < len(os.listdir(os.curdir)):
+            print >>sys.stderr, 'Please enter an empty directory first!'
+            sys.exit(1)
+        nretry = 3
+        last_error = None
+        while 0 < nretry:
+            try:
+                download_demo()
+            except Exception as e:
+                last_error = e
+                nretry -= 1
+            else:
+                break
+        if last_error is not None:
+            print >>sys.stderr, last_error
+            sys.exit(1)
+    if launch_p:
         try:
-            download_demo()
+            os.execlp('ipython', 'ipython', 'notebook')
         except Exception as e:
-            last_error = e
-            nretry -= 1
-        else:
-            break
-    if last_error is not None:
-        print >>sys.stderr, last_error
-        sys.exit(1)
-    try:
-        os.execlp('ipython', 'ipython', 'notebook')
-    except Exception as e:
-        print >>sys.stderr, e
-        print >>sys.stderr, 'Failed to launch ipython!'
-        sys.exit(1)
+            print >>sys.stderr, e
+            print >>sys.stderr, 'Failed to launch ipython!'
+            sys.exit(1)
 
 class Fail(Exception):
     def __init__(self, string):
