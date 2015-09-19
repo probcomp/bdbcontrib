@@ -19,7 +19,22 @@ try:
 except ImportError:
     from distutils.core import setup
 
-version = '0.1a20150918'
+with open('VERSION', 'rU') as f:
+    version = f.readline().strip()
+
+# Append the Git commit id if this is a development version.
+if version.endswith('+'):
+    tag = 'v' + version[:-1]
+    try:
+        import subprocess
+        desc = subprocess.check_output([
+            'git', 'describe', '--dirty', '--match', tag,
+        ])
+    except Exception:
+        version += 'unknown'
+    else:
+        assert desc.startswith(tag)
+        version = desc[1:].strip()
 
 try:
     with open('src/version.py', 'rU') as f:
