@@ -50,8 +50,13 @@ setup(
     ],
     packages=[
         'bdbcontrib',
+        'bdbcontrib.demo',
+        'bdbcontrib.demo.ed25519',
     ],
     package_dir={
         'bdbcontrib': 'src',
     },
+    scripts=[
+        'scripts/bayesdb-demo',
+    ],
 )
