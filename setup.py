@@ -62,6 +62,7 @@ setup(
     author_email='bayesdb@mit.edu',
     license='Apache License, Version 2.0',
     install_requires=[
+        'bayeslite>=0.1rc5',
         'ipython[notebook]>=3',
         'markdown2',
         'matplotlib',
@@ -70,6 +71,9 @@ setup(
         'pandas',
         'seaborn==0.5.1',
         'sphinx',
+    ],
+    tests_require=[
+        'pytest',
     ],
     packages=[
         'bdbcontrib',
