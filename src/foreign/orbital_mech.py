@@ -76,13 +76,17 @@ class OrbitalMechanics(predictor.IForeignPredictor):
         return self.conditions
 
     def simulate(self, n_samples, conditions):
+        if not set(self.conditions).issubset(set(conditions.keys())):
+            raise ValueError('Must specify values for all the conditionals.\n'
+                'Received: {}\n'
+                'Expected: {}'.format(conditions, self.conditions))
         period = self._compute_period(conditions[self.conditions[0]],
             conditions[self.conditions[1]])
         return list(period/60. + np.random.normal(scale=self.noise,
             size=n_samples))
 
     def logpdf(self, targets_val, conditions):
-        if not set(set(self.conditions)).issubset(conditions.keys()):
+        if not set(self.conditions).issubset(set(conditions.keys())):
             raise ValueError('Must specify values for all the conditionals.\n'
                 'Received: {}\n'
                 'Expected: {}'.format(conditions, self.conditions))
