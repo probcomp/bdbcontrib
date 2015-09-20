@@ -15,41 +15,111 @@
 #   limitations under the License.
 
 import base64
+import bayeslite
 import contextlib
 import ed25519
+import getopt
 import json
 import requests
 import os
 import sys
 import zlib
+from ..version import __version__
+
+#DEMO_URI = 'http://probcomp.csail.mit.edu/bayesdb/demo/current'
+DEMO_URI = 'http://127.0.0.1:12345/'
+PUBKEY = '\x93\xca\x8f\xedds\x934B\xf8\xac\xee\x91A\x1d\xa9-\xf5\xfb\xe3\xbf\xe4\xea\xba\nG\xa5>z=\xc4\x8b'
+
+short_options = 'hu:v'
+long_options = [
+    'help',
+    'uri=',
+    'version',
+]
 
 def main():
-    fetch_p = len(sys.argv) < 2 or sys.argv[1] == 'fetch'
-    launch_p = len(sys.argv) < 2 or sys.argv[1] == 'launch'
+    # Parse options.
+    try:
+        opts, args = getopt.getopt(sys.argv[1:], short_options, long_options)
+    except getopt.GetoptError as e:
+        sys.stderr.write(str(e))
+        usage(sys.stderr)
+        sys.exit(2)
+    demo_uri = DEMO_URI
+    pubkey = PUBKEY
+    for o, a in opts:
+        if o in ('-v', '--version'):
+            version(sys.stdout)
+            sys.exit(0)
+        elif o in ('-h', '--help'):
+            usage(sys.stdout)
+            sys.exit(0)
+        elif o in ('-u', '--uri'):
+            demo_uri = a
+        else:
+            assert False, 'invalid option %s' % (o,)
+
+    # Select command.
+    fetch_p = False
+    launch_p = False
+    if len(args) == 0:
+        fetch_p = True
+        launch_p = True
+    elif args[0] == 'help':
+        usage(sys.stdout)
+        sys.exit(0)
+    elif args[0] == 'version':
+        version(sys.stdout)
+        sys.exit(0)
+    elif args[0] == 'fetch':
+        if 1 < len(args):
+            sys.stderr.write('%s: excess arguments\n' % (sys.argv[0],))
+        fetch_p = True
+    elif args[0] == 'launch':
+        if 1 < len(args):
+            sys.stderr.write('%s: excess arguments\n' % (sys.argv[0],))
+        launch_p = True
+    else:
+        sys.stderr.write('%s: invalid command: %s\n' % (sys.argv[0],))
+        usage(sys.stderr)
+        sys.exit(2)
+
+    # Fetch demo if requested.
     if fetch_p:
         if 0 < len(os.listdir(os.curdir)):
-            print >>sys.stderr, 'Please enter an empty directory first!'
-            sys.exit(1)
+            sys.stderr.write('Please enter an empty directory first!\n')
+            sys.exit(2)
         nretry = 3
         last_error = None
         while 0 < nretry:
             try:
-                download_demo()
+                download_demo(demo_uri, pubkey)
             except Exception as e:
                 last_error = e
                 nretry -= 1
             else:
                 break
         if last_error is not None:
-            print >>sys.stderr, last_error
+            sys.stderr.write(str(last_error))
             sys.exit(1)
+
+    # Launch demo if requested.
     if launch_p:
         try:
             os.execlp('ipython', 'ipython', 'notebook')
         except Exception as e:
-            print >>sys.stderr, e
-            print >>sys.stderr, 'Failed to launch ipython!'
+            sys.stderr.write(str(e))
+            sys.stderr.write('Failed to launch ipython!\n')
             sys.exit(1)
+
+def usage(out):
+    out.write('Usage: %s [-hv] [-u <uri>]\n' % (sys.argv[0],))
+    out.write('       %s [-hv] [-u <uri>] fetch\n' % (sys.argv[0],))
+    out.write('       %s [-hv] [-u <uri>] launch\n' % (sys.argv[0],))
+
+def version(out):
+    out.write('bdbcontrib %s\n' % (__version__,))
+    out.write('bayeslite %s\n' % (bayeslite.__version__,))
 
 class Fail(Exception):
     def __init__(self, string):
@@ -62,10 +132,6 @@ def fail(s):
 def bad(s):
     # XXX Distinguish MITM on network from local failure?
     fail(s)
-
-#DEMO_URI = 'http://probcomp.csail.mit.edu/bayesdb/demo/current.json'
-DEMO_URI = 'http://127.0.0.1:12345/'
-PUBKEY = '\x93\xca\x8f\xedds\x934B\xf8\xac\xee\x91A\x1d\xa9-\xf5\xfb\xe3\xbf\xe4\xea\xba\nG\xa5>z=\xc4\x8b'
 
 def selftest():
     payload = 'x\x9c\xab\xae\x05\x00\x01u\x00\xf9'
@@ -80,12 +146,12 @@ def selftest():
     except:
         fail('Crypto self-test failed!')
 
-def download_demo():
+def download_demo(demo_uri, pubkey):
     with note('Requesting') as progress:
         headers = {
             'User-Agent': 'bdbcontrib demo'
         }
-        r = requests.get(DEMO_URI, headers=headers, stream=True)
+        r = requests.get(demo_uri, headers=headers, stream=True)
         try:
             content_length = int(r.headers['content-length'])
         except Exception:
@@ -112,7 +178,7 @@ def download_demo():
     with note('Verifying'):
         selftest()
         try:
-            ed25519.checkvalid(sig, payload, PUBKEY)
+            ed25519.checkvalid(sig, payload, pubkey)
         except Exception:
             with open('/tmp/riastradh/bad.pack', 'wb') as f:
                 f.write(sig)
@@ -153,6 +219,3 @@ def note(head):
     yield progress
     sys.stdout.write(' done\n')
     sys.stdout.flush()
-
-if __name__ == '__main__':
-    main()
