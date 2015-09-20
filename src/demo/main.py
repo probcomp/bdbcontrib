@@ -67,7 +67,7 @@ def bad(s):
 DEMO_URI = 'http://127.0.0.1:12345/'
 PUBKEY = '\x93\xca\x8f\xedds\x934B\xf8\xac\xee\x91A\x1d\xa9-\xf5\xfb\xe3\xbf\xe4\xea\xba\nG\xa5>z=\xc4\x8b'
 
-def selftest(sig0, payload0):
+def selftest():
     payload = 'x\x9c\xab\xae\x05\x00\x01u\x00\xf9'
     try:
         if zlib.decompress(payload) != '{}':
@@ -110,7 +110,7 @@ def download_demo():
         except Exception:
             bad('Invalid payload!')
     with note('Verifying'):
-        selftest(sig, payload)
+        selftest()
         try:
             ed25519.checkvalid(sig, payload, PUBKEY)
         except Exception:
