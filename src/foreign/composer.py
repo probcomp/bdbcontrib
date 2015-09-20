@@ -22,6 +22,9 @@ import numpy as np
 from bayeslite.core import *
 from bayeslite.exception import BQLError
 from bayeslite.sqlite3_util import sqlite3_quote_name as quote
+
+from crosscat.utils import sample_utils as su
+
 import bayeslite.metamodel
 import bayeslite.bqlfn
 
@@ -76,7 +79,7 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
             ('Operator_Owner', 'CATEGORICAL'),
             ('Users', 'CATEGORICAL'),
             ('Purpose', 'CATEGORICAL'),
-            ('Type_of_Orbit', 'CATEGORICAL'),
+            ('Class_of_orbit', 'CATEGORICAL'),
             ('Perigee_km', 'NUMERICAL'),
             ('Apogee_km', 'NUMERICAL'),
             ('Eccentricity', 'NUMERICAL'),
@@ -92,7 +95,7 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
             ('Source_Used_for_Orbital_Data', 'CATEGORICAL'),
             ('longitude_radians_of_geo', 'NUMERICAL'),
             ('Inclination_radians', 'NUMERICAL'),
-            ('Class_of_orbit', 'CATEGORICAL'),
+            ('Type_of_Orbit', 'CATEGORICAL'),
             ('Period_minutes', 'NUMERICAL')
         ]
 
@@ -278,7 +281,6 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
 
     def column_mutual_information(self, bdb, genid, modelno, colno0,
                 colno1, numsamples=100):
-        #
         cc_colnos = self._internal_cc_colnos(bdb, genid,
             [colno0, colno1])
         return self.cc.column_mutual_information(bdb, self.cc_id, modelno,
@@ -343,36 +345,39 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
         num = np.exp(pw_max) + np.sum(np.exp(pw-pw_max))
         den = np.exp(np.max(weights)) + \
                 np.sum(np.exp(np.asarray(weights) - np.max(weights)))
-
-        print 'returning {}'.format(num/den)
         return num/den
 
 
     def row_similarity(self, bdb, genid, modelno, rowid, target_rowid,
-                colnos):
+            colnos):
         cc_colnos = self._internal_cc_colnos(bdb, genid, colnos)
         return self.cc.row_similarity(bdb, self.cc_id, modelno, rowid,
             target_rowid, cc_colnos)
 
 
     def row_column_predictive_probability(self, bdb, genid, modelno,
-                rowid, colno):
+            rowid, colno):
         raise NotImplementedError('PREDICTIVE PROBABILITY is being retired. '
             'Please use PROBABILITY OF <[...]> [GIVEN [...]] instead.')
 
 
     def predict_confidence(self, bdb, genid, modelno, colno, rowid,
-                numsamples=None):
-        # Delegate imputation of lcols to crosscat.
-        # XXX In theory, if any fcols in the rowid are observed, then we should
-        # be doing the full inference problem: simulate many samples from the
-        # posterior on colno using our simulate, then call CC's
-        # impute_and_confidence on the posterior samples. However the required
-        # function in CC's LocalEngine is not available from this layer.
+            numsamples=None):
+        # For now, delegate imputation of all lcols to crosscat.
+        # If the lcol has no FP children, this is fine.
+        # If lcol has FP children, all unobserved in row, this is fine.
         if colno in self.lcols:
             cc_colno = self._internal_cc_colno(bdb, genid, colno)
-            return self.cc_id.predict_confidence(bdb, self.cc_id, modelno,
+            return self.cc.predict_confidence(bdb, self.cc_id, modelno,
                 cc_colno, rowid)
+
+        # XXX TODO: If lcol has FP children, at least one observed, then
+        #  - Use our simulate to obtain importance samples.
+        #  - Use impute_and_confidence on posterior samples.
+
+        # XXX Prefer accuracy over speed for imputation.
+        if numsamples is None:
+            numsamples = 100
 
         # Obtain all values for conditions columns.
         fp_conditions = [bayesdb_generator_column_name(bdb, genid, c) for c in
@@ -392,24 +397,56 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
                 ' for generator {}: {}'.format(table, generator, rowid))
 
         # Are all fp_conditions observed? If not, impute missing parents.
-        fp_conditions = zip(fp_conditions, row)
-        conf = 1
-        for colname, val in fp_conditions:
+        fp_conditions = dict(zip(fp_conditions, row))
+        parent_conf = 1
+        for colname, val in fp_conditions.iteritems():
             if val is None:
-                colno = bayesdb_generator_column_number(bdb, genid, colname)
-                imp_val, imp_conf = self.predict_confidence(bdb, genid, modelno,
-                    colno, rowid, numsamples=numsamples)
+                print 'IMPUTING {}'.format(colname)
+                imp_col = bayesdb_generator_column_number(bdb, genid, colname)
+                imp_val, imp_conf = self.predict_confidence(bdb, genid,
+                    modelno, imp_col, rowid, numsamples=numsamples)
                 # XXX If we are imputing several parents, we will take the
                 # overall conf of a collection of imputations as the min
                 # conf. If we define imp_conf as P[imp_val = correct]
                 # then we might choose to multiply the imp_confs, but we
                 # cannot assert apriori that the imp_confs themselves are
                 # independent so multiplying is extremely conservative.
-                conf = min(conf, imp_conf)
+                parent_conf = min(parent_conf, imp_conf)
                 fp_conditions[colname] = imp_val
+
+        # Ensure we have all fp_conditions.
+        assert all(v is not None for c,v in fp_conditions.iteritems())
 
         # Since a foreign predictor does not know how to impute, imputation
         # shall occur here in the composer by probing appropriately.
+        stattype = bayesdb_generator_column_stattype(bdb, genid, colno).lower()
+        import ipdb; ipdb.set_trace()
+        samples = self.fp_lookup[colno].simulate(numsamples, fp_conditions)
+        import ipdb; ipdb.set_trace()
+        if stattype == 'categorical':
+            # Find most common value in samples.
+            imp_val =  max(((val, samples.count(val)) for val in set(samples)),
+                key=lambda v: v[1])[0]
+            # Confidence is the pdf of the imp_val.
+            imp_conf = math.exp(self.fp_lookup[colno].logpdf(imp_val,
+                fp_conditions))
+
+
+        elif stattype == 'numerical':
+            # XXX See Baxter's excellent comment
+            # In particular, the definition of confidence as P[k=1] where
+            # k=1 is the number of mixture componets (we need a distribution
+            # over GPMM to answer this question). The confidence is implemented
+            # as \max_i{p_i} where p_i are the weights of a fitted DPGMM.
+            imp_val = np.mean(samples)
+            imp_conf = su.continuous_imputation_confidence(samples,
+                None, None, n_steps=1000)
+
+        else:
+            raise ValueError('Unknown stattype {} for a foreign predictor '
+                'column encountered in predict_confidence.'.format(stattype))
+
+        return imp_val, imp_conf * parent_conf
 
 
     def simulate(self, bdb, genid, modelno, constraints, colnos,
@@ -451,7 +488,7 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
         return. where each sample is a dict {col:val}."""
         # XXX We have this problem over and over ...
         if n_samples is None:
-            n_samples = 30
+            n_samples = 100
 
         # Create n_samples dicts, each entry is weighted sample from joint.
         samples = [{c:v for (c,v) in Y} for _ in xrange(n_samples)]
