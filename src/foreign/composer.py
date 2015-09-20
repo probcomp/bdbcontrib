@@ -21,6 +21,7 @@ import numpy as np
 
 from bayeslite.core import *
 from bayeslite.exception import BQLError
+from bayeslite.sqlite3_util import sqlite3_quote_name as quote
 import bayeslite.metamodel
 import bayeslite.bqlfn
 
@@ -28,57 +29,15 @@ import bdbcontrib
 from bdbcontrib.foreign.orbital_mech import OrbitalMechanics
 from bdbcontrib.foreign.random_forest import RandomForest
 
-crosscat_schema_1 = '''
-INSERT INTO bayesdb_metamodel (name, version) VALUES ('crosscat', 1);
+composer_schema_1 = '''
+INSERT INTO bayesdb_metamodel
+    (name, version) VALUES ('composer', 1);
 
-CREATE TABLE bayesdb_crosscat_disttype (
-    name        TEXT NOT NULL PRIMARY KEY,
-    stattype    TEXT NOT NULL REFERENCES bayesdb_stattype(name),
-    default_dist    BOOLEAN NOT NULL,
-    UNIQUE(stattype, default_dist)
-);
-
-INSERT INTO bayesdb_crosscat_disttype (name, stattype, default_dist)
-    VALUES
-        ('normal_inverse_gamma', 'numerical', 1),
-        ('symmetric_dirichlet_discrete', 'categorical', 1),
-        ('vonmises', 'cyclic', 1);
-
-CREATE TABLE bayesdb_crosscat_metadata (
-    generator_id    INTEGER NOT NULL PRIMARY KEY
-                REFERENCES bayesdb_generator(id),
-    metadata_json   BLOB NOT NULL
-);
-
-CREATE TABLE bayesdb_crosscat_column (
-    generator_id    INTEGER NOT NULL REFERENCES bayesdb_generator(id),
-    colno       INTEGER NOT NULL CHECK (0 <= colno),
-    cc_colno    INTEGER NOT NULL CHECK (0 <= cc_colno),
-    disttype    TEXT NOT NULL,
-    PRIMARY KEY(generator_id, colno),
-    FOREIGN KEY(generator_id, colno)
-        REFERENCES bayesdb_generator_column(generator_id, colno),
-    UNIQUE(generator_id, cc_colno)
-);
-
-CREATE TABLE bayesdb_crosscat_column_codemap (
-    generator_id    INTEGER NOT NULL REFERENCES bayesdb_generator(id),
-    cc_colno    INTEGER NOT NULL CHECK (0 <= cc_colno),
-    code        INTEGER NOT NULL,
-    value       TEXT NOT NULL,
-    FOREIGN KEY(generator_id, cc_colno)
-        REFERENCES bayesdb_crosscat_column(generator_id, cc_colno),
-    UNIQUE(generator_id, cc_colno, code),
-    UNIQUE(generator_id, cc_colno, value)
-);
-
-CREATE TABLE bayesdb_crosscat_theta (
-    generator_id    INTEGER NOT NULL REFERENCES bayesdb_generator(id),
-    modelno     INTEGER NOT NULL,
-    theta_json  BLOB NOT NULL,
-    PRIMARY KEY(generator_id, modelno),
-    FOREIGN KEY(generator_id, modelno)
-        REFERENCES bayesdb_generator_model(generator_id, modelno)
+CREATE TABLE bayesdb_composer_cc_id(
+    genid INTEGER NOT NULL PRIMARY KEY
+        REFERENCES bayesdb_generator(id),
+    crosscat_genid INTEGER NOT NULL
+        REFERENCES bayesdb_generator(id)
 );
 '''
 
@@ -94,25 +53,15 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
     def name(self):
         """Return the name of the metamodel as a str.
         """
-        return 'fp_composer'
+        return 'composer'
 
     def register(self, bdb):
         # XXX TODO: Figure out a strategy for serialization.
         # XXX Causes serialization problem, should have v0 of schema which
         # is only ever before the first time this metamodel is registered
         # in the history of the bdb.
-        bdb.sql_execute("""
-            INSERT INTO bayesdb_metamodel (name, version)
-                VALUES ('fp_composer', 1);
-            """)
-        bdb.sql_execute("""
-            CREATE TABLE bayesdb_fp_composer_cc_lookup (
-                generator_id INTEGER NOT NULL PRIMARY KEY
-                        REFERENCES bayesdb_generator(id),
-                crosscat_generator_id INTEGER NOT NULL
-                        REFERENCES bayesdb_generator(id)
-            );
-            """)
+        for stmt in composer_schema_1.split(';'):
+            bdb.sql_execute(stmt)
 
     def create_generator(self, bdb, table, schema, instantiate):
         # TODO: register foreign predictors externally.
@@ -169,19 +118,19 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
         lcols = [(col,stat) for (col,stat) in schema if col not in fcols]
 
         # Instantiate **this** generator.
-        generator_id, columns = instantiate(schema)
+        genid, columns = instantiate(schema)
 
         # Convert all strings to to BayesDB column numbers.
         self.fcols = {}
         self.fp_lookup = {}
         for f in fcols:
-            fcolno = bayesdb_generator_column_number(bdb, generator_id, f)
+            fcolno = bayesdb_generator_column_number(bdb, genid, f)
             self.fcols[fcolno] = [bayesdb_generator_column_number(bdb,
-                generator_id, col) for col in fcols[f]]
+                genid, col) for col in fcols[f]]
             self.fp_lookup[fcolno] = fp_lookup[f]
 
         # Convert lcols from strings to BayesDB column numbers.
-        self.lcols = [bayesdb_generator_column_number(bdb, generator_id, col[0])
+        self.lcols = [bayesdb_generator_column_number(bdb, genid, col[0])
             for col in lcols]
 
         # Sort fcols in topological order.
@@ -189,30 +138,35 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
 
         # Create internal crosscat generator.
         self.cc_name = bayeslite.core.bayesdb_generator_name(bdb,
-            generator_id) + '_cc'
+            genid) + '_cc'
         ignore = ','.join(['{} IGNORE'.format(pair[0]) for pair in schema
             if pair[0] in fcols])
         cc = ','.join(['{} {}'.format(pair[0], pair[1]) for pair in lcols])
         bql = """
             CREATE GENERATOR {} FOR satellites USING crosscat(
-                GUESS(*),
+                GUESS(*), Name IGNORE,
                 {} ,
                 {}
             );
         """.format(self.cc_name, ignore, cc)
         bdb.execute(bql)
 
-        # Obtain the generator_id of internal cc, and the metamodel object.
+        # Obtain the genid of internal cc, and the metamodel object.
         # Should be stored in the database table bayesdb_fp_composer_cc_lookup
         self.cc_id = bayesdb_get_generator(bdb, self.cc_name)
+        sql = '''
+            INSERT INTO bayesdb_composer_cc_id
+                (genid, crosscat_genid)
+                VALUES (?, ?)
+        '''
+        bdb.sql_execute(sql, (genid, self.cc_id))
         self.cc = bayesdb_generator_metamodel(bdb, self.cc_id)
 
-    def drop_generator(self, bdb, generator_id):
-        # Drop the internal crosscat instance.
-        bdb.execute('''DROP GENERATOR {}'''.format(self.cc_name))
-        # XXX TODO: Additional clean up operations.
+    def drop_generator(self, bdb, genid):
+        raise NotImplementedError('Composer generators cannot be dropped. '
+            'Feature coming soon.')
 
-    def initialize_models(self, bdb, generator_id, modelnos, model_config):
+    def initialize_models(self, bdb, genid, modelnos, model_config):
         # Initialize internal Crosscat. If k models of Composer are instantiated
         # then k internal CC models will be created, with a 1-1 mapping.
         bql = """
@@ -223,17 +177,17 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
         # Obtain the dataframe for foreign predictors.
         df = bdbcontrib.cursor_to_df(bdb.execute('''
             SELECT * FROM {}
-            '''.format(bayesdb_generator_table(bdb, generator_id))))
+            '''.format(bayesdb_generator_table(bdb, genid))))
 
         # Initialize the foriegn predictors.
         for f_target, f_conditions in self.fcols.items():
             # Convert column numbers to names.
             targets = \
-                [(bayesdb_generator_column_name(bdb, generator_id, f_target),
-                bayesdb_generator_column_stattype(bdb, generator_id,f_target))]
+                [(bayesdb_generator_column_name(bdb, genid, f_target),
+                bayesdb_generator_column_stattype(bdb, genid,f_target))]
             conditions = \
-            [(bayesdb_generator_column_name(bdb, generator_id, f_c),
-                bayesdb_generator_column_stattype(bdb, generator_id, f_c))
+            [(bayesdb_generator_column_name(bdb, genid, f_c),
+                bayesdb_generator_column_stattype(bdb, genid, f_c))
                 for f_c in f_conditions]
 
             # Replace the string with an actual trained FP instance.
@@ -241,38 +195,41 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
                 self.fp_constructors[self.fp_lookup[f_target]](df, targets,
                 conditions)
 
-    def drop_models(self, bdb, generator_id, modelnos=None):
-        # Delegate
-        raise NotImplementedError()
+    def drop_models(self, bdb, genid, modelnos=None):
+        raise NotImplementedError('Composer generator models cannot be '
+            'dropped. Feature coming soon.')
 
-    def analyze_models(self, bdb, generator_id, modelnos=None, iterations=1,
+    def analyze_models(self, bdb, genid, modelnos=None, iterations=1,
                 max_seconds=None, ckpt_iterations=None, ckpt_seconds=None):
-        # Delegate
+        # XXX The composer currently does not perform joint inference.
+        # (Need full GPM interface, active research project).
         self.cc.analyze_models(bdb, self.cc_id, modelnos=modelnos,
             iterations=iterations, max_seconds=max_seconds,
             ckpt_iterations=ckpt_iterations, ckpt_seconds=ckpt_seconds)
 
-    # XXX Computes the dependence probability for a single model. Find
-    # a better way to aggregate externally.
-    def column_dependence_probability(self, bdb, generator_id, modelno, colno0,
+    def column_dependence_probability(self, bdb, genid, modelno, colno0,
                 colno1):
+        # XXX Aggregator only.
         if modelno is None:
             n_model = 1
-            while bayesdb_generator_has_model(bdb, generator_id, n_model):
+            while bayesdb_generator_has_model(bdb, genid, n_model):
                 n_model += 1
-            p = sum(self._column_dependence_probability(bdb, generator_id,
+            p = sum(self._column_dependence_probability(bdb, genid,
                 m, colno0, colno1) for m in xrange(n_model)) / float(n_model)
         else:
-            p = self._column_dependence_probability(bdb, generator_id,
+            p = self._column_dependence_probability(bdb, genid,
                 modelno, colno0, colno1)
         return p
 
-    # XXX Computes the dependence probability for a single model. Find
-    # a better way to aggregate externally.
-    def _column_dependence_probability(self, bdb, generator_id, modelno,
-            colno0, colno1):
+
+    def _column_dependence_probability(self, bdb, genid, modelno, colno0,
+            colno1):
+        # XXX Computes the dependence probability for a single model.
         if modelno is None:
-            raise ValueError('Invalid modelno argument for internal.')
+            raise ValueError('Invalid modelno argument for '
+                'internal _column_dependence_probability. An integer modelno '
+                'is required, not None.')
+
         # Trivial case.
         if colno0 == colno1:
             return 1
@@ -285,8 +242,8 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
         if not (c0_foreign or c1_foreign):
             return self.cc.column_dependence_probability(bdb,
                 self.cc_id, modelno,
-                self._internal_cc_colno(bdb, generator_id, colno0),
-                self._internal_cc_colno(bdb, generator_id, colno1))
+                self._internal_cc_colno(bdb, genid, colno0),
+                self._internal_cc_colno(bdb, genid, colno1))
 
         # (colno0, colno1) form a (target, given) pair.
         # wE explicitly modeled them as dependent by assumption.
@@ -306,64 +263,67 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
                 (c1_foreign and not c0_foreign):
             fcol = colno0 if c0_foreign else colno1
             lcol = colno1 if c0_foreign else colno0
-            return any(self._column_dependence_probability(bdb, generator_id,
-                modelno, cond, lcol)
-                for cond in self.fcols[fcol])
+            return any(self._column_dependence_probability(bdb, genid,
+                modelno, cond, lcol) for cond in self.fcols[fcol])
 
         # XXX TODO: Determine independence semantics for this case.
         # Both columns are foreign. (Recursively) return 1 if any of their
         # conditions (possibly FPs) have dependencies.
         assert c0_foreign and c1_foreign
-        return any(self._column_dependence_probability(bdb, generator_id,
-            modelno, cond0, cond1)
+        return any(self._column_dependence_probability(bdb, genid, modelno,
+            cond0, cond1)
             for cond0 in self.fcols[colno0]
             for cond1 in self.fcols[colno1])
 
-    def column_mutual_information(self, bdb, generator_id, modelno, colno0,
+
+    def column_mutual_information(self, bdb, genid, modelno, colno0,
                 colno1, numsamples=100):
-        # Delegate
-        cc_colnos = self._internal_cc_colnos(bdb, generator_id,
+        #
+        cc_colnos = self._internal_cc_colnos(bdb, genid,
             [colno0, colno1])
         return self.cc.column_mutual_information(bdb, self.cc_id, modelno,
             cc_colnos[0], cc_colnos[1], numsamples=numsamples)
 
-    # XXX Computes the dependence probability for a single model. Find
-    # a better way to aggregate externally.
-    def column_value_probability(self, bdb, generator_id, modelno, colno,
-                value, constraints):
+
+    def column_value_probability(self, bdb, genid, modelno, colno,
+            value, constraints):
+        # XXX Aggregator only.
         p = 0
         if modelno is None:
             n_model = 0
-            while bayesdb_generator_has_model(bdb, generator_id, n_model):
-                p += self._column_value_probability(bdb, generator_id,
-                    n_model, colno, value, constraints)
+            while bayesdb_generator_has_model(bdb, genid, n_model):
+                p += self._column_value_probability(bdb, genid, n_model, colno,
+                    value, constraints)
                 n_model += 1
             p /= float(n_model)
         else:
-            p = self._column_value_probability(bdb, generator_id, modelno,
+            p = self._column_value_probability(bdb, genid, modelno,
                 colno, value, constraints)
         return p
 
-    # XXX Computes the dependence probability for a single model. Find
-    # a better way to aggregate externally.
-    def _column_value_probability(self, bdb, generator_id, modelno, colno,
-                value, constraints):
-        # Function can be extended for joint of colnos.
 
-        # Optimization; all cols local, just delegate to CC.
+    def _column_value_probability(self, bdb, genid, modelno, colno,
+            value, constraints):
+        # XXX Computes the column value probability for a single model.
+        if modelno is None:
+            raise ValueError('Invalid modelno argument for '
+                'internal _column_value_probability. An integer modelno '
+                'is required, not None.')
+
+        # Optimization. All cols local, just delegate to CC.
         all_cols = [colno] + [p[0] for p in constraints]
         if all(f not in all_cols for f in self.fcols):
             cc_constraints = [(self._internal_cc_colno(bdb, self.cc_id, c), v)
                 for c, v in constraints]
-            cc_colno = self._internal_cc_colno(bdb, generator_id, colno)
-            return self.cc.simulate(bdb, self.cc_id, modelno, cc_colno,
-                cc_constraints)
+            cc_colno = self._internal_cc_colno(bdb, genid, colno)
+            return self.cc.column_value_probability(bdb, self.cc_id, modelno,
+                value, cc_colno, cc_constraints)
 
         # Estimate the integral using self-normalized importance sampling.
         # TODO: Determine strategy
         #  -- simulate gives higher quality (unweighted) samples but is slower.
         #  -- _forward_weighted_sample gives lower qualty samples, but faster.
-        samples, weights = self._forward_weighted_sample(bdb, generator_id,
+        samples, weights = self._forward_weighted_sample(bdb, genid,
             modelno, constraints, n_samples=None)
 
         # TODO: When the function supports joint colnos, delete all colnos in
@@ -373,7 +333,7 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
         Q = [(colno, value)]
         probs = []
         for sample in samples:
-            probs.append(self._joint_logpdf(bdb, generator_id, modelno, Q,
+            probs.append(self._joint_logpdf(bdb, genid, modelno, Q,
                 sample.items()))
 
         # Self normalize the p's by importance weights w.
@@ -384,45 +344,75 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
         den = np.exp(np.max(weights)) + \
                 np.sum(np.exp(np.asarray(weights) - np.max(weights)))
 
+        print 'returning {}'.format(num/den)
         return num/den
 
-    def row_similarity(self, bdb, generator_id, modelno, rowid, target_rowid,
+
+    def row_similarity(self, bdb, genid, modelno, rowid, target_rowid,
                 colnos):
-        cc_colnos = self._internal_cc_colnos(bdb, generator_id, colnos)
+        cc_colnos = self._internal_cc_colnos(bdb, genid, colnos)
         return self.cc.row_similarity(bdb, self.cc_id, modelno, rowid,
             target_rowid, cc_colnos)
 
-    def row_column_predictive_probability(self, bdb, generator_id, modelno,
-                rowid, colno):
-        raise ValueError('PREDICTIVE PROBABILITY is being retired. Please '
-            'use PROBABILITY OF <[...]> [GIVEN [...]] instead.')
 
-    def predict_confidence(self, bdb, generator_id, modelno, colno, rowid,
-                numsamples=None, imputed=None):
+    def row_column_predictive_probability(self, bdb, genid, modelno,
+                rowid, colno):
+        raise NotImplementedError('PREDICTIVE PROBABILITY is being retired. '
+            'Please use PROBABILITY OF <[...]> [GIVEN [...]] instead.')
+
+
+    def predict_confidence(self, bdb, genid, modelno, colno, rowid,
+                numsamples=None):
         # Delegate imputation of lcols to crosscat.
+        # XXX In theory, if any fcols in the rowid are observed, then we should
+        # be doing the full inference problem: simulate many samples from the
+        # posterior on colno using our simulate, then call CC's
+        # impute_and_confidence on the posterior samples. However the required
+        # function in CC's LocalEngine is not available from this layer.
         if colno in self.lcols:
-            cc_colno = self._internal_cc_colno(bdb, generator_id, colno)
+            cc_colno = self._internal_cc_colno(bdb, genid, colno)
             return self.cc_id.predict_confidence(bdb, self.cc_id, modelno,
                 cc_colno, rowid)
 
-        # Obtain all values for columns.
-        column_names = bayesdb_generator_column_names(bdb, generator_id)
-        table_name = bayesdb_generator_table(bdb, generator_id)
-        qt = sqlite3_quote_name(table_name)
-        qcns = ','.join(map(sqlite3_quote_name, column_names))
-        select_sql = ('SELECT %s FROM %s WHERE _rowid_ = ?' % (qcns, qt))
+        # Obtain all values for conditions columns.
+        fp_conditions = [bayesdb_generator_column_name(bdb, genid, c) for c in
+            self.fcols[colno]]
+        table = bayesdb_generator_table(bdb, genid)
+        select_sql = '''
+            SELECT {} FROM {} WHERE _rowid_ = ?
+        '''.format(','.join(map(quote, fp_conditions)),
+                quote(table))
         cursor = bdb.sql_execute(select_sql, (rowid,))
         row = None
         try:
             row = cursor.next()
         except StopIteration:
-            generator = bayesdb_generator_table(bdb, generator_id)
+            generator = bayesdb_generator_table(bdb, genid)
             raise BQLError(bdb, 'No such row in table {}'
-                ' for generator {}: {}'.format(table_name, generator, rowid))
-        print 'feras'
+                ' for generator {}: {}'.format(table, generator, rowid))
+
+        # Are all fp_conditions observed? If not, impute missing parents.
+        fp_conditions = zip(fp_conditions, row)
+        conf = 1
+        for colname, val in fp_conditions:
+            if val is None:
+                colno = bayesdb_generator_column_number(bdb, genid, colname)
+                imp_val, imp_conf = self.predict_confidence(bdb, genid, modelno,
+                    colno, rowid, numsamples=numsamples)
+                # XXX If we are imputing several parents, we will take the
+                # overall conf of a collection of imputations as the min
+                # conf. If we define imp_conf as P[imp_val = correct]
+                # then we might choose to multiply the imp_confs, but we
+                # cannot assert apriori that the imp_confs themselves are
+                # independent so multiplying is extremely conservative.
+                conf = min(conf, imp_conf)
+                fp_conditions[colname] = imp_val
+
+        # Since a foreign predictor does not know how to impute, imputation
+        # shall occur here in the composer by probing appropriately.
 
 
-    def simulate(self, bdb, generator_id, modelno, constraints, colnos,
+    def simulate(self, bdb, genid, modelno, constraints, colnos,
                 numpredictions=1):
         # This would be much easier written as a VentureScript program.
         # One SP for CC, an SP for each FP, and the composer would be a trivial?
@@ -433,7 +423,7 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
         if all(f not in all_cols for f in self.fcols):
             cc_constraints = [(self._internal_cc_colno(bdb, self.cc_id, c), v)
                 for c, v in constraints]
-            cc_targets = self._internal_cc_colnos(bdb, generator_id, colnos)
+            cc_targets = self._internal_cc_colnos(bdb, genid, colnos)
             return self.cc.simulate(bdb, self.cc_id, modelno,
                 cc_constraints, cc_targets, numpredictions=numpredictions)
 
@@ -441,7 +431,7 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
         result = []
         for _ in xrange(numpredictions):
             # Likelihood weighting by forward sampling in topo-sorted DAG.
-            ll_samples, weights = self._forward_weighted_sample(bdb, generator_id,
+            ll_samples, weights = self._forward_weighted_sample(bdb, genid,
                 modelno, constraints)
             print weights
             # Convert from logspace to direct space (TODO: log-categorical?).
@@ -452,7 +442,8 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
 
         return result
 
-    def _forward_weighted_sample(self, bdb, generator_id, modelno, Y,
+
+    def _forward_weighted_sample(self, bdb, genid, modelno, Y,
             n_samples=None):
         """Generates a pair (sample, weight): sample is a joint sample of all
         the targ cols: and weight is the likelihood given the evidence
@@ -460,7 +451,7 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
         return. where each sample is a dict {col:val}."""
         # XXX We have this problem over and over ...
         if n_samples is None:
-            n_samples = 10
+            n_samples = 30
 
         # Create n_samples dicts, each entry is weighted sample from joint.
         samples = [{c:v for (c,v) in Y} for _ in xrange(n_samples)]
@@ -484,7 +475,7 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
                 # XXX TODO: Figure out a better way to communicate with FP.
                 # We have to convert all column numbers to string names ...
                 fp_conditions = {bayesdb_generator_column_name(bdb,
-                        generator_id, c):v for c,v in samples[k].iteritems()
+                        genid, c):v for c,v in samples[k].iteritems()
                         if c in self.fcols[f]}
                 # f is evidence, compute likelihood weight.
                 if f in samples[k]:
@@ -498,7 +489,8 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
 
         return samples, weights
 
-    def _joint_logpdf(self, bdb, generator_id, modelno, Q, Y):
+
+    def _joint_logpdf(self, bdb, genid, modelno, Q, Y):
         """Computes the joint probability of variables in the DAG.
         Q=[(col,val)...] are queries, and Y=[(col,val)...] are conditions.
         Any conditions for FP cols in Q must be specified either in Q or Y
@@ -520,7 +512,7 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
         Ql = [(c,v) for c,v in Q.iteritems() if c in self.lcols and
             c not in ignore]
         Yl = [(c,v) for c,v in Y.iteritems() if c in self.lcols]
-        p = self._cc_joint_logpdf(bdb, generator_id, modelno, Ql, Yl)
+        p = self._joint_logpdf_cc(bdb, genid, modelno, Ql, Yl)
 
         # Add all evaluated Ql to Y (chain rule).
         for c,v in Ql:
@@ -535,7 +527,7 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
                 # Assert all parents of FP are known.
                 assert set(self.fcols[f]).issubset(set(Y.keys()))
                 fp_conditions = {bayesdb_generator_column_name(bdb,
-                        generator_id, c):v for c,v in Y.iteritems()
+                        genid, c):v for c,v in Y.iteritems()
                         if c in self.fcols[f]}
                 # Compute logpdf from FP.
                 p += self.fp_lookup[f].logpdf(Q[f], fp_conditions)
@@ -546,37 +538,38 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
         assert len(Q) == 0
         return p
 
+
     # TODO migrate to a reasonable place (ie sample_utils in CrossCat).
-    def _cc_joint_logpdf(self, bdb, generator_id, modelno, Q, Y):
+    def _joint_logpdf_cc(self, bdb, genid, modelno, Q, Y):
         """Computes the joint probability of CrossCat columns. Q=[(col,val)...]
         are the queries, and Y=[(col,val)...] are the conditions.
         """
         # If any column constrainted and queried, ensure consistency.
         ignore = set()
-        for (cq,vq), (cy,vy) in itertools.product(Q, Y):
+        for (cq, vq), (cy, vy) in itertools.product(Q, Y):
+            # Validate inputs.
+            if cq not in self.lcols and cy not in self.lcols:
+                raise ValueError('Foreign colno encountered in internal '
+                    '_joint_logpdf_cc. Only local colnos may be specified in '
+                    'the queries Q and constraints Y.')
             if cq == cy:
                 if vq == vy:
                     ignore.add(cq)
                 else:
                     return -float('inf')
 
+        # Use internal data structures not avoid clobbering the input.
         Qi = []
         for (col, val) in Q:
-            if col not in self.lcols:
-                raise ValueError('_cc_joint_logpdf called with a foreign '
-                    ' column.')
+            # Remove any queries which are constrained.
             if col not in ignore:
-                Qi.append((self._internal_cc_colno(bdb, generator_id, col),val))
-
+                Qi.append((self._internal_cc_colno(bdb, genid, col),val))
         Yi = []
         for (col, val) in Y:
-            if col not in self.lcols:
-                raise ValueError('_cc_joint_logpdf called with a foreign '
-                    ' column.')
-            Yi.append((self._internal_cc_colno(bdb, generator_id, col), val))
+            Yi.append((self._internal_cc_colno(bdb, genid, col), val))
 
         # Compute joint via the the chain rule: if Q is a vector with density 0
-        # under the joint then return -float('inf').
+        # under the joint, then return -float('inf').
         prob = 0
         for (col, val) in Qi:
             r = self.cc.column_value_probability(bdb, self.cc_id, modelno, col,
@@ -587,6 +580,7 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
             Yi.append((col,val))
 
         return prob
+
 
     # TODO: Move this to somewhere reasonable?
     def topolgical_sort(self, graph):
@@ -627,14 +621,25 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
 
         return graph_sorted
 
-    # TODO: Convert to SQL table queries on bayesdb_fp_composer_cc_lookup.
-    def _internal_cc_colno(self, bdb, generator_id, colno):
-        return self._internal_cc_colnos(bdb, generator_id, [colno])[0]
 
-    def _internal_cc_colnos(self, bdb, generator_id, colnos):
+    # TODO: Convert to SQL table queries on bayesdb_fp_composer_cc_lookup.
+    def _internal_cc_colno(self, bdb, genid, colno):
+        return self._internal_cc_colnos(bdb, genid, [colno])[0]
+
+
+    def _internal_cc_colnos(self, bdb, genid, colnos):
         # First get the names from this generator.
         colnames = [bayeslite.core.bayesdb_generator_column_name(bdb,
-            generator_id, no) for no in colnos]
+            genid, no) for no in colnos]
         # Now do the inverse mapping.
         return [bayeslite.core.bayesdb_generator_column_number(bdb, self.cc_id,
             name) for name in colnames]
+
+
+    def _internal_cc_id(self, bdb, genid):
+        sql = '''
+            SELECT crosscat_genid
+                FROM bayesdb_composer_cc_id
+                WHERE genid = ?
+        '''
+        return bdb.sql_execute(sql, (genid,)).fetchall()[0][0]
