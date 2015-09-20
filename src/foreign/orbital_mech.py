@@ -78,8 +78,8 @@ class OrbitalMechanics(predictor.IForeignPredictor):
     def simulate(self, n_samples, conditions):
         period = self._compute_period(conditions[self.conditions[0]],
             conditions[self.conditions[1]])
-        return period/60. + np.random.normal(scale=self.noise,
-            size=n_samples)
+        return list(period/60. + np.random.normal(scale=self.noise,
+            size=n_samples))
 
     def logpdf(self, targets_val, conditions):
         if not set(set(self.conditions)).issubset(conditions.keys()):
