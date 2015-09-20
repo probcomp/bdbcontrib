@@ -88,7 +88,7 @@ class OrbitalMechanics(predictor.IForeignPredictor):
                 'Expected: {}'.format(conditions, self.conditions))
         period = self._compute_period(conditions[self.conditions[0]],
             conditions[self.conditions[1]]) / 60.
-        return norm.logpdf(target_val, loc=period, scale=self.noise)
+        return norm.logpdf(targets_val, loc=period, scale=self.noise)
 
     def _compute_period(self, apogee_km, perigee_km):
         """Computes the period of the satellite in seconds given the apogee_km
@@ -96,5 +96,5 @@ class OrbitalMechanics(predictor.IForeignPredictor):
         """
         GM = 398600.4418
         EARTH_RADIUS = 6378
-        a = 0.5*(apogee_km + perigee_km) + EARTH_RADIUS
+        a = 0.5*(abs(apogee_km) + abs(perigee_km)) + EARTH_RADIUS
         return 2 * np.pi * np.sqrt(a**3/GM)
