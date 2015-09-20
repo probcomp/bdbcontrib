@@ -80,7 +80,7 @@ def main():
             sys.stderr.write('%s: excess arguments\n' % (sys.argv[0],))
         launch_p = True
     else:
-        sys.stderr.write('%s: invalid command: %s\n' % (sys.argv[0],))
+        sys.stderr.write('%s: invalid command: %s\n' % (sys.argv[0], args[0]))
         usage(sys.stderr)
         sys.exit(2)
 
