@@ -386,9 +386,11 @@ def do_hist(data_srs, **kwargs):
         if colors is not None:
             for val, color in colors.iteritems():
                 subdf = data_srs.loc[data_srs.ix[:, 1] == val]
-                sns.distplot(subdf.ix[:, 0], kde=do_kde, ax=ax, color=color)
+                sns.distplot(subdf.ix[:, 0].dropna(with_inf=True),
+                             kde=do_kde, ax=ax, color=color)
         else:
-            sns.distplot(data_srs, kde=do_kde, ax=ax)
+            sns.distplot(data_srs.replace([-np.inf, np.inf], np.nan).dropna(),
+                         kde=do_kde, ax=ax)
 
     return ax
 
@@ -478,7 +480,11 @@ def do_violinplot(plot_df, vartypes, **kwargs):
             vals = plot_df.columns[1]
         else:
             vals = plot_df.columns[0]
-        sns.violinplot(plot_df[vals], groupby=plot_df[groupby],
+        # XXX: Working around a seaborn bug:
+        class NonZeroDWIMWrapper(pd.Series):
+            def __nonzero__(self):
+                return not self.empty
+        sns.violinplot(NonZeroDWIMWrapper(plot_df[vals]), groupby=plot_df[groupby],
             order=unique_vals, names=unique_vals, vert=vert, ax=ax, positions=0,
             color='SteelBlue')
 
@@ -554,10 +560,10 @@ def do_kdeplot(plot_df, vartypes, **kwargs):
 
 # No support for cyclic at this time
 DO_PLOT_FUNC = dict()
-DO_PLOT_FUNC['categorical', 'categorical'] = do_heatmap
-DO_PLOT_FUNC['categorical', 'numerical'] = do_violinplot
-DO_PLOT_FUNC['numerical', 'categorical'] = do_violinplot
-DO_PLOT_FUNC['numerical', 'numerical'] = do_kdeplot
+DO_PLOT_FUNC[('categorical', 'categorical')] = do_heatmap
+DO_PLOT_FUNC[('categorical', 'numerical')] = do_violinplot
+DO_PLOT_FUNC[('numerical', 'categorical')] = do_violinplot
+DO_PLOT_FUNC[('numerical', 'numerical')] = do_kdeplot
 
 
 def do_pair_plot(plot_df, vartypes, **kwargs):
@@ -880,5 +886,3 @@ def comparative_hist(df, bdb=None, nbins=15, normed=False):
     ax.set_title(plot_title)
     ax.set_xlabel(df.columns[0])
     return figure
-
-
