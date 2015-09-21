@@ -281,67 +281,62 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
             return self.cc.column_mutual_information(bdb, self.cc_id, modelno,
                 cc_colnos[0], cc_colnos[1], numsamples=numsamples)
 
-        # Compute Monte Carlo estimate by simulating from the joint
+        # Simple Monte Carlo by simulating from the joint
         # distributions, and computing the joint and marginal densities.
-        Q, Y = [colno0, colno1], None
+        Q, Y = [colno0, colno1], []
         samples = self.simulate(bdb, genid, modelno, Y, Q,
             numpredictions=numsamples)
-        mi = 0
-        pxy = 0
-        px = 0
-        py = 0
+        mi = logpx = logpy = logpxy = 0
         for s in samples:
             Qx = [(colno0, s[0])]
-            px += self._column_value_probability(bdb, genid, modelno,
-                Qx, None)
+            logpx = self._joint_logpdf(bdb, genid, modelno, Qx, [])
             Qy = [(colno1, s[1])]
-            py += self._column_value_probability(bdb, genid, modelno,
-                Qy, None)
+            logpy = self._joint_logpdf(bdb, genid, modelno, Qy, [])
             Qxy = Qx+Qy
-            pxy += self._column_value_probability(bdb, genid, modelno,
-                Qxy, None)
-            mi += math.log(pxy) - math.log(px) - math.log(py)
+            logpxy = self._joint_logpdf(bdb, genid, modelno, Qxy, [])
+            mi += logpx - logpx - logpy
 
 
     def column_value_probability(self, bdb, genid, modelno, colno,
             value, constraints):
         # XXX Aggregator only.
-        p = 0
+        p = []
         if modelno is None:
             n_model = 0
             while bayesdb_generator_has_model(bdb, genid, n_model):
-                p += self._column_value_probability(bdb, genid, n_model,
-                    [(colno, value)], constraints)
+                p.append(self._joint_logpdf(bdb, genid, n_model,
+                    [(colno, value)], constraints))
                 n_model += 1
-            p /= float(n_model)
+            p = logmeanexp(p)
         else:
-            p = self._column_value_probability(bdb, genid, modelno,
-                [(colno, value)], constraints)
-        return p
+            p = self._joint_logpdf(bdb, genid, modelno, [(colno, value)],
+                constraints)
+        return math.exp(p)
 
 
-    def _column_value_probability(self, bdb, genid, modelno, Q, Y):
+    def _joint_logpdf(self, bdb, genid, modelno, Q, Y):
         # XXX Computes the joint probability of query Q given evidence Y
-        # for a single model.
+        # for a single model. This function is an integrator over
+        # _forward_joint_logpdf using importance-weighted samples from
+        # simulate(Q|Y).
         if modelno is None:
             raise ValueError('Invalid modelno argument for '
-                'internal _column_value_probability. An integer modelno '
+                'internal _joint_logpdf. An integer modelno '
                 'is required, not None.')
 
         # Optimization. All cols in Q and Y local, delegate to CC.
-        all_cols = [c for c,v in Q] + [c for c,v in Y]
-        if all(f not in all_cols for f in self.fcols):
-            Y_cc = [(self._internal_cc_colno(bdb, self.cc_id, c),v) for c, v
-                in Y]
-            Q_cc = [(self._internal_cc_colno(bdb, self.cc_id, c),v) for c, v
-                in Q]
-            logpdf = self._joint_logpdf_cc(bdb, self.cc_id, modelno, Q, Y)
+        if self._all_local(bdb, genid, Q, Y):
+            Y_cc = [(self._internal_cc_colno(bdb, self.cc_id, c),v)
+                for c, v in Y]
+            Q_cc = [(self._internal_cc_colno(bdb, self.cc_id, c),v)
+                for c, v in Q]
+            logpdf = self._joint_logpdf_cc(bdb, self.cc_id, modelno, Q_cc, Y_cc)
             return math.exp(logpdf)
 
         # Estimate the integral using self-normalized importance sampling.
-        # TODO: Determine strategy
-        #  -- simulate gives higher quality (unweighted) samples but is slower.
-        #  -- _forward_weighted_sample gives lower qualty samples, but faster.
+        # TODO: Discuss strategy
+        #  -- simulate gives higher quality (unweighted) samples but slower.
+        #  -> _forward_weighted_sample gives lower qualty samples but faster.
         samples, weights = self._forward_weighted_sample(bdb, genid, modelno, Y,
             n_samples=None)
 
@@ -349,21 +344,22 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
         for s in samples:
             for c,v in Q:
                 del s[c]
-            p = self._joint_logpdf(bdb, genid, modelno, Q, s.items())
+            p = self._forward_joint_logpdf(bdb, genid, modelno, Q, s.items())
             probs.append(p)
 
+        # TODO: Verify this is procedure numerically correct.
         # Self normalize the p's by importance weights w.
-        # TODO: Verify that this is procedure numerically correct.
-        pw = np.asarray(weights)+np.asarray(probs)
-        pw_max = np.max(pw)
-        num = np.exp(pw_max) + np.sum(np.exp(pw-pw_max))
-        den = np.exp(np.max(weights)) + \
-            np.sum(np.exp(np.asarray(weights) - np.max(weights)))
-        return num/den
+        # weights = [logw1 logw2 ... logwk], probs=[logp1 logp2 ... logpk]
+        # Compute N = log(w1p1 + w2p2 + ... wkpk)
+        N = logsumexp(np.asarray(weights) + np.asarray(probs))
+        D = logsumexp(np.asarray(weights))
+        return N-D
 
 
     def predict_confidence(self, bdb, genid, modelno, colno, rowid,
             numsamples=None):
+        # Predicts a value for the cell [rowid, colno] with a confidence metric.
+
         # XXX Prefer accuracy over speed for imputation.
         if numsamples is None:
             numsamples = 50
@@ -384,7 +380,7 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
             raise BQLError(bdb, 'No such row in table {}'
                 ' for generator {}: {}'.format(table, generator, rowid))
 
-        # If imputing any parent.
+        # Account for multipling imputations if imputing parents.
         parent_conf = 1
 
         # Predicting local column.
@@ -398,7 +394,7 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
                 return self.cc.predict_confidence(bdb, self.cc_id, modelno,
                     self._internal_cc_colno(bdb, genid, colno), rowid)
             else:
-                # Obtain posterior samples.
+                # Obtain likelihood weighted samples from posterior.
                 Q = [colno]
                 Y = [(c,v) for c,v in zip(colnos, row) if c != colno and v
                         is not None]
@@ -411,7 +407,7 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
                 bayesdb_generator_column_number(bdb, genid, c) in
                 self.fcols[colno]}
             for colname, val in conditions.iteritems():
-                # Impute any missing parnets.
+                # Impute all missing parnets.
                 if val is None:
                     imp_col = bayesdb_generator_column_number(bdb, genid, colname)
                     imp_val, imp_conf = self.predict_confidence(bdb, genid,
@@ -428,7 +424,7 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
             samples = self.get_fp[colno].simulate(numsamples, conditions)
 
         # Since a foreign predictor does not know how to impute, imputation
-        # shall occur here in the composer by probing appropriately.
+        # shall occur here in the composer by simulate/logpdf calls.
         stattype = bayesdb_generator_column_stattype(bdb, genid, colno)
         if stattype == 'categorical':
             # Find most common value in samples.
@@ -459,8 +455,7 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
     def simulate(self, bdb, genid, modelno, constraints, colnos,
             numpredictions=1):
         # Optimization; all cols local, just delegate to CC.
-        all_cols = colnos + [p[0] for p in constraints]
-        if all(f not in all_cols for f in self.fcols):
+        if self._all_local(bdb, genid, colnos, constraints, Qv=False):
             cc_constraints = [(self._internal_cc_colno(bdb, self.cc_id, c), v)
                 for c, v in constraints]
             cc_targets = self._internal_cc_colnos(bdb, genid, colnos)
@@ -536,7 +531,7 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
         return samples, weights
 
 
-    def _joint_logpdf(self, bdb, genid, modelno, Q, Y):
+    def _forward_joint_logpdf(self, bdb, genid, modelno, Q, Y):
         # Performs a forward pass over the network and computes the logpdf
         # of every node in Q. Every child node must have its parent conditions
         # either constrained or queried.
@@ -586,10 +581,10 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
 
     # TODO migrate to a reasonable place (ie sample_utils in CrossCat).
     def _joint_logpdf_cc(self, bdb, genid, modelno, Q, Y):
-        """Computes the joint probability of CrossCat columns. Q=[(col,val)...]
-        are the queries, and Y=[(col,val)...] are the conditions.
-        """
-        # If any column constrainted and queried, ensure consistency.
+        # Computes the joint probability of CrossCat columns. Q=[(col,val)...]
+        # are the queries, and Y=[(col,val)...] are the conditions.
+
+        # If any column is constrainted and queried, ensure consistency.
         ignore = set()
         for (cq, vq), (cy, vy) in itertools.product(Q, Y):
             # Validate inputs.
@@ -665,6 +660,16 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
                     'topological_sort.')
 
         return graph_sorted
+
+
+    def _all_local(self, bdb, genid, Q, Y, Qv=True):
+        # Checks if union of columns in Q and Y are strictly local.
+        # Qv is True if elements of Q are pairs (c,v), and false if Q is a list
+        # of cols.
+        if Qv:
+            Q = [c for c,v in Q]
+        all_cols = Q + [c for c,v in Y]
+        return all(f not in all_cols for f in self.fcols)
 
 
     # TODO: Convert to SQL table queries on bayesdb_fp_composer_cc_lookup.
