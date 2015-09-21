@@ -154,6 +154,7 @@ def download_demo(demo_uri, pubkey):
             'User-Agent': 'bdbcontrib demo'
         }
         r = requests.get(demo_uri, headers=headers, stream=True)
+        r.raise_for_status()
         try:
             content_length = int(r.headers['content-length'])
         except Exception:
