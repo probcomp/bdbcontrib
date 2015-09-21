@@ -44,8 +44,8 @@ def main():
     assert len(sig) == 64
     size = len(sig) + len(payload)
     if size > 64*1024*1024:
-        sys.stderr.write('Payload too large: %d, limit is %d\n' %
-            (size, 64*1024*1024))
+        sys.stderr.write('%s: payload too large: %d, limit is %d\n' %
+            (sys.argv[0], size, 64*1024*1024))
         sys.exit(1)
     sys.stdout.write(sig)
     sys.stdout.write(payload)
