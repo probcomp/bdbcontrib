@@ -354,6 +354,18 @@ def prep_plot_df(data_df, var_names):
 def drop_inf_and_nan(np_Series):
     return np_Series.replace([-np.inf, np.inf], np.nan).dropna()
 
+def _safer_freedman_diaconis_bins(a):
+    """Calculate number of hist bins using Freedman-Diaconis rule."""
+    # From 0.6 https://github.com/mwaskom/seaborn/blob/master/seaborn/distributions.py
+    from seaborn.utils import iqr
+    a = np.asarray(a)
+    h = 2 * iqr(a) / (len(a) ** (1 / 3))
+    # fall back to sqrt(a) bins if iqr is 0
+    if h == 0:
+        return np.sqrt(a.size)
+    else:
+        return np.ceil((a.max() - a.min()) / h)
+
 def do_hist(data_srs, **kwargs):
     ax = kwargs.get('ax', None)
     bdb = kwargs.get('bdb', None)
@@ -393,14 +405,15 @@ def do_hist(data_srs, **kwargs):
         ax.set_xticklabels(uvals)
     else:
         do_kde = True
+        bins = _safer_freedman_diaconis_bins(data_srs)
         if colors is not None:
             for val, color in colors.iteritems():
                 subdf = data_srs.loc[data_srs.ix[:, 1] == val]
                 sns.distplot(NonZeroDWIMFrameWrapper(drop_inf_and_nan(subdf.ix[:, 0])),
-                             kde=do_kde, ax=ax, color=color)
+                             kde=do_kde, ax=ax, color=color, bins=bins)
         else:
             sns.distplot(NonZeroDWIMFrameWrapper(drop_inf_and_nan(data_srs)),
-                         kde=do_kde, ax=ax)
+                         kde=do_kde, ax=ax, bins=bins)
 
     return ax
 
