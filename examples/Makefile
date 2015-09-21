@@ -18,9 +18,9 @@ satellites: build/satellites/satellites.html
 
 build/satellites/satellites.html: satellites/satellites.bql build/stamp
 	rm -rf build/satellites.tmp && \
-	(echo ".hook ../../bdbcontrib/contrib_util.py" && \
-	 echo ".hook ../../bdbcontrib/contrib_plot.py" && \
-	 echo ".hook ../../bdbcontrib/contrib_math.py" && \
+	(echo ".hook ../../hooks/hook_utils.py" && \
+	 echo ".hook ../../hooks/hook_plots.py" && \
+	 echo ".hook ../../hooks/hook_maths.py" && \
 	 echo ".readtohtml satellites.bql ../build/satellites.tmp/") \
 	| (cd satellites && \
 	   BAYESDB_WIZARD_MODE=1 PYTHONPATH=../../:$$PYTHONPATH \
@@ -30,7 +30,7 @@ build/satellites/satellites.html: satellites/satellites.bql build/stamp
 
 build/satellites.bdb: satellites/satellites.csv build/stamp
 	rm -f $@ && \
-	(echo ".hook ../bdbcontrib/contrib_util.py" && \
+	(echo ".hook ../hooks/hook_utils.py" && \
 	 echo ".csv satellites satellites/satellites.csv" && \
 	 echo ".nullify satellites NaN" && \
 	 echo "CREATE DEFAULT GENERATOR satellites_cc FOR satellites \
@@ -45,9 +45,9 @@ malawi: build/malawi/malawi.html
 
 build/malawi/malawi.html: malawi/malawi.bql build/stamp
 	rm -rf build/malawi.tmp && \
-	(echo ".hook ../../bdbcontrib/contrib_util.py" && \
-	 echo ".hook ../../bdbcontrib/contrib_plot.py" && \
-	 echo ".hook ../../bdbcontrib/contrib_math.py" && \
+	(echo ".hook ../../hooks/hook_utils.py" && \
+	 echo ".hook ../../hooks/hook_plots.py" && \
+	 echo ".hook ../../hooks/hook_maths.py" && \
 	 echo ".readtohtml malawi.bql ../build/malawi.tmp/") \
 	| (cd malawi && \
 	   BAYESDB_WIZARD_MODE=1 PYTHONPATH=../../:$$PYTHONPATH \
@@ -56,9 +56,9 @@ build/malawi/malawi.html: malawi/malawi.bql build/stamp
 	mv build/malawi.tmp build/malawi
 
 heatmap: build/satellites.bdb .PHONY
-	(echo ".hook ../bdbcontrib/contrib_util.py" && \
-	 echo ".hook ../bdbcontrib/contrib_plot.py" && \
-	 echo ".hook ../bdbcontrib/contrib_math.py" && \
+	(echo ".hook ../hooks/hook_utils.py" && \
+	 echo ".hook ../hooks/hook_plots.py" && \
+	 echo ".hook ../hooks/hook_maths.py" && \
 	 echo ".heatmap 'ESTIMATE DEPENDENCE PROBABILITY FROM PAIRWISE COLUMNS OF satellites_cc;'") \
 	| PYTHONPATH=../:$$PYTHONPATH \
 	  bayeslite -j1 --seed 0 build/satellites.bdb
