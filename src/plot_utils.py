@@ -226,6 +226,11 @@ MODEL_TO_TYPE_LOOKUP = {
     'symmetric_dirichlet_discrete': 'categorical',
 }
 
+# XXX: Working around a seaborn bug:
+class NonZeroDWIMWrapper(pd.Series):
+    def __nonzero__(self):
+        return not self.empty
+
 
 def rotate_tick_labels(ax, axis='x', rotation=90):
     if axis.lower() == 'x':
@@ -474,7 +479,8 @@ def do_violinplot(plot_df, vartypes, **kwargs):
                 positions.append(base_width*i + order_key[v] + base_width/2
                                  - .75/2)
 
-            sns.violinplot(subdf[vals], groupby=subdf[groupby], order=sub_vals,
+            sns.violinplot(NonZeroDWIMWrapper(subdf[vals]),
+                           groupby=subdf[groupby], order=sub_vals,
                 names=sub_vals, vert=vert, ax=ax, positions=positions,
                 widths=violin_width, color=color)
     else:
@@ -482,10 +488,6 @@ def do_violinplot(plot_df, vartypes, **kwargs):
             vals = plot_df.columns[1]
         else:
             vals = plot_df.columns[0]
-        # XXX: Working around a seaborn bug:
-        class NonZeroDWIMWrapper(pd.Series):
-            def __nonzero__(self):
-                return not self.empty
         sns.violinplot(NonZeroDWIMWrapper(plot_df[vals]), groupby=plot_df[groupby],
             order=unique_vals, names=unique_vals, vert=vert, ax=ax, positions=0,
             color='SteelBlue')
@@ -573,7 +575,8 @@ def do_pair_plot(plot_df, vartypes, **kwargs):
     if kwargs.get('ax', None) is None:
         kwargs['ax'] = plt.gca()
 
-    ax = DO_PLOT_FUNC[vartypes](plot_df, vartypes, **kwargs)
+    ax = DO_PLOT_FUNC[vartypes](NonZeroDWIMWrapper(plot_df), 
+                                vartypes, **kwargs)
     return ax
 
 
