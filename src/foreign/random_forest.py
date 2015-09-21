@@ -49,15 +49,6 @@ class RandomForest(predictor.IForeignPredictor):
     ----------
     Please do not mess around with any (exploring is ok).
     """
-    # XXX TEMPORARY HACK for testing purposes.
-    conditions_numerical = [
-        'Perigee_km', 'Apogee_km',
-        'Eccentricity', 'Period_minutes', 'Launch_Mass_kg',
-        'Power_watts', 'Anticipated_Lifetime']
-    conditions_categorical = ['Class_of_Orbit', 'Purpose', 'Users']
-    conditions = conditions_numerical + conditions_categorical
-    targets = ['Type_of_Orbit']
-
     def __init__(self, df, targets, conditions):
         # Obtain the targets column.
         if len(targets) != 1:
@@ -222,10 +213,11 @@ class RandomForest(predictor.IForeignPredictor):
             distribution = self.rf_partial.predict_proba(X_numerical)
             classes = self.rf_partial.classes_
         else:
-            X_categorical = [conditions[col] for col in self.conditions_categorical]
+            X_categorical = [conditions[col] for col in
+                self.conditions_categorical]
             X_categorical = self._binarize_categorical_row(X_categorical)
             distribution = self.rf_full.predict_proba(
-                np.hstack((X_numerical,X_categorical)))
+                np.hstack((X_numerical, X_categorical)))
             classes = self.rf_partial.classes_
 
         return distribution[0], classes
