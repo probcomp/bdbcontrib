@@ -354,17 +354,21 @@ def prep_plot_df(data_df, var_names):
 def drop_inf_and_nan(np_Series):
     return np_Series.replace([-np.inf, np.inf], np.nan).dropna()
 
+# XXX: Should not be computing this ourselves. Newer Seaborn is happier.
 def _safer_freedman_diaconis_bins(a):
     """Calculate number of hist bins using Freedman-Diaconis rule."""
     # From 0.6 https://github.com/mwaskom/seaborn/blob/master/seaborn/distributions.py
     from seaborn.utils import iqr
     a = np.asarray(a)
-    h = 2 * iqr(a) / (len(a) ** (1 / 3))
-    # fall back to sqrt(a) bins if iqr is 0
-    if h == 0:
+    try:
+        h = 2 * iqr(a) / (len(a) ** (1 / 3))
+        # fall back to sqrt(a) bins if iqr is 0
+        if h == 0:
+            return np.sqrt(a.size)
+        else:
+            return np.ceil((a.max() - a.min()) / h)
+    except TypeError:  # Because there is no 75th percentile of this data type?
         return np.sqrt(a.size)
-    else:
-        return np.ceil((a.max() - a.min()) / h)
 
 def do_hist(data_srs, **kwargs):
     ax = kwargs.get('ax', None)
