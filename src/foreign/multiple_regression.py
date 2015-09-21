@@ -226,3 +226,6 @@ class MultipleRegression(predictor.IForeignPredictor):
     def logpdf(self, targets_val, conditions):
         prediction, noise = self._compute_targets_distribution(conditions)
         return norm.logpdf(targets_val, loc=prediction, scale=noise)
+
+def create_predictor(df, targets, conditions):
+    return MultipleRegression(df, targets, conditions)

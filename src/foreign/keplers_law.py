@@ -102,3 +102,6 @@ class KeplersLaw(predictor.IForeignPredictor):
         EARTH_RADIUS = 6378
         a = 0.5*(abs(apogee_km) + abs(perigee_km)) + EARTH_RADIUS
         return 2 * np.pi * np.sqrt(a**3/GM)
+
+def create_predictor(df, targets, conditions):
+    return KeplersLaw(df, targets, conditions)

@@ -238,3 +238,6 @@ class RandomForest(predictor.IForeignPredictor):
         if targets_val not in classes:
             return -float('inf')
         return np.log(distribution[np.where(classes==targets_val)[0][0]])
+
+def create_predictor(df, targets, conditions):
+    return RandomForest(df, targets, conditions)
