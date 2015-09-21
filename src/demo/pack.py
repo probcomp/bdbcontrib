@@ -49,6 +49,7 @@ def main():
         sys.exit(1)
     sys.stdout.write(sig)
     sys.stdout.write(payload)
+    sys.stdout.flush()
 
 if __name__ == '__main__':
     main()
