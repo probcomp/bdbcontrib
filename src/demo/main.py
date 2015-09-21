@@ -20,11 +20,12 @@ import contextlib
 import ed25519
 import getopt
 import json
-import requests
 import os
 import os.path
+import requests
 import sys
 import zlib
+
 from ..version import __version__
 
 DEMO_URI = 'http://probcomp.csail.mit.edu/bayesdb/demo/current'
