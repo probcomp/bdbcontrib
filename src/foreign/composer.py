@@ -23,6 +23,7 @@ import numpy as np
 from bayeslite.core import *
 from bayeslite.exception import BQLError
 from bayeslite.sqlite3_util import sqlite3_quote_name as quote
+from bayeslite.util import logsumexp, logmeanexp
 
 from crosscat.utils import sample_utils as su
 
@@ -105,17 +106,11 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
                 'Anticipated_Lifetime', 'Class_of_orbit']
         }
 
-        self.fp_modules = {
-            'random_forest': importlib.import_module('random_forest'),
-            'keplers_law': importlib.import_module('keplers_law')
-        }
-
-        # Maps target FP columns to FP object. Currently these are strings
-        # but will be mapped to actual instances when the initialize_models
-        # is called.
+        # Maps target FP columns to module for initializing FP objects
+        # Will be replaced by actual object when initialize is called.
         get_fp = {
-            'Period_minutes' : 'keplers_law',
-            'Type_of_Orbit' : 'random_forest',
+            'Type_of_Orbit' : importlib.import_module('random_forest'),
+            'Period_minutes' : importlib.import_module('keplers_law')
         }
 
         # locls = local columns modeled by CrossCat.
@@ -185,14 +180,14 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
                 [(bayesdb_generator_column_name(bdb, genid, f_target),
                 bayesdb_generator_column_stattype(bdb, genid,f_target))]
             conditions = \
-            [(bayesdb_generator_column_name(bdb, genid, f_c),
+                [(bayesdb_generator_column_name(bdb, genid, f_c),
                 bayesdb_generator_column_stattype(bdb, genid, f_c))
                 for f_c in f_conditions]
 
-            # Overwrite the string with an actual trained FP instance.
-            self.get_fp[f_target] = \
-                self.fp_modules[self.get_fp[f_target]].create_predictor(df,
-                    targets, conditions)
+            # Overwrite the module with an actual trained FP instance.
+            initializer = self.get_fp[f_target]
+            self.get_fp[f_target] = initializer.create_predictor(df, targets,
+                conditions)
 
     def drop_models(self, bdb, genid, modelnos=None):
         raise NotImplementedError('Composer generator models cannot be '
