@@ -180,9 +180,6 @@ def download_demo(demo_uri, pubkey):
         try:
             ed25519.checkvalid(sig, payload, pubkey)
         except Exception:
-            with open('/tmp/riastradh/bad.pack', 'wb') as f:
-                f.write(sig)
-                f.write(payload)
             bad('Signature verification failed!')
     with note('Decompressing'):
         try:
