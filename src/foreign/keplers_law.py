@@ -25,7 +25,7 @@ from sklearn.preprocessing import Imputer
 
 from bdbcontrib.foreign import predictor
 
-class OrbitalMechanics(predictor.IForeignPredictor):
+class KeplersLaw(predictor.IForeignPredictor):
     """
     A foreign predictor which models Kepler's Third Law for a single `targets`
     (period in minutes) and `conditions` (apogee in km, perigee in km). All
