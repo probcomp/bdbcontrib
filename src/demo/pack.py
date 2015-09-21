@@ -23,7 +23,7 @@ import zlib
 
 def main():
     if len(sys.argv) < 3:
-        sys.stderr.write('Usage: %s seckey\n' % (sys.argv[0],))
+        sys.stderr.write('Usage: %s <magic> <seckey>\n' % (sys.argv[0],))
         sys.exit(1)
     if sys.argv[1] != 'I am a human on a single-user machine':
         sys.stderr.write(
