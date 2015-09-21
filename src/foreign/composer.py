@@ -15,6 +15,7 @@
 #   limitations under the License.
 
 import itertools
+import importlib
 import math
 
 import numpy as np
@@ -29,7 +30,7 @@ import bayeslite.metamodel
 import bayeslite.bqlfn
 
 import bdbcontrib
-from bdbcontrib.foreign.orbital_mech import OrbitalMechanics
+from bdbcontrib.foreign.keplers_law import KeplersLaw
 from bdbcontrib.foreign.random_forest import RandomForest
 
 composer_schema_1 = '''
@@ -67,13 +68,7 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
             bdb.sql_execute(stmt)
 
     def create_generator(self, bdb, table, schema, instantiate):
-        # TODO: register foreign predictors externally.
-        # TODO: Serialize the mapping from FP names to objects into database.
-        self.fp_constructors = {'random_forest': RandomForest,
-            'orbital_mechanics' : OrbitalMechanics}
-
-        # TODO: Parse the local, foreign, and condition columns
-        # and (foreign predictors) all from schema.
+        # TODO: Parse all this information from the schema.
         schema = [
             ('Country_of_Operator', 'CATEGORICAL'),
             ('Operator_Owner', 'CATEGORICAL'),
@@ -109,11 +104,17 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
                 'Period_minutes', 'Launch_Mass_kg', 'Power_watts',
                 'Anticipated_Lifetime', 'Class_of_orbit']
         }
+
+        self.fp_modules = {
+            'random_forest': importlib.import_module('random_forest'),
+            'keplers_law': importlib.import_module('keplers_law')
+        }
+
         # Maps target FP columns to FP object. Currently these are strings
         # but will be mapped to actual instances when the initialize_models
         # is called.
-        fp_lookup = {
-            'Period_minutes' : 'orbital_mechanics',
+        get_fp = {
+            'Period_minutes' : 'keplers_law',
             'Type_of_Orbit' : 'random_forest',
         }
 
@@ -125,12 +126,12 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
 
         # Convert all strings to to BayesDB column numbers.
         self.fcols = {}
-        self.fp_lookup = {}
+        self.get_fp = {}
         for f in fcols:
             fcolno = bayesdb_generator_column_number(bdb, genid, f)
             self.fcols[fcolno] = [bayesdb_generator_column_number(bdb,
                 genid, col) for col in fcols[f]]
-            self.fp_lookup[fcolno] = fp_lookup[f]
+            self.get_fp[fcolno] = get_fp[f]
 
         # Convert lcols from strings to BayesDB column numbers.
         self.lcols = [bayesdb_generator_column_number(bdb, genid, col[0])
@@ -158,12 +159,6 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
         # Should be stored in the database table bayesdb_fp_composer_cc_lookup
         self.cc_name = 'satcc'
         self.cc_id = bayesdb_get_generator(bdb, 'satcc')
-        # sql = '''
-        #     INSERT INTO bayesdb_composer_cc_id
-        #         (genid, crosscat_genid)
-        #         VALUES (?, ?)
-        # '''
-        # bdb.sql_execute(sql, (genid, self.cc_id))
         self.cc = bayesdb_generator_metamodel(bdb, self.cc_id)
 
     def drop_generator(self, bdb, genid):
@@ -194,10 +189,10 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
                 bayesdb_generator_column_stattype(bdb, genid, f_c))
                 for f_c in f_conditions]
 
-            # Replace the string with an actual trained FP instance.
-            self.fp_lookup[f_target] = \
-                self.fp_constructors[self.fp_lookup[f_target]](df, targets,
-                conditions)
+            # Overwrite the string with an actual trained FP instance.
+            self.get_fp[f_target] = \
+                self.fp_modules[self.get_fp[f_target]].create_predictor(df,
+                    targets, conditions)
 
     def drop_models(self, bdb, genid, modelnos=None):
         raise NotImplementedError('Composer generator models cannot be '
@@ -282,6 +277,7 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
 
     def column_mutual_information(self, bdb, genid, modelno, colno0,
                 colno1, numsamples=100):
+        # TODO: Allow conditional mutual information.
         cc_colnos = self._internal_cc_colnos(bdb, genid,
             [colno0, colno1])
         return self.cc.column_mutual_information(bdb, self.cc_id, modelno,
@@ -345,7 +341,7 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
         pw_max = np.max(pw)
         num = np.exp(pw_max) + np.sum(np.exp(pw-pw_max))
         den = np.exp(np.max(weights)) + \
-                    np.sum(np.exp(np.asarray(weights) - np.max(weights)))
+            np.sum(np.exp(np.asarray(weights) - np.max(weights)))
         return num/den
 
 
@@ -412,7 +408,7 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
                     parent_conf = min(parent_conf, imp_conf)
                     conditions[colname] = imp_val
             assert all(v is not None for c,v in conditions.iteritems())
-            samples = self.fp_lookup[colno].simulate(numsamples, conditions)
+            samples = self.get_fp[colno].simulate(numsamples, conditions)
 
         # Since a foreign predictor does not know how to impute, imputation
         # shall occur here in the composer by probing appropriately.
@@ -422,7 +418,7 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
             imp_val =  max(((val, samples.count(val)) for val in set(samples)),
                 key=lambda v: v[1])[0]
             # fcol -> query pdf, lcol -> take fraction.
-            imp_conf = math.exp(self.fp_lookup[colno].logpdf(imp_val,
+            imp_conf = math.exp(self.get_fp[colno].logpdf(imp_val,
                 conditions)) if colno in self.fcols else \
                 sum(np.array(samples)==imp_val) / len(samples)
 
@@ -512,10 +508,10 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
                         if c in self.fcols[f]}
                 # f is evidence, compute likelihood weight.
                 if f in samples[k]:
-                    w += self.fp_lookup[f].logpdf(samples[k][f], conditions)
+                    w += self.get_fp[f].logpdf(samples[k][f], conditions)
                 # Sample from conditional distribution.
                 else:
-                    fs = self.fp_lookup[f].simulate(1, conditions)
+                    fs = self.get_fp[f].simulate(1, conditions)
                     samples[k][f] = fs[0]
             weights.append(w)
 
@@ -523,11 +519,11 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
 
 
     def _joint_logpdf(self, bdb, genid, modelno, Q, Y):
-        """Computes the joint probability of variables in the DAG.
-        Q=[(col,val)...] are queries, and Y=[(col,val)...] are conditions.
-        Any conditions for FP cols in Q must be specified either in Q or Y
-        (function is not an integrator).
-        """
+        # Computes the joint probability of variables in the DAG.
+        # Q=[(col,val)...] are queries, and Y=[(col,val)...] are conditions.
+        # Any conditions for FP cols in Q must be specified either in Q or Y
+        # (function is not an integrator).
+
         # If any column constrainted and queried, ensure consistency.
         ignore = set()
         for (cq, vq), (cy, vy) in itertools.product(Q, Y):
@@ -562,7 +558,7 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
                         genid, c):v for c,v in Y.iteritems()
                         if c in self.fcols[f]}
                 # Compute logpdf from FP.
-                p += self.fp_lookup[f].logpdf(Q[f], conditions)
+                p += self.get_fp[f].logpdf(Q[f], conditions)
                 # Transfer from Q to Y.
                 Y.update([(f, Q.pop(f))])
 
