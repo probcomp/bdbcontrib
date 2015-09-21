@@ -41,6 +41,11 @@ def main():
     payload = zlib.compress(demo_json)
     sig = ed25519.signature(payload, seckey, pubkey)
     ed25519.checkvalid(sig, payload, pubkey)
+    assert len(sig) == 64
+    size = len(sig) + len(payload)
+    if size > 64*1024*1024:
+        sys.stderr.write('Payload too large: %d, limit is %d\n' %
+            (size, 64*1024*1024))
     sys.stdout.write(sig)
     sys.stdout.write(payload)
 
