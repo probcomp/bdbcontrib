@@ -33,10 +33,12 @@ def main():
         seckey = f.read()
     pubkey = ed25519.publickey(seckey)
     demo = {}
+    demo['compatible'] = [1]
+    demo['files'] = {}
     for filename in os.listdir(os.curdir):
         with open(filename, 'rb') as f:
             data = f.read()
-        demo[filename] = base64.b64encode(data)
+        demo['files'][filename] = base64.b64encode(data)
     demo_json = json.dumps(demo, sort_keys=True)
     payload = zlib.compress(demo_json)
     sig = ed25519.signature(payload, seckey, pubkey)

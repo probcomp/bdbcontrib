@@ -198,10 +198,26 @@ def download_demo(demo_uri, pubkey):
             demo = json.loads(demo_json)
         except Exception:
             fail('parsing failed')
+        if 'compatible' not in demo:
+            fail('no compatbility information in demo')
+        if not isinstance(demo['compatible'], list):
+            fail('invalid compatible list')
+        if 1 not in demo['compatible']:
+            fail('demo too new, please upgrade software!')
+        if 'files' not in demo:
+            fail('no files in demo')
+        if not isinstance(demo['files'], dict):
+            fail('invalid files in demo')
+        if not all(isinstance(k, unicode) for k in demo['files'].iterkeys()):
+            fail('invalid file names in demo')
+        if not all(k == os.path.basename(k) for k in demo['files'].iterkeys()):
+            fail('invalid file base names in demo')
+        if not all(isinstance(v, unicode) for v in demo['files'].itervalues()):
+            fail('invalid file data in demo')
     return demo
 
 def extract_demo(demo):
-    for filename, data_b64 in sorted(demo.iteritems()):
+    for filename, data_b64 in sorted(demo['files'].iteritems()):
         with note('Decoding %s' % (filename,)):
             try:
                 data = base64.b64decode(data_b64)
