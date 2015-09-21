@@ -110,6 +110,13 @@ def test_nullify_no_missing(data, value, num_nulls_expected):
     temp.close()
 
 
+def test_cursor_to_df():
+    with bayeslite.bayesdb_open() as bdb:
+        bql_utils.cursor_to_df(bdb.execute('select * from sqlite_master'))
+        bql_utils.cursor_to_df(bdb.execute('select * from sqlite_master'
+                ' where 0 = 1'))
+
+
 def test_is_plotting_command():
     cmd1 = '.heatmap ESTIMATE PAIRWISE DEPENDENCE PROBABILITY FROM t; -f z.png'
     cmd2 = '.show SELECT a, b FROM t LIMIT 10; --no-contour'

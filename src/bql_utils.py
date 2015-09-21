@@ -99,12 +99,13 @@ def cursor_to_df(cursor):
     # queries.
     with cursor.connection.savepoint():
         df = pd.DataFrame.from_records(cursor, coerce_float=True)
-    df.columns = [desc[0] for desc in cursor.description]
-    for col in df.columns:
-        try:
-            df[col] = df[col].astype(float)
-        except ValueError:
-            pass
+    if not df.empty:
+        df.columns = [desc[0] for desc in cursor.description]
+        for col in df.columns:
+            try:
+                df[col] = df[col].astype(float)
+            except ValueError:
+                pass
 
     return df
 
