@@ -227,7 +227,10 @@ MODEL_TO_TYPE_LOOKUP = {
 }
 
 # XXX: Working around a seaborn bug:
-class NonZeroDWIMWrapper(pd.Series):
+class NonZeroDWIMSeriesWrapper(pd.Series):
+    def __nonzero__(self):
+        return not self.empty
+class NonZeroDWIMFrameWrapper(pd.DataFrame):
     def __nonzero__(self):
         return not self.empty
 
@@ -479,7 +482,7 @@ def do_violinplot(plot_df, vartypes, **kwargs):
                 positions.append(base_width*i + order_key[v] + base_width/2
                                  - .75/2)
 
-            sns.violinplot(NonZeroDWIMWrapper(subdf[vals]),
+            sns.violinplot(NonZeroDWIMSeriesWrapper(subdf[vals]),
                            groupby=subdf[groupby], order=sub_vals,
                 names=sub_vals, vert=vert, ax=ax, positions=positions,
                 widths=violin_width, color=color)
@@ -488,7 +491,7 @@ def do_violinplot(plot_df, vartypes, **kwargs):
             vals = plot_df.columns[1]
         else:
             vals = plot_df.columns[0]
-        sns.violinplot(NonZeroDWIMWrapper(plot_df[vals]), groupby=plot_df[groupby],
+        sns.violinplot(NonZeroDWIMSeriesWrapper(plot_df[vals]), groupby=plot_df[groupby],
             order=unique_vals, names=unique_vals, vert=vert, ax=ax, positions=0,
             color='SteelBlue')
 
@@ -575,7 +578,7 @@ def do_pair_plot(plot_df, vartypes, **kwargs):
     if kwargs.get('ax', None) is None:
         kwargs['ax'] = plt.gca()
 
-    ax = DO_PLOT_FUNC[vartypes](NonZeroDWIMWrapper(plot_df), 
+    ax = DO_PLOT_FUNC[vartypes](NonZeroDWIMFrameWrapper(plot_df),
                                 vartypes, **kwargs)
     return ax
 
