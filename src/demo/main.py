@@ -165,7 +165,7 @@ def download_demo(demo_uri, pubkey):
         try:
             chunks = []
             so_far = 64
-            for chunk in r.iter_content(chunk_size=1024):
+            for chunk in r.iter_content(chunk_size=65536):
                 if content_length - so_far < len(chunk):
                     raise Exception
                 so_far += len(chunk)
