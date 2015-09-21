@@ -343,6 +343,8 @@ def conv_categorical_vals_to_numeric(data_srs, bdb=None, generator_name=None):
 def prep_plot_df(data_df, var_names):
     return data_df[list(var_names)]
 
+def drop_inf_and_nan(np_Series):
+    return np_Series.replace([-np.inf, np.inf], np.nan).dropna()
 
 def do_hist(data_srs, **kwargs):
     ax = kwargs.get('ax', None)
@@ -386,10 +388,10 @@ def do_hist(data_srs, **kwargs):
         if colors is not None:
             for val, color in colors.iteritems():
                 subdf = data_srs.loc[data_srs.ix[:, 1] == val]
-                sns.distplot(subdf.ix[:, 0].dropna(with_inf=True),
+                sns.distplot(drop_inf_and_nan(subdf.ix[:, 0]),
                              kde=do_kde, ax=ax, color=color)
         else:
-            sns.distplot(data_srs.replace([-np.inf, np.inf], np.nan).dropna(),
+            sns.distplot(drop_inf_and_nan(data_srs),
                          kde=do_kde, ax=ax)
 
     return ax
