@@ -99,7 +99,7 @@ def main():
                 if nretry == 0:
                     sys.exit(1)
                 else:
-                    sys.stderr.write('\nRetrying %d more time%s.\n' %
+                    sys.stderr.write('Retrying %d more time%s.\n' %
                         (nretry, 's' if nretry > 1 else ''))
             else:
                 break
@@ -219,6 +219,11 @@ def note(head):
         if os.isatty(sys.stdout.fileno()):
             sys.stdout.write('\r%s %d/%d' % (start, n, d))
             sys.stdout.flush()
-    yield progress
-    sys.stdout.write(' done\n')
-    sys.stdout.flush()
+    try:
+        yield progress
+        sys.stdout.write(' done\n')
+        sys.stdout.flush()
+    except Exception:
+        sys.stdout.write(' failed\n')
+        sys.stdout.flush()
+        raise
