@@ -95,6 +95,7 @@ def main():
             try:
                 download_demo(demo_uri, pubkey)
             except Exception as e:
+                sys.stdout.write('Retrying!\n')
                 last_error = e
                 nretry -= 1
             else:
