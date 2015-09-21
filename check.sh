@@ -16,6 +16,6 @@ root=`cd -- "$(dirname -- "$0")" && pwd`
     set -Ceu
     cd -- "${root}"
     rm -rf build
-    ./pythenv.sh "$PYTHON" setup.py build
+    "$PYTHON" setup.py build
     BAYESDB_WIZARD_MODE=1 ./pythenv.sh "$PYTHON" "$PY_TEST" "$@"
 )
