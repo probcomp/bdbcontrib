@@ -227,7 +227,10 @@ MODEL_TO_TYPE_LOOKUP = {
 }
 
 # XXX: Working around a seaborn bug:
-class NonZeroDWIMWrapper(pd.Series):
+class NonZeroDWIMSeriesWrapper(pd.Series):
+    def __nonzero__(self):
+        return not self.empty
+class NonZeroDWIMFrameWrapper(pd.DataFrame):
     def __nonzero__(self):
         return not self.empty
 
@@ -393,10 +396,10 @@ def do_hist(data_srs, **kwargs):
         if colors is not None:
             for val, color in colors.iteritems():
                 subdf = data_srs.loc[data_srs.ix[:, 1] == val]
-                sns.distplot(drop_inf_and_nan(subdf.ix[:, 0]),
+                sns.distplot(NonZeroDWIMFrameWrapper(drop_inf_and_nan(subdf.ix[:, 0])),
                              kde=do_kde, ax=ax, color=color)
         else:
-            sns.distplot(drop_inf_and_nan(data_srs),
+            sns.distplot(NonZeroDWIMFrameWrapper(drop_inf_and_nan(data_srs)),
                          kde=do_kde, ax=ax)
 
     return ax
@@ -479,7 +482,7 @@ def do_violinplot(plot_df, vartypes, **kwargs):
                 positions.append(base_width*i + order_key[v] + base_width/2
                                  - .75/2)
 
-            sns.violinplot(NonZeroDWIMWrapper(subdf[vals]),
+            sns.violinplot(NonZeroDWIMSeriesWrapper(subdf[vals]),
                            groupby=subdf[groupby], order=sub_vals,
                 names=sub_vals, vert=vert, ax=ax, positions=positions,
                 widths=violin_width, color=color)
@@ -488,7 +491,7 @@ def do_violinplot(plot_df, vartypes, **kwargs):
             vals = plot_df.columns[1]
         else:
             vals = plot_df.columns[0]
-        sns.violinplot(NonZeroDWIMWrapper(plot_df[vals]), groupby=plot_df[groupby],
+        sns.violinplot(NonZeroDWIMSeriesWrapper(plot_df[vals]), groupby=plot_df[groupby],
             order=unique_vals, names=unique_vals, vert=vert, ax=ax, positions=0,
             color='SteelBlue')
 
@@ -575,8 +578,7 @@ def do_pair_plot(plot_df, vartypes, **kwargs):
     if kwargs.get('ax', None) is None:
         kwargs['ax'] = plt.gca()
 
-    ax = DO_PLOT_FUNC[vartypes](NonZeroDWIMWrapper(plot_df), 
-                                vartypes, **kwargs)
+    ax = DO_PLOT_FUNC[vartypes](plot_df, vartypes, **kwargs)
     return ax
 
 
@@ -628,9 +630,9 @@ def zmatrix(data_df, clustermap_kws=None, row_ordering=None,
         df = df.ix[:, col_ordering]
         df = df.ix[row_ordering, :]
         del clustermap_kws['pivot_kws']
-        return sns.heatmap(df, **clustermap_kws), row_ordering, col_ordering
+        return sns.heatmap(NonZeroDWIMFrameWrapper(df), **clustermap_kws), row_ordering, col_ordering
     else:
-        return sns.clustermap(data_df, **clustermap_kws)
+        return sns.clustermap(NonZeroDWIMFrameWrapper(data_df), **clustermap_kws)
 
 
 # TODO: bdb, and table_name should be optional arguments
