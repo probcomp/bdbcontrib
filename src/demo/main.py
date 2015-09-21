@@ -42,7 +42,7 @@ def main():
     try:
         opts, args = getopt.getopt(sys.argv[1:], short_options, long_options)
     except getopt.GetoptError as e:
-        sys.stderr.write(str(e))
+        sys.stderr.write('%s: %s\n' % (sys.argv[0], str(e)))
         usage(sys.stderr)
         sys.exit(2)
     demo_uri = DEMO_URI
@@ -87,19 +87,20 @@ def main():
     # Fetch demo if requested.
     if fetch_p:
         if 0 < len(os.listdir(os.curdir)):
-            sys.stderr.write('Please enter an empty directory first!\n')
+            sys.stderr.write('%s: enter empty directory first\n' %
+                (sys.argv[0],))
             sys.exit(2)
         nretry = 3
         while 0 < nretry:
             try:
                 demo = download_demo(demo_uri, pubkey)
             except Exception as e:
-                sys.stderr.write(str(e))
+                sys.stderr.write('%s: %s\n' % (sys.argv[0], str(e)))
                 nretry -= 1
                 if nretry == 0:
                     sys.exit(1)
                 else:
-                    sys.stderr.write('\nRetrying %d more time%s!\n' %
+                    sys.stderr.write('\nRetrying %d more time%s.\n' %
                         (nretry, 's' if nretry > 1 else ''))
             else:
                 break
@@ -110,8 +111,8 @@ def main():
         try:
             os.execlp('ipython', 'ipython', 'notebook')
         except Exception as e:
-            sys.stderr.write(str(e))
-            sys.stderr.write('Failed to launch ipython!\n')
+            sys.stderr.write('%s: %s\n' % (sys.argv[0], str(e)))
+            sys.stderr.write('%s: failed to launch ipython\n' % (sys.argv[0],))
             sys.exit(1)
 
 def usage(out):
@@ -141,12 +142,12 @@ def selftest():
         if zlib.decompress(payload) != '{}':
             raise Exception
     except Exception:
-        fail('Compression self-test failed!')
+        fail('compression self-test failed')
     sig = 'R6i&2\x911)\xce9Y\x0b&\xd2\xb0-<\xa5\rw\xc4)\xd6\xd4\x89\x03\x10\x8a;\x1e)\xfe\xb0\x92\xca?\xc3\x17\x0c\xc1\x84\xdd\xe6\xb2\xbfDZ\xe7Z\xd6*y\xe99\x9fk\x1e\xb9\x0f`\x07\xc0\x83\x08'
     try:
         ed25519.checkvalid(sig, payload, PUBKEY)
     except:
-        fail('Crypto self-test failed!')
+        fail('crypto self-test failed')
 
 def download_demo(demo_uri, pubkey):
     with note('Requesting') as progress:
@@ -157,13 +158,13 @@ def download_demo(demo_uri, pubkey):
         try:
             content_length = int(r.headers['content-length'])
         except Exception:
-            bad('Bad content-length!')
+            bad('bad content-length')
         if content_length > 64*1024*1024:
-            bad('Demo too large!')
+            bad('demo too large')
         try:
             sig = r.iter_content(chunk_size=64, decode_unicode=False).next()
         except Exception:
-            bad('Invalid signature!')
+            bad('invalid signature')
         try:
             chunks = []
             so_far = 64
@@ -176,23 +177,23 @@ def download_demo(demo_uri, pubkey):
             # Doesn't matter if content-length overestimates.
             payload = ''.join(chunks)
         except Exception:
-            bad('Invalid payload!')
+            bad('invalid payload')
     with note('Verifying'):
         selftest()
         try:
             ed25519.checkvalid(sig, payload, pubkey)
         except Exception:
-            bad('Signature verification failed!')
+            bad('signature verification failed')
     with note('Decompressing'):
         try:
             demo_json = zlib.decompress(payload)
         except Exception:
-            fail('Decompression failed!')
+            fail('decompression failed')
     with note('Parsing'):
         try:
             demo = json.loads(demo_json)
         except Exception:
-            fail('Parsing failed!')
+            fail('parsing failed')
     return demo
 
 def extract_demo(demo):
@@ -201,13 +202,13 @@ def extract_demo(demo):
             try:
                 data = base64.b64decode(data_b64)
             except Exception:
-                fail('Failed to decode file: %s' % (filename,))
+                fail('failed to decode file: %s' % (filename,))
         with note('Extracting %s' % (filename,)):
             try:
                 with open(filename, 'wb') as f:
                     f.write(data)
             except Exception:
-                fail('Failed to write file: %s' % (filename,))
+                fail('failed to write file: %s' % (filename,))
 
 @contextlib.contextmanager
 def note(head):
