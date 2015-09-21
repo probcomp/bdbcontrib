@@ -46,6 +46,7 @@ def main():
     if size > 64*1024*1024:
         sys.stderr.write('Payload too large: %d, limit is %d\n' %
             (size, 64*1024*1024))
+        sys.exit(1)
     sys.stdout.write(sig)
     sys.stdout.write(payload)
 
