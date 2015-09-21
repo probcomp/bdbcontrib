@@ -22,6 +22,7 @@ import getopt
 import json
 import requests
 import os
+import os.path
 import sys
 import zlib
 from ..version import __version__
@@ -41,7 +42,7 @@ def main():
     try:
         opts, args = getopt.getopt(sys.argv[1:], short_options, long_options)
     except getopt.GetoptError as e:
-        sys.stderr.write('%s: %s\n' % (sys.argv[0], str(e)))
+        sys.stderr.write('%s: %s\n' % (progname(), str(e)))
         usage(sys.stderr)
         sys.exit(2)
     demo_uri = DEMO_URI
@@ -72,14 +73,14 @@ def main():
         sys.exit(0)
     elif args[0] == 'fetch':
         if 1 < len(args):
-            sys.stderr.write('%s: excess arguments\n' % (sys.argv[0],))
+            sys.stderr.write('%s: excess arguments\n' % (progname(),))
         fetch_p = True
     elif args[0] == 'launch':
         if 1 < len(args):
-            sys.stderr.write('%s: excess arguments\n' % (sys.argv[0],))
+            sys.stderr.write('%s: excess arguments\n' % (progname(),))
         launch_p = True
     else:
-        sys.stderr.write('%s: invalid command: %s\n' % (sys.argv[0], args[0]))
+        sys.stderr.write('%s: invalid command: %s\n' % (progname(), args[0]))
         usage(sys.stderr)
         sys.exit(2)
 
@@ -87,14 +88,14 @@ def main():
     if fetch_p:
         if 0 < len(os.listdir(os.curdir)):
             sys.stderr.write('%s: enter empty directory first\n' %
-                (sys.argv[0],))
+                (progname(),))
             sys.exit(2)
         nretry = 3
         while 0 < nretry:
             try:
                 demo = download_demo(demo_uri, pubkey)
             except Exception as e:
-                sys.stderr.write('%s: %s\n' % (sys.argv[0], str(e)))
+                sys.stderr.write('%s: %s\n' % (progname(), str(e)))
                 nretry -= 1
                 if nretry == 0:
                     sys.exit(1)
@@ -110,14 +111,17 @@ def main():
         try:
             os.execlp('ipython', 'ipython', 'notebook')
         except Exception as e:
-            sys.stderr.write('%s: %s\n' % (sys.argv[0], str(e)))
-            sys.stderr.write('%s: failed to launch ipython\n' % (sys.argv[0],))
+            sys.stderr.write('%s: %s\n' % (progname(), str(e)))
+            sys.stderr.write('%s: failed to launch ipython\n' % (progname(),))
             sys.exit(1)
 
 def usage(out):
-    out.write('Usage: %s [-hv] [-u <uri>]\n' % (sys.argv[0],))
-    out.write('       %s [-hv] [-u <uri>] fetch\n' % (sys.argv[0],))
-    out.write('       %s [-hv] [-u <uri>] launch\n' % (sys.argv[0],))
+    out.write('Usage: %s [-hv] [-u <uri>]\n' % (progname(),))
+    out.write('       %s [-hv] [-u <uri>] fetch\n' % (progname(),))
+    out.write('       %s [-hv] [-u <uri>] launch\n' % (progname(),))
+
+def progname():
+    return os.path.basename(sys.argv[0])
 
 def version(out):
     out.write('bdbcontrib %s\n' % (__version__,))
