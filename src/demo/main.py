@@ -26,8 +26,7 @@ import sys
 import zlib
 from ..version import __version__
 
-#DEMO_URI = 'http://probcomp.csail.mit.edu/bayesdb/demo/current'
-DEMO_URI = 'http://127.0.0.1:12345/'
+DEMO_URI = 'http://probcomp.csail.mit.edu/bayesdb/demo/current'
 PUBKEY = '\x93\xca\x8f\xedds\x934B\xf8\xac\xee\x91A\x1d\xa9-\xf5\xfb\xe3\xbf\xe4\xea\xba\nG\xa5>z=\xc4\x8b'
 
 short_options = 'hu:v'
