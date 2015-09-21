@@ -40,7 +40,7 @@ num_models = 64
 num_iters = 16 * 15 # Expect this to run for ~15 minutes on probcomp
 seed = 0
 
-csv_file = 'satellites.csv'
+csv_file = 'data/satellites.csv'
 bdb_file = out_file_name('satellites', '.bdb')
 
 # so we can build bdb models
