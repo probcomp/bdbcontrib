@@ -131,7 +131,7 @@ class Fail(Exception):
     def __init__(self, string):
         self._string = string
     def __str__(self):
-        return 'Failed to download demo: %s' % (self._string,)
+        return 'failed to download demo: %s' % (self._string,)
 
 def fail(s):
     raise Fail(s)
