@@ -90,19 +90,20 @@ def main():
             sys.stderr.write('Please enter an empty directory first!\n')
             sys.exit(2)
         nretry = 3
-        last_error = None
         while 0 < nretry:
             try:
-                download_demo(demo_uri, pubkey)
+                demo = download_demo(demo_uri, pubkey)
             except Exception as e:
-                sys.stdout.write('Retrying!\n')
-                last_error = e
+                sys.stderr.write(str(e))
                 nretry -= 1
+                if nretry == 0:
+                    sys.exit(1)
+                else:
+                    sys.stderr.write('\nRetrying %d more time%s!\n' %
+                        (nretry, 's' if nretry > 1 else ''))
             else:
                 break
-        if last_error is not None:
-            sys.stderr.write(str(last_error))
-            sys.exit(1)
+        extract_demo(demo)
 
     # Launch demo if requested.
     if launch_p:
@@ -192,6 +193,9 @@ def download_demo(demo_uri, pubkey):
             demo = json.loads(demo_json)
         except Exception:
             fail('Parsing failed!')
+    return demo
+
+def extract_demo(demo):
     for filename, data_b64 in sorted(demo.iteritems()):
         with note('Decoding %s' % (filename,)):
             try:
