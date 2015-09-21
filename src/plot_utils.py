@@ -354,6 +354,7 @@ def prep_plot_df(data_df, var_names):
 def drop_inf_and_nan(np_Series):
     return np_Series.replace([-np.inf, np.inf], np.nan).dropna()
 
+# XXX: Should not be computing this ourselves. Newer Seaborn is happier.
 def _safer_freedman_diaconis_bins(a):
     """Calculate number of hist bins using Freedman-Diaconis rule."""
     # From 0.6 https://github.com/mwaskom/seaborn/blob/master/seaborn/distributions.py
