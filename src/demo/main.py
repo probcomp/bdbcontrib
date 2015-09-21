@@ -167,7 +167,7 @@ def download_demo(demo_uri, pubkey):
         if content_length > 64*1024*1024:
             bad('demo too large')
         try:
-            sig = r.iter_content(chunk_size=64, decode_unicode=False).next()
+            sig = r.iter_content(chunk_size=64).next()
         except Exception:
             bad('invalid signature')
         try:
