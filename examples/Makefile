@@ -28,10 +28,10 @@ build/satellites/satellites.html: satellites/satellites.bql build/stamp
 	rm -rf build/satellites && \
 	mv build/satellites.tmp build/satellites
 
-build/satellites.bdb: satellites/data/satellites.csv build/stamp
+build/satellites.bdb: satellites/satellites.csv build/stamp
 	rm -f $@ && \
 	(echo ".hook ../bdbcontrib/contrib_util.py" && \
-	 echo ".csv satellites satellites/data/satellites.csv" && \
+	 echo ".csv satellites satellites/satellites.csv" && \
 	 echo ".nullify satellites NaN" && \
 	 echo "CREATE DEFAULT GENERATOR satellites_cc FOR satellites \
 	       USING crosscat (GUESS(*), name IGNORE);" && \
