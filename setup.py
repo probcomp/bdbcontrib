@@ -115,6 +115,7 @@ setup(
         'pandas',
         'seaborn==0.5.1',
         'sphinx',
+        'tornado>=4.0',
     ],
     tests_require=[
         'pytest',
