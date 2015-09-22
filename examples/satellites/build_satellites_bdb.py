@@ -135,17 +135,7 @@ while cur_iter_ct < num_iters:
     cur_iter_ct += checkpoint_freq
     snapshot()
 
-# create a diagnostics plot
-plot_file_name = out_file_name('satellites', '-logscores.pdf')
-log('writing diagnostic plot to %s' % plot_file_name)
-fig = bdbcontrib.plot_crosscat_chain_diagnostics(bdb, 'logscore',
-    'satellites_cc')
-plt.savefig(plot_file_name)
-
-log('closing bdb %s' % bdb_file)
-bdb.close()
-
-def record_metadata(f, sha_sum, total_time):
+def record_metadata(f, sha_sum, total_time, plot_file_name=None):
     f.write("DB file " + bdb_file + "\n")
     f.write(sha_sum)
     f.write("built from " + csv_file + "\n")
@@ -156,14 +146,15 @@ def record_metadata(f, sha_sum, total_time):
             % (num_models, num_iters))
     f.write("by bayeslite %s, with crosscat %s and bdbcontrib %s\n"
             % (bayeslite.__version__, crosscat.__version__, bdbcontrib.__version__))
-    f.write("diagnostics recorded to %s\n" % plot_file_name)
+    if plot_file_name is not None:
+        f.write("diagnostics recorded to %s\n" % plot_file_name)
     f.flush()
 
-def report(saved_file_name, metadata_file, echo=False):
+def report(saved_file_name, metadata_file, echo=False, plot_file_name=None):
     sha_sum = subprocess.check_output(["sha256sum", saved_file_name])
     total_time = time.time() - then
     with open(metadata_file, 'w') as fd:
-        record_metadata(fd, sha_sum, total_time)
+        record_metadata(fd, sha_sum, total_time, plot_file_name)
         fd.write('using script ')
         fd.write('-' * 57)
         fd.write('\n')
@@ -171,7 +162,20 @@ def report(saved_file_name, metadata_file, echo=False):
         os.system("cat %s >> %s" % (__file__, metadata_file))
 
     if echo:
-        record_metadata(sys.stdout, sha_sum, total_time)
+        record_metadata(sys.stdout, sha_sum, total_time, plot_file_name)
 
-final_metadata_file = out_file_name('satellites', '-meta.txt')
-report(bdb_file, final_metadata_file, echo=True)
+def final_report():
+    # create a diagnostics plot
+    plot_file_name = out_file_name('satellites', '-logscores.pdf')
+    log('writing diagnostic plot to %s' % plot_file_name)
+    fig = bdbcontrib.plot_crosscat_chain_diagnostics(bdb, 'logscore',
+        'satellites_cc')
+    plt.savefig(plot_file_name)
+    final_metadata_file = out_file_name('satellites', '-meta.txt')
+    report(bdb_file, final_metadata_file,
+           echo=True, plot_file_name=plot_file_name)
+
+final_report()
+
+log('closing bdb %s' % bdb_file)
+bdb.close()
