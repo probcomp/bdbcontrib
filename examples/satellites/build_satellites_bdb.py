@@ -130,8 +130,9 @@ def snapshot():
     os.system("cp %s %s" % (bdb_file, save_file_name))
     report(save_file_name, meta_file_name)
 
-def record_metadata(f, sha_sum, total_time, plot_file_name=None):
-    f.write("DB file " + bdb_file + "\n")
+def record_metadata(f, saved_file_name, sha_sum, total_time,
+                    plot_file_name=None):
+    f.write("DB file " + saved_file_name + "\n")
     f.write(sha_sum)
     f.write("built from " + csv_file + "\n")
     f.write("by %s@%s\n" % (user, host))
@@ -149,7 +150,8 @@ def report(saved_file_name, metadata_file, echo=False, plot_file_name=None):
     sha_sum = subprocess.check_output(["sha256sum", saved_file_name])
     total_time = time.time() - then
     with open(metadata_file, 'w') as fd:
-        record_metadata(fd, sha_sum, total_time, plot_file_name)
+        record_metadata(fd, saved_file_name,
+                        sha_sum, total_time, plot_file_name)
         fd.write('using script ')
         fd.write('-' * 57)
         fd.write('\n')
@@ -157,7 +159,8 @@ def report(saved_file_name, metadata_file, echo=False, plot_file_name=None):
         os.system("cat %s >> %s" % (__file__, metadata_file))
 
     if echo:
-        record_metadata(sys.stdout, sha_sum, total_time, plot_file_name)
+        record_metadata(sys.stdout, saved_file_name,
+                        sha_sum, total_time, plot_file_name)
 
 def final_report():
     # create a diagnostics plot
