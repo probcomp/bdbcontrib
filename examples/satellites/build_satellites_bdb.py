@@ -147,9 +147,8 @@ def record_metadata(f, sha_sum, total_time):
     f.write("diagnostics recorded to %s\n" % plot_file_name)
     f.flush()
 
-def final_report():
-    metadata_file = out_file_name('satellites', '-meta.txt')
-    sha_sum = subprocess.check_output(["sha256sum", bdb_file])
+def report(saved_file_name, metadata_file, echo=False):
+    sha_sum = subprocess.check_output(["sha256sum", saved_file_name])
     total_time = time.time() - then
     with open(metadata_file, 'w') as fd:
         record_metadata(fd, sha_sum, total_time)
@@ -159,6 +158,8 @@ def final_report():
         fd.flush()
         os.system("cat %s >> %s" % (__file__, metadata_file))
 
-    record_metadata(sys.stdout, sha_sum, total_time)
+    if echo:
+        record_metadata(sys.stdout, sha_sum, total_time)
 
-final_report()
+final_metadata_file = out_file_name('satellites', '-meta.txt')
+report(bdb_file, final_metadata_file, echo=True)
