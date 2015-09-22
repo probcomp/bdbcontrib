@@ -47,16 +47,20 @@ CREATE TABLE bayesdb_composer_cc_id(
 '''
 
 class Composer(bayeslite.metamodel.IBayesDBMetamodel):
-    """A metamodel which generically composes foreign predictors with
-    CrossCat.
+    """A metamodel which composes foreign predictors with CrossCat.
     """
 
     def __init__(self):
-        self.cc_id = None
-        self.cc = None
+        # Make an account of all data structures.
+        self.cc_id = None   # id of internal CC.
+        self.cc = None      # instance of cc metamodel.
+        self.fcols = None   # dict, key = foreign col, vals = list of parents.
+        self.lcols = None   # list of local cols.
+        self.topo = None    # Same ase self.fcols but keys sorted topologically.
+        self.get_fp = None  # dict, key = foreign col, val = FP instance.
 
     def name(self):
-        """Return the name of the metamodel as a str.
+        """Return the name of the metamodel as a string.
         """
         return 'composer'
 
@@ -65,8 +69,9 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
         # XXX Causes serialization problem, should have v0 of schema which
         # is only ever before the first time this metamodel is registered
         # in the history of the bdb.
-        for stmt in composer_schema_1.split(';'):
-            bdb.sql_execute(stmt)
+        # for stmt in composer_schema_1.split(';'):
+            # bdb.sql_execute(stmt)
+        return
 
     def create_generator(self, bdb, table, schema, instantiate):
         # TODO: Parse all this information from the schema.
@@ -189,9 +194,11 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
             self.get_fp[f_target] = initializer.create_predictor(df, targets,
                 conditions)
 
+
     def drop_models(self, bdb, genid, modelnos=None):
         raise NotImplementedError('Composer generator models cannot be '
             'dropped. Feature coming soon.')
+
 
     def analyze_models(self, bdb, genid, modelnos=None, iterations=1,
                 max_seconds=None, ckpt_iterations=None, ckpt_seconds=None):
@@ -201,6 +208,7 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
             iterations=iterations, max_seconds=max_seconds,
             ckpt_iterations=ckpt_iterations, ckpt_seconds=ckpt_seconds)
 
+
     def column_dependence_probability(self, bdb, genid, modelno, colno0,
                 colno1):
         # XXX Aggregator only.
@@ -208,11 +216,11 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
             n_model = 1
             while bayesdb_generator_has_model(bdb, genid, n_model):
                 n_model += 1
-            p = sum(self._column_dependence_probability(bdb, genid,
-                m, colno0, colno1) for m in xrange(n_model)) / float(n_model)
+            p = sum(self._column_dependence_probability(bdb, genid, m, colno0,
+                colno1) for m in xrange(n_model)) / float(n_model)
         else:
-            p = self._column_dependence_probability(bdb, genid,
-                modelno, colno0, colno1)
+            p = self._column_dependence_probability(bdb, genid, modelno, colno0,
+                colno1)
         return p
 
 
@@ -270,8 +278,8 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
             for cond1 in self.fcols[colno1])
 
 
-    def column_mutual_information(self, bdb, genid, modelno, colno0,
-                colno1, numsamples=100):
+    def column_mutual_information(self, bdb, genid, modelno, colno0, colno1,
+            numsamples=100):
         # TODO: Allow conditional mutual information.
 
         # Two cc columns, delegate.
@@ -295,10 +303,12 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
             Qxy = Qx+Qy
             logpxy = self._joint_logpdf(bdb, genid, modelno, Qxy, [])
             mi += logpx - logpx - logpy
+        # TODO: Use linfoot?
+        return mi
 
 
-    def column_value_probability(self, bdb, genid, modelno, colno,
-            value, constraints):
+    def column_value_probability(self, bdb, genid, modelno, colno, value,
+            constraints):
         # XXX Aggregator only.
         p = []
         if modelno is None:
@@ -488,106 +498,57 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
             'Please use PROBABILITY OF <[...]> [GIVEN [...]] instead.')
 
 
-    def _forward_weighted_sample(self, bdb, genid, modelno, Y, n_samples=None):
-        # Returns a pair (sample, weight)
-        # `sample` is the a vector s=(X1,...,Xn) of all the nodes in the
-        # network. Y specifies constraints for certain nodes that the sample
-        # must satsify.
+    def _weighted_sample(self, bdb, genid, modelno, Y, n_samples=None):
+        # Returns a list of [(sample, weight), ...]
+        # Each `sample` is the a vector s=(X1,...,Xn) of values for all nodes in
+        # the network. Y specifies evidence nodes: all returned samples have
+        # constrained values at the evidence nodes.
         # `weight` is the likelihood of the evidence Y under s\Y.
         if n_samples is None:
             n_samples = 100
 
         # Create n_samples dicts, each entry is weighted sample from joint.
         samples = [{c:v for (c,v) in Y} for _ in xrange(n_samples)]
-
-        # Sample any missing lcols (conditioned on lcol evidence only).
-        cc_constraints = [(c, v) for c,v in samples[0].iteritems() if c in
-            self.lcols]
-        cc_targets = [c for c in self.lcols if c not in samples[0]]
-        # Assuming cc.simulate is a true sampler from the posterior, all samples
-        # will be of equal weight.
-        cc_sample = self.cc.simulate(bdb, self.cc_id, modelno, cc_constraints,
-            cc_targets, numpredictions=n_samples)
-
         weights = []
+        w0 = 0
+
+        # Assess likelihood of evidence at root.
+        cc_evidence = [(c, v) for c,v in Y if c in self.lcols]
+        if cc_evidence:
+            w0 += self._joint_logpdf_cc(bdb, genid, modelno, cc_evidence, [])
+        # Simulate latent CCs.
+        cc_latent = [c for c in self.lcols if c not in samples[0]]
+        cc_simulated = self.cc.simulate(bdb, self.cc_id, modelno, cc_evidence,
+            cc_latent, numpredictions=n_samples)
         for k in xrange(n_samples):
+            w = w0
             # Add simulated lcols.
-            samples[k].update({c:v for c,v in zip(cc_targets, cc_sample[k])})
-            w = 0
+            samples[k].update({c:v for c,v in zip(cc_latent, cc_simulated[k])})
             for f, _ in self.topo:
-                # Assert all parents of FP are known (sampled or evidence).
+                # Assert all parents of FP known (evidence or simulated).
                 assert set(self.fcols[f]).issubset(set(samples[k]))
                 conditions = {bayesdb_generator_column_name(bdb, genid, c):v
                     for c,v in samples[k].iteritems() if c in self.fcols[f]}
                 # f is evidence, compute likelihood weight.
                 if f in samples[k]:
                     w += self.get_fp[f].logpdf(samples[k][f], conditions)
-                # Sample from conditional distribution.
+                # f is latent, simulate from conditional distribution.
                 else:
-                    fs = self.get_fp[f].simulate(1, conditions)
-                    samples[k][f] = fs[0]
+                    f_simulated = self.get_fp[f].simulate(1, conditions)
+                    samples[k][f] = f_simulated[0]
             weights.append(w)
 
         return samples, weights
 
 
-    def _forward_joint_logpdf(self, bdb, genid, modelno, Q, Y):
-        # Performs a forward pass over the network and computes the logpdf
-        # of every node in Q. Every child node must have its parent conditions
-        # either constrained or queried.
-
-        # If any column constrainted and queried, ensure consistency.
-        ignore = set()
-        for (cq, vq), (cy, vy) in itertools.product(Q, Y):
-            if cq == cy:
-                if vq == vy:
-                    ignore.add(cq)
-                else:
-                    return -float('inf')
-
-        # Convert to dicts for easier operations.
-        Y, Q = dict(Y), dict(Q)
-
-        # Compute joint of Qlcols.
-        Ql = [(c,v) for c,v in Q.iteritems() if c in self.lcols and
-            c not in ignore]
-        Yl = [(c,v) for c,v in Y.iteritems() if c in self.lcols]
-        p = self._joint_logpdf_cc(bdb, genid, modelno, Ql, Yl)
-
-        # Add all evaluated Ql to Y (chain rule).
-        for c,v in Ql:
-            Q.pop(c)
-        Y.update(dict(Q))
-
-        # Compute logpdf for any queries in FP.
-        for f, _ in self.topo:
-                # Are we querying f?
-                if f not in Q or f in ignore:
-                    continue
-                # Assert all parents of FP are known.
-                assert set(self.fcols[f]).issubset(set(Y.keys()))
-                conditions = {bayesdb_generator_column_name(bdb,
-                        genid, c):v for c,v in Y.iteritems()
-                        if c in self.fcols[f]}
-                # Compute logpdf from FP.
-                p += self.get_fp[f].logpdf(Q[f], conditions)
-                # Transfer from Q to Y.
-                Y.update([(f, Q.pop(f))])
-
-        # Assert we have processed all the queries.
-        assert len(Q) == 0
-        return p
-
-
     # TODO migrate to a reasonable place (ie sample_utils in CrossCat).
     def _joint_logpdf_cc(self, bdb, genid, modelno, Q, Y):
         # Computes the joint probability of CrossCat columns. Q=[(col,val)...]
-        # are the queries, and Y=[(col,val)...] are the conditions.
+        # is the query, and Y=[(col,val)...] is the evidence.
 
-        # If any column is constrainted and queried, ensure consistency.
+        # Ensure consistency for nodes in both query and evidence.
         ignore = set()
         for (cq, vq), (cy, vy) in itertools.product(Q, Y):
-            # Validate inputs.
             if cq not in self.lcols and cy not in self.lcols:
                 raise ValueError('Foreign colno encountered in internal '
                     '_joint_logpdf_cc. Only local colnos may be specified in '
@@ -598,18 +559,14 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
                 else:
                     return -float('inf')
 
-        # Use internal data structures not avoid clobbering the input.
         Qi = []
         for (col, val) in Q:
-            # Remove any queries which are constrained.
             if col not in ignore:
                 Qi.append((self._internal_cc_colno(bdb, genid, col),val))
         Yi = []
         for (col, val) in Y:
             Yi.append((self._internal_cc_colno(bdb, genid, col), val))
 
-        # Compute joint via the the chain rule: if Q is a vector with density 0
-        # under the joint, then return -float('inf').
         prob = 0
         for (col, val) in Qi:
             r = self.cc.column_value_probability(bdb, self.cc_id, modelno, col,
@@ -660,16 +617,6 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
                     'topological_sort.')
 
         return graph_sorted
-
-
-    def _all_local(self, bdb, genid, Q, Y, Qv=True):
-        # Checks if union of columns in Q and Y are strictly local.
-        # Qv is True if elements of Q are pairs (c,v), and false if Q is a list
-        # of cols.
-        if Qv:
-            Q = [c for c,v in Q]
-        all_cols = Q + [c for c,v in Y]
-        return all(f not in all_cols for f in self.fcols)
 
 
     # TODO: Convert to SQL table queries on bayesdb_fp_composer_cc_lookup.
