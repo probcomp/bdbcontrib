@@ -133,9 +133,6 @@ plt.savefig(plot_file_name)
 log('closing bdb %s' % bdb_file)
 bdb.close()
 
-metadata_file = out_file_name('satellites', '-meta.txt')
-sha_sum = subprocess.check_output(["sha256sum", bdb_file])
-total_time = time.time() - then
 def record_metadata(f, sha_sum, total_time):
     f.write("DB file " + bdb_file + "\n")
     f.write(sha_sum)
@@ -150,12 +147,18 @@ def record_metadata(f, sha_sum, total_time):
     f.write("diagnostics recorded to %s\n" % plot_file_name)
     f.flush()
 
-with open(metadata_file, 'w') as fd:
-    record_metadata(fd, sha_sum, total_time)
-    fd.write('using script ')
-    fd.write('-' * 57)
-    fd.write('\n')
-    fd.flush()
-    os.system("cat %s >> %s" % (__file__, metadata_file))
+def final_report():
+    metadata_file = out_file_name('satellites', '-meta.txt')
+    sha_sum = subprocess.check_output(["sha256sum", bdb_file])
+    total_time = time.time() - then
+    with open(metadata_file, 'w') as fd:
+        record_metadata(fd, sha_sum, total_time)
+        fd.write('using script ')
+        fd.write('-' * 57)
+        fd.write('\n')
+        fd.flush()
+        os.system("cat %s >> %s" % (__file__, metadata_file))
 
-record_metadata(sys.stdout, sha_sum, total_time)
+    record_metadata(sys.stdout, sha_sum, total_time)
+
+final_report()
