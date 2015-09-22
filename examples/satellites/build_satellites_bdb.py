@@ -136,7 +136,7 @@ bdb.close()
 metadata_file = out_file_name('satellites', '-meta.txt')
 sha_sum = subprocess.check_output(["sha256sum", bdb_file])
 total_time = time.time() - then
-def record_metadata(f):
+def record_metadata(f, sha_sum, total_time):
     f.write("DB file " + bdb_file + "\n")
     f.write(sha_sum)
     f.write("built from " + csv_file + "\n")
@@ -151,11 +151,11 @@ def record_metadata(f):
     f.flush()
 
 with open(metadata_file, 'w') as fd:
-    record_metadata(fd)
+    record_metadata(fd, sha_sum, total_time)
     fd.write('using script ')
     fd.write('-' * 57)
     fd.write('\n')
     fd.flush()
     os.system("cat %s >> %s" % (__file__, metadata_file))
 
-record_metadata(sys.stdout)
+record_metadata(sys.stdout, sha_sum, total_time)
