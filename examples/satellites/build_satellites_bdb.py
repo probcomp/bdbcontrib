@@ -37,7 +37,7 @@ def out_file_name(base, ext):
     return out_dir + '/' + base + filestamp + ext
 
 num_models = 64
-num_iters = 16 * 15 # Expect this to run for ~15 minutes on probcomp
+num_iters = 50 * 30 # Expect this to run for ~30 minutes on probcomp
 seed = 0
 
 csv_file = 'satellites.csv'
