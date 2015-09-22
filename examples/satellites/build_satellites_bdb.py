@@ -129,12 +129,6 @@ def snapshot():
     os.system("cp %s %s" % (bdb_file, save_file_name))
     report(save_file_name, meta_file_name)
 
-snapshot()
-while cur_iter_ct < num_iters:
-    execute('ANALYZE satellites_cc FOR %d ITERATIONS WAIT' % checkpoint_freq)
-    cur_iter_ct += checkpoint_freq
-    snapshot()
-
 def record_metadata(f, sha_sum, total_time, plot_file_name=None):
     f.write("DB file " + bdb_file + "\n")
     f.write(sha_sum)
@@ -174,6 +168,12 @@ def final_report():
     final_metadata_file = out_file_name('satellites', '-meta.txt')
     report(bdb_file, final_metadata_file,
            echo=True, plot_file_name=plot_file_name)
+
+snapshot()
+while cur_iter_ct < num_iters:
+    execute('ANALYZE satellites_cc FOR %d ITERATIONS WAIT' % checkpoint_freq)
+    cur_iter_ct += checkpoint_freq
+    snapshot()
 
 final_report()
 
