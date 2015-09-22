@@ -324,45 +324,28 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
         return math.exp(p)
 
 
-    def _joint_logpdf(self, bdb, genid, modelno, Q, Y):
+    def _joint_logpdf(self, bdb, genid, modelno, Q, Y, n_samples=None):
         # XXX Computes the joint probability of query Q given evidence Y
-        # for a single model. This function is an integrator over
-        # _forward_joint_logpdf using importance-weighted samples from
-        # simulate(Q|Y).
+        # for a single model. The function is a likelihood weighted
+        # integrator.
         if modelno is None:
             raise ValueError('Invalid modelno argument for '
                 'internal _joint_logpdf. An integer modelno '
                 'is required, not None.')
 
-        # Optimization. All cols in Q and Y local, delegate to CC.
-        if self._all_local(bdb, genid, Q, Y):
-            Y_cc = [(self._internal_cc_colno(bdb, self.cc_id, c),v)
-                for c, v in Y]
-            Q_cc = [(self._internal_cc_colno(bdb, self.cc_id, c),v)
-                for c, v in Q]
-            logpdf = self._joint_logpdf_cc(bdb, self.cc_id, modelno, Q_cc, Y_cc)
-            return math.exp(logpdf)
+        if n_samples is None:
+            n_samples = 200
 
-        # Estimate the integral using self-normalized importance sampling.
-        # TODO: Discuss strategy
-        #  -- simulate gives higher quality (unweighted) samples but slower.
-        #  -> _forward_weighted_sample gives lower qualty samples but faster.
-        samples, weights = self._forward_weighted_sample(bdb, genid, modelno, Y,
-            n_samples=None)
+        # (Q,Y) marginal joint density.
+        joint_samples, joint_weights = self._weighted_sample(bdb, genid,
+            modelno, Q+Y, n_samples=n_samples)
 
-        probs = []
-        for s in samples:
-            for c,v in Q:
-                del s[c]
-            p = self._forward_joint_logpdf(bdb, genid, modelno, Q, s.items())
-            probs.append(p)
+        # Y marginal density.
+        evidence_samples, evidence_weights = self._weighted_sample(bdb,
+            genid, modelno, Q+Y, n_samples=n_samples)
 
-        # TODO: Verify this is procedure numerically correct.
-        # Self normalize the p's by importance weights w.
-        # weights = [logw1 logw2 ... logwk], probs=[logp1 logp2 ... logpk]
-        # Compute N = log(w1p1 + w2p2 + ... wkpk)
-        N = logsumexp(np.asarray(weights) + np.asarray(probs))
-        D = logsumexp(np.asarray(weights))
+        pQY = logmeanexp(joint_weights)
+        pY = logmeanexp(evidence_weights)
         return N-D
 
 
@@ -465,22 +448,24 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
     def simulate(self, bdb, genid, modelno, constraints, colnos,
             numpredictions=1):
         # Optimization; all cols local, just delegate to CC.
-        if self._all_local(bdb, genid, colnos, constraints, Qv=False):
-            cc_constraints = [(self._internal_cc_colno(bdb, self.cc_id, c), v)
+        all_cols = [c for c,v in constraints] + colnos
+        if all(f not in all_cols for f in self.fcols):
+            cc_evidence = [(self._internal_cc_colno(bdb, self.cc_id, c), v)
                 for c, v in constraints]
-            cc_targets = self._internal_cc_colnos(bdb, genid, colnos)
+            cc_queries = self._internal_cc_colnos(bdb, genid, colnos)
             return self.cc.simulate(bdb, self.cc_id, modelno,
-                cc_constraints, cc_targets, numpredictions=numpredictions)
+                cc_evidence, cc_queries, numpredictions=numpredictions)
 
-        # Solve inference problem by sampling-importance sampling.
+        # Solve inference problem by sampling-importance resampling.
         result = []
         for i in xrange(numpredictions):
-            ll_samples, weights = self._forward_weighted_sample(bdb, genid,
-                modelno, constraints)
+            samples, weights = self._weighted_sample(bdb, genid, modelno,
+                constraints)
             p = np.exp(np.asarray(weights) - np.max(weights))
             p /= np.sum(p)
             draw = np.nonzero(np.random.multinomial(1,p))[0][0]
-            result.append([ll_samples[draw].get(col) for col in colnos])
+            s = [samples[draw].get(col) for col in colnos]
+            result.append(s)
 
         return result
 
