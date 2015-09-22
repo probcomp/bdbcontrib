@@ -120,8 +120,20 @@ execute('''
 
 execute('INITIALIZE %d MODELS FOR satellites_cc' % (num_models,))
 
-execute('ANALYZE satellites_cc FOR %d ITERATIONS CHECKPOINT 5 ITERATIONS WAIT'
-        % num_iters)
+cur_iter_ct = 0
+
+def snapshot():
+    cur_infix = '%dm-%di' % (num_models, cur_iter_ct)
+    save_file_name = out_file_name('satellites', cur_infix + '.bdb')
+    meta_file_name = out_file_name('satellites', cur_infix + '-meta.txt')
+    os.system("cp %s %s" % (bdb_file, save_file_name))
+    report(save_file_name, meta_file_name)
+
+snapshot()
+while cur_iter_ct < num_iters:
+    execute('ANALYZE satellites_cc FOR %d ITERATIONS WAIT' % checkpoint_freq)
+    cur_iter_ct += checkpoint_freq
+    snapshot()
 
 # create a diagnostics plot
 plot_file_name = out_file_name('satellites', '-logscores.pdf')
