@@ -126,6 +126,7 @@ def snapshot():
     cur_infix = '-%dm-%di' % (num_models, cur_iter_ct)
     save_file_name = out_file_name('satellites', cur_infix + '.bdb')
     meta_file_name = out_file_name('satellites', cur_infix + '-meta.txt')
+    log('recording snapshot ' + save_file_name)
     os.system("cp %s %s" % (bdb_file, save_file_name))
     report(save_file_name, meta_file_name)
 
