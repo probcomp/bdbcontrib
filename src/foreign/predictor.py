@@ -73,7 +73,7 @@ class IForeignPredictor(object):
         raise NotImplementedError
 
     def simulate(self, n_samples, conditions):
-        """Simulate from the distribution `targets`|`conditions`.
+        """Simulate from the distribution {`targets`}|{`conditions`}.
 
         Parameters
         ----------
@@ -88,7 +88,7 @@ class IForeignPredictor(object):
         raise NotImplementedError
 
     def logpdf(self, targets_vals, conditions):
-        """Simulate from the distribution `targets`|`conditions`.
+        """Evaluate the log-density of {`targets`=`targets_vals`}|`conditions`.
 
         Parameters
         ----------
