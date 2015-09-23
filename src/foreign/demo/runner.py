@@ -36,7 +36,7 @@ def q(bdb, query):
 # Load the database with the default model.
 bdb_default = bayeslite.bayesdb_open('sat2.bdb')
 
-# Load the databse with the default model composed with Kepler's laws.
+# Load the database with the default model composed with Kepler's laws.
 bdb_kepler = bayeslite.bayesdb_open('sat.bdb')
 bayeslite.bayesdb_register_metamodel(bdb_kepler, Composer())
 bdb_kepler.execute("""
@@ -71,6 +71,7 @@ bdb_kepler.execute('ANALYZE test6 FOR 1 ITERATION WAIT;')
 # Simulate from the distribution of (Apogee,Perigee|Period=1436). This query
 # represents a probabilistic inversion of Kepler's law, which computes the
 # Period from Apogee, Perigee.
+T = 1436
 KC = q(bdb_kepler, '''
     SIMULATE Apogee_km, Perigee_km FROM test6
         GIVEN Period_minutes = 1436 LIMIT 10;''')
