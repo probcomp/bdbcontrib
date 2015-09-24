@@ -19,6 +19,10 @@ import time
 
 import bayeslite
 
+######################################################################
+## Query running and result accumulation                            ##
+######################################################################
+
 model_schedule = [1,2]
 model_skip = model_schedule[-1]
 n_replications = 2
@@ -100,6 +104,10 @@ def analyze_queries(bdb):
                                       for (name, res) in queryset(bdb)])
     return results
 
+######################################################################
+## Queries                                                          ##
+######################################################################
+
 def country_purpose_queries(bdb):
     bdb.execute('''
         CREATE TEMP TABLE satellite_purpose AS
@@ -127,6 +135,10 @@ def country_purpose_queries(bdb):
              ("USA-Communications is top", usa_top),
              ("USA-Communications is top by 2x", by_much),
          ]
+
+######################################################################
+## Driver                                                           ##
+######################################################################
 
 print analyze_fileset(["output/satellites-2015-09-24-axch-4m-%di.bdb" % i
                        for i in range(4)])
