@@ -17,6 +17,9 @@
 import contextlib
 import time
 
+import pandas as pd
+import seaborn as sns
+
 import bayeslite
 
 ######################################################################
@@ -105,6 +108,20 @@ def analyze_queries(bdb):
     return results
 
 ######################################################################
+## Visualization                                                    ##
+######################################################################
+
+def plot_results(results):
+    # results :: dict (file_name, model_ct, query_name) : result_set
+    data = ((fname, model_ct, qname, value)
+        for ((fname, model_ct, qname), values) in results.iteritems()
+        for value in values)
+    df = pd.DataFrame.from_records(data, columns=["file", "n_models", "query", "value"]).replace([False, True], [0,1])
+    g = sns.FacetGrid(df, row="query", col="n_models")
+    g.map(sns.violinplot, "file", "value")
+    return g
+
+######################################################################
 ## Queries                                                          ##
 ######################################################################
 
@@ -140,5 +157,6 @@ def country_purpose_queries(bdb):
 ## Driver                                                           ##
 ######################################################################
 
-print analyze_fileset(["output/satellites-2015-09-24-axch-4m-%di.bdb" % i
-                       for i in range(4)])
+fig = plot_results(analyze_fileset(["output/satellites-2015-09-24-axch-4m-%di.bdb" % i
+                                    for i in range(2)]))
+fig.savefig("fig.png")
