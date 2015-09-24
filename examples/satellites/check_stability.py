@@ -29,34 +29,6 @@ then = time.time()
 def log(msg):
     print "At %3.2fs" % (time.time() - then), msg
 
-def country_purpose_queries(bdb):
-    bdb.execute('''
-        CREATE TEMP TABLE satellite_purpose AS
-        SIMULATE country_of_operator, purpose FROM satellites_cc
-        GIVEN Class_of_orbit = 'GEO', Dry_mass_kg = 500
-        LIMIT 1000;
-    ''')
-    usa_ct_sql = '''
-        SELECT COUNT(*) FROM satellite_purpose
-        WHERE country_of_operator = 'USA'
-          AND purpose = 'Communications'
-    '''
-    (usa_ct,) = bdb.execute(usa_ct_sql).next()
-    hist_sql = '''
-        SELECT country_of_operator, purpose, COUNT(*) AS frequency
-        FROM satellite_purpose
-        GROUP BY country_of_operator, purpose
-        ORDER BY frequency DESC
-        LIMIT 2
-    '''
-    results = bdb.execute(hist_sql).fetchall()
-    usa_top = results[0][0] == 'USA' and results[0][1] == 'Communications'
-    by_much = results[0][2] > 2*results[1][2]
-    return [ ("USA-Communications count", usa_ct),
-             ("USA-Communications is top", usa_top),
-             ("USA-Communications is top by 2x", by_much),
-         ]
-
 def analyze_fileset(files):
     """Aggregate all the queries over all the given bdb files.
 
@@ -127,6 +99,34 @@ def analyze_queries(bdb):
                 incorporate(results, [((model_ct, name), inc_singleton(res))
                                       for (name, res) in queryset(bdb)])
     return results
+
+def country_purpose_queries(bdb):
+    bdb.execute('''
+        CREATE TEMP TABLE satellite_purpose AS
+        SIMULATE country_of_operator, purpose FROM satellites_cc
+        GIVEN Class_of_orbit = 'GEO', Dry_mass_kg = 500
+        LIMIT 1000;
+    ''')
+    usa_ct_sql = '''
+        SELECT COUNT(*) FROM satellite_purpose
+        WHERE country_of_operator = 'USA'
+          AND purpose = 'Communications'
+    '''
+    (usa_ct,) = bdb.execute(usa_ct_sql).next()
+    hist_sql = '''
+        SELECT country_of_operator, purpose, COUNT(*) AS frequency
+        FROM satellite_purpose
+        GROUP BY country_of_operator, purpose
+        ORDER BY frequency DESC
+        LIMIT 2
+    '''
+    results = bdb.execute(hist_sql).fetchall()
+    usa_top = results[0][0] == 'USA' and results[0][1] == 'Communications'
+    by_much = results[0][2] > 2*results[1][2]
+    return [ ("USA-Communications count", usa_ct),
+             ("USA-Communications is top", usa_top),
+             ("USA-Communications is top by 2x", by_much),
+         ]
 
 print analyze_fileset(["output/satellites-2015-09-24-axch-4m-%di.bdb" % i
                        for i in range(4)])
