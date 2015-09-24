@@ -76,6 +76,7 @@ def analyze_fileset(files):
             incorporate(results,
                 [((fname, model_ct, name), ress)
                  for ((model_ct, name), ress) in analyze_queries(bdb).iteritems()])
+    return results
 
 def model_specs():
     def spec_at(location, size):
