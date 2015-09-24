@@ -14,16 +14,17 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
-import sys
+import datetime
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
+import os
+import subprocess
+import sys
+import time
+
 import bayeslite
 import bdbcontrib
-import os
-import time
-import datetime
-import subprocess
 
 then = time.time()
 
