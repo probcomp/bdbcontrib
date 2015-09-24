@@ -15,6 +15,7 @@
 #   limitations under the License.
 
 import contextlib
+import time
 
 import bayeslite
 
@@ -23,6 +24,10 @@ model_skip = model_schedule[-1]
 n_replications = 2
 # TODO Expect the number of models in the file to be at least
 # model_skip * n_replications; excess models are wasted.
+
+then = time.time()
+def log(msg):
+    print "At %3.2fs" % (time.time() - then), msg
 
 def country_purpose_queries(bdb):
     bdb.execute('''
@@ -66,6 +71,7 @@ def analyze_fileset(files):
     # Keys are (file_name, model_ct, name); values are aggregated results
     results = {}
     for fname in files:
+        log("processing file %s" % fname)
         with bayeslite.bayesdb_open(fname) as bdb:
             incorporate(results,
                 [((fname, model_ct, name), ress)
@@ -115,6 +121,7 @@ def analyze_queries(bdb):
         (low, high) = spec
         model_ct = high - low
         with model_restriction(bdb, "satellites_cc", spec):
+            log("querying models %d-%d" % (low, high-1))
             for queryset in [country_purpose_queries]:
                 incorporate(results, [((model_ct, name), inc_singleton(res))
                                       for (name, res) in queryset(bdb)])
