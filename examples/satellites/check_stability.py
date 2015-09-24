@@ -85,8 +85,8 @@ def model_restriction(bdb, gen_name, spec):
     (low, high) = spec
     model_count = 4 # TODO !
     with bdb.savepoint_rollback():
-        bdb.execute('''drop models 0-%d from %s''' % (low-1, gen_name))
-        bdb.execute('''drop models %d-%d from %s'''
+        bdb.execute('''DROP MODELS 0-%d FROM %s''' % (low-1, gen_name))
+        bdb.execute('''DROP MODELS %d-%d FROM %s'''
                     % (high, model_count-1, gen_name))
         yield
 
