@@ -69,7 +69,7 @@ def analyze_fileset(files):
         with bayeslite.bayesdb_open(fname) as bdb:
             incorporate(results,
                 [((fname, model_ct, name), ress)
-                 for ((model_ct, name), ress) in analyze_queries(bdb)])
+                 for ((model_ct, name), ress) in analyze_queries(bdb).iteritems()])
 
 def model_specs():
     def spec_at(location, size):
