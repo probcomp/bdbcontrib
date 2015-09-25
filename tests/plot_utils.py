@@ -77,5 +77,12 @@ def main():
              show_full=False)
     plt.savefig('fig1.png')
 
+    # again, to exercise the no-color-by code path
+    plt.figure(tight_layout=True, facecolor='white')
+    _pairplot(df, bdb=bdb, generator_name='plottest_cc',
+             use_shortname=False, show_contour=False,
+             show_full=False)
+    plt.savefig('fig2.png')
+
 if __name__ == '__main__':
     main()
