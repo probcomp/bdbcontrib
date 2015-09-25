@@ -111,15 +111,22 @@ def analyze_queries(bdb):
 ## Visualization                                                    ##
 ######################################################################
 
-def plot_results(results):
+def plot_results_q(results, query):
     # results :: dict (file_name, model_ct, query_name) : result_set
-    data = ((fname, model_ct, qname, value)
+    data = ((fname, model_ct, value)
         for ((fname, model_ct, qname), values) in results.iteritems()
+        if qname == query
         for value in values)
-    df = pd.DataFrame.from_records(data, columns=["file", "n_models", "query", "value"]).replace([False, True], [0,1])
-    g = sns.FacetGrid(df, row="query", col="n_models")
+    df = pd.DataFrame.from_records(data, columns=["file", "n_models", "value"]).replace([False, True], [0,1])
+    g = sns.FacetGrid(df, col="n_models")
     g.map(sns.violinplot, "file", "value")
     return g
+
+def plot_results(results, basename="fig", ext=".png"):
+    queries = sorted(set(qname for ((_, _, qname), _) in results.iteritems()))
+    for query in queries:
+        fig = plot_results_q(results, query)
+        fig.savefig(basename + "-" + query + ext)
 
 ######################################################################
 ## Queries                                                          ##
@@ -157,6 +164,5 @@ def country_purpose_queries(bdb):
 ## Driver                                                           ##
 ######################################################################
 
-fig = plot_results(analyze_fileset(["output/satellites-2015-09-24-axch-4m-%di.bdb" % i
-                                    for i in range(2)]))
-fig.savefig("fig.png")
+plot_results(analyze_fileset(["output/satellites-2015-09-24-axch-4m-%di.bdb" % j
+                              for j in range(2)]))
