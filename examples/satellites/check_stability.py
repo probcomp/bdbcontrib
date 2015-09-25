@@ -15,6 +15,7 @@
 #   limitations under the License.
 
 import contextlib
+import string
 import time
 
 import pandas as pd
@@ -125,8 +126,9 @@ def plot_results_q(results, query):
 def plot_results(results, basename="fig", ext=".png"):
     queries = sorted(set(qname for ((_, _, qname), _) in results.iteritems()))
     for query in queries:
-        fig = plot_results_q(results, query)
-        fig.savefig(basename + "-" + query + ext)
+        grid = plot_results_q(results, query)
+        grid.fig.suptitle(query)
+        grid.savefig(basename + "-" + string.replace(query, " ", "-") + ext)
 
 ######################################################################
 ## Queries                                                          ##
