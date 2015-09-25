@@ -50,6 +50,7 @@ def main():
 
     input_df = pd.DataFrame(T, columns=['col_%i' % i for i in range(num_cols)])
 
+    os.environ['BAYESDB_WIZARD_MODE']='1'
     bdb = bayeslite.bayesdb_open()
     bayesdb_read_pandas_df(bdb, table_name, input_df, create=True)
     bdb.execute('''

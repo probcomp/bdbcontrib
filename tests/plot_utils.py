@@ -48,6 +48,7 @@ def main():
     filename = 'plottest.csv'
     df.to_csv(filename)
 
+    os.environ['BAYESDB_WIZARD_MODE']='1'
     bdb = bayeslite.bayesdb_open()
     bayesdb_read_csv_file(bdb, 'plottest', filename, header=True, create=True)
     bdb.execute('''
