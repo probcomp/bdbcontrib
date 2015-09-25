@@ -477,16 +477,11 @@ def do_violinplot(plot_df, vartypes, **kwargs):
     unique_vals = np.sort(unique_vals)
     n_vals = len(plot_df[groupby].unique())
 
-    if vert:
-        vals = plot_df.columns[1]
-    else:
-        vals = plot_df.columns[0]
-
     if dummy:
         sub_vals = np.sort(plot_df[groupby].unique())
         axis = sns.violinplot(
-            x=(groupby if vert else vals),
-            y=(vals if vert else groupby),
+            x=plot_df.columns[0],
+            y=plot_df.columns[1],
             data=NonZeroDWIMFrameWrapper(plot_df),
             order=sub_vals, hue=plot_df.columns[2],
             names=sub_vals, ax=ax, orient=("v" if vert else "h"),
@@ -494,8 +489,8 @@ def do_violinplot(plot_df, vartypes, **kwargs):
         axis.legend_ = None
     else:
         sns.violinplot(
-            x=(groupby if vert else vals),
-            y=(vals if vert else groupby),
+            x=plot_df.columns[0],
+            y=plot_df.columns[1],
             data=NonZeroDWIMFrameWrapper(plot_df),
             order=unique_vals, names=unique_vals, ax=ax,
             orient=("v" if vert else "h"),
