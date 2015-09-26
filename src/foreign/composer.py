@@ -67,9 +67,10 @@ CREATE TABLE bayesdb_composer_column_toposort(
     position INTEGER NOT NULL,
         CHECK (0 <= position)
 
-    PRIMARY KEY(generator_id, colno, position),
+    PRIMARY KEY(generator_id, colno),
     FOREIGN KEY(generator_id, colno)
-        REFERENCES bayesdb_generator_column(generator_id, colno)
+        REFERENCES bayesdb_generator_column(generator_id, colno),
+    UNIQUE (generator_id, position)
 );
 @
 CREATE TRIGGER bayesdb_composer_column_toposort_check
@@ -129,7 +130,7 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
             version = row[0]
         assert version is not None
         if version == 0:
-            # XXX Using `@` since `;` breaks TRIGGER.
+            # XXX `@` delimiter since `;` breaks TRIGGER.
             for stmt in composer_schema_1.split('@'):
                 bdb.sql_execute(stmt)
         return
@@ -248,15 +249,15 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
     def initialize_models(self, bdb, genid, modelnos, model_config):
         # Initialize internal crosscat. If k models of composer are instantiated
         # then k internal CC models will be created (1-1 mapping).
-        cc_name = bayesdb_generator_name(bdb, self.get_cc_id(bdb, genid))
         bql = """
             INITIALIZE {} MODELS FOR {};
-            """.format(len(modelnos), self.cc_name)
+            """.format(len(modelnos),
+                    bayesdb_generator_name(bdb, self.get_cc_id(bdb, genid)))
         bdb.execute(bql)
         # Obtain the dataframe for foreign predictors.
         df = bdbcontrib.cursor_to_df(bdb.execute('''
-            SELECT * FROM {}
-            '''.format(bayesdb_generator_table(bdb, genid))))
+                SELECT * FROM {}
+                '''.format(bayesdb_generator_table(bdb, genid))))
         # Initialize the foriegn predictors.
         for f_target, f_conditions in self.fcols.items():
             # Convert column numbers to names.
@@ -308,43 +309,43 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
         # Trivial case.
         if colno0 == colno1:
             return 1
-        # Determine which object modeled colno0, colno1
-        c0_foreign = colno0 in self.fcols
-        c1_foreign = colno1 in self.fcols
-        # If neither col is foreign, delegate to CrossCat.
+        fcols = set(self.get_fcols(bdb, genid))
+        c0_foreign = colno0 in fcols
+        c1_foreign = colno1 in fcols
+        # Neither col is foreign, delegate to CrossCat.
+        # XXX Fails for future implementation of conditional dependence.
         if not (c0_foreign or c1_foreign):
             return self.cc.column_dependence_probability(bdb,
                 self.get_cc_id(bdb, genid), modelno,
-                self._get_cc_colno(bdb, genid, colno0),
-                self._get_cc_colno(bdb, genid, colno1))
+                self.get_cc_colno(bdb, genid, colno0),
+                self.get_cc_colno(bdb, genid, colno1))
         # (colno0, colno1) form a (target, given) pair.
-        # wE explicitly modeled them as dependent by assumption.
+        # WE explicitly modeled them as dependent by assumption.
         # TODO: Strong assumption? What if FP determines it is not
         # dependent on one of its conditions? (ie 0 coeff in regression)
-        if colno0 in self.fcols.get(colno1, []) or \
-                colno1 in self.fcols.get(colno0, []):
+        if colno0 in self.get_pcols(bdb, genid, colno1) or \
+                colno1 in self.get_pcols(bdb, genid, colno0):
             return 1
         # (colno0, colno1) form a local, foreign pair.
         # IF [col0 FP target], [col1 CC], and [all conditions of col0 IND col1]
         #   then [col0 IND col1].
-        # XXX The reverse is not true generally (counterxample), but we shall
+        # XXX Reverse is not true generally (counterxample), but we shall
         # assume an IFF condition. This assumption is not unlike the transitive
-        # closure property of independence in CrossCat.
+        # closure property of independence in crosscat.
         if (c0_foreign and not c1_foreign) or \
                 (c1_foreign and not c0_foreign):
             fcol = colno0 if c0_foreign else colno1
             lcol = colno1 if c0_foreign else colno0
-            return any(self._column_dependence_probability(bdb, genid,
-                modelno, cond, lcol) for cond in self.fcols[fcol])
+            return any(self._column_dependence_probability(bdb, genid, modelno,
+                pcol, lcol) for pcol in self.get_pcols(bdb, genid, fcol))
         # XXX TODO: Determine independence semantics for this case.
         # Both columns are foreign. (Recursively) return 1 if any of their
         # conditions (possibly FPs) have dependencies.
         assert c0_foreign and c1_foreign
         return any(self._column_dependence_probability(bdb, genid, modelno,
-            cond0, cond1)
-            for cond0 in self.fcols[colno0]
-            for cond1 in self.fcols[colno1])
-
+            pcol0, pcol1)
+            for pcol0 in self.get_pcols(bdb, genid, colno0)
+            for pcol1 in self.get_pcols(bdb, genid, colno1))
 
     def column_mutual_information(self, bdb, genid, modelno, colno0, colno1,
             numsamples=100):
@@ -390,7 +391,6 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
             p = self._joint_logpdf(bdb, genid, modelno, [(colno, value)],
                 constraints)
         return math.exp(p)
-
 
     def _joint_logpdf(self, bdb, genid, modelno, Q, Y, n_samples=None):
         # XXX Computes the joint probability of query Q given evidence Y
@@ -491,7 +491,6 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
             imp_conf = math.exp(self.get_fp[colno].logpdf(imp_val,
                 conditions)) if colno in self.fcols else \
                 sum(np.array(samples)==imp_val) / len(samples)
-
         elif stattype == 'numerical':
             # XXX The definition of confidence is P[k=1] where
             # k=1 is the number of mixture componets (we need a distribution
@@ -501,13 +500,10 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
             imp_val = np.mean(samples)
             imp_conf = su.continuous_imputation_confidence(samples,
                 None, None, n_steps=1000)
-
         else:
             raise ValueError('Unknown stattype {} for a foreign predictor '
                 'column encountered in predict_confidence.'.format(stattype))
-
         return imp_val, imp_conf * parent_conf
-
 
     def simulate(self, bdb, genid, modelno, constraints, colnos,
             numpredictions=1):
@@ -667,26 +663,34 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
         ''', (genid,))
         return cursor.fetchall()[0][0]
 
-    def get_fcols(self, bdb, genid):
-        cursor = bdb.sql_execute('''
-            SELECT colno FROM bayesdb_composer_column_owner
-                WHERE generator_id = genid AND local = FALSE
-                ORDER BY colno ASC
-        ''', (genid,))
-        return [row[0] for row in cursor]
-
     def get_lcols(self, bdb, genid):
         cursor = bdb.sql_execute('''
             SELECT colno FROM bayesdb_composer_column_owner
-                WHERE generator_id = genid AND local = TRUE
+                WHERE generator_id = genid AND local = 1
                 ORDER BY colno ASC
         ''', (genid,))
-        return [row[0] for row in cursor]
+        return set([row[0] for row in cursor])
+
+    def get_fcols(self, bdb, genid):
+        cursor = bdb.sql_execute('''
+            SELECT colno FROM bayesdb_composer_column_owner
+                WHERE generator_id = ? AND local = 0
+                ORDER BY colno ASC
+        ''', (genid,))
+        return set([row[0] for row in cursor])
+
+    def get_pcols(self, bdb, genid, fcolno):
+        cursor = bdb.sql_execute('''
+            SELECT pcolno FROM bayesdb_composer_column_parents
+                WHERE generator_id = ? AND fcolno = ?
+                ORDER BY pcolno ASC
+        ''', (genid, fcolno))
+        return set([row[0] for row in cursor])
 
     def get_topo(self, bdb, genid):
         cursor = bdb.sql_execute('''
-            SELECT colno FROM bayesdb_composer_column_toposort
-                WHERE generator_id = genid
-                ORDER BY position ASC
-        ''', (genid,))
+                SELECT colno FROM bayesdb_composer_column_toposort
+                    WHERE generator_id = ?
+                    ORDER BY position ASC
+            ''', (genid,))
         return [row[0] for row in cursor]
