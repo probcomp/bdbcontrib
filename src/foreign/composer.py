@@ -79,7 +79,8 @@ BEGIN
         WHEN (NOT EXISTS(SELECT generator_id, colno
                 FROM bayesdb_composer_column_owner WHERE colno=NEW.colno AND
                 local = 0))
-        THEN RAISE(ABORT, 'Columns in toposort must be foreign.')
+        THEN RAISE(ABORT, 'Columns in bayesdb_composer_column_toposort
+            must be foreign.')
     END;
 END;
 @
@@ -213,12 +214,11 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
         cc_genid = self.cc_id
         # Save local/foreign columns.
         for colno, _, _ in columns:
-            local = bayesdb_generator_column_name(bdb, genid, colno) not\
-                in self.fcols
+            local = colno not in self.fcols
             bdb.sql_execute('''
                 INSERT INTO bayesdb_composer_column_owner
                     (generator_id, colno, local) VALUES (?,?,?)
-            ''', (genid, colno, not local,))
+            ''', (genid, colno, int(local),))
         # Save parents of foreign columns.
         for fcolno in self.fcols:
             for pcolno in self.fcols[fcolno]:
@@ -246,14 +246,13 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
             'Feature coming soon.')
 
     def initialize_models(self, bdb, genid, modelnos, model_config):
-        # Initialize internal Crosscat. If k models of Composer are instantiated
-        # then k internal CC models will be created, with a 1-1 mapping.
+        # Initialize internal crosscat. If k models of composer are instantiated
+        # then k internal CC models will be created (1-1 mapping).
         cc_name = bayesdb_generator_name(bdb, self.get_cc_id(bdb, genid))
         bql = """
             INITIALIZE {} MODELS FOR {};
             """.format(len(modelnos), self.cc_name)
         bdb.execute(bql)
-
         # Obtain the dataframe for foreign predictors.
         df = bdbcontrib.cursor_to_df(bdb.execute('''
             SELECT * FROM {}
