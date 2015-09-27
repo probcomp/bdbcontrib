@@ -127,3 +127,6 @@ def deserialize(binary):
     kl = KeplersLaw(targets=state['targets'], conditions=state['conditions'],
         noise=state['noise'])
     return kl
+
+def name():
+    return 'keplers_law'

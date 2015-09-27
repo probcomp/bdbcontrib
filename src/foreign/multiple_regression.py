@@ -272,3 +272,6 @@ def deserialize(binary):
         mr_partial_noise=state['mr_partial_noise'],
         lookup=state['lookup'])
     return mr
+
+def name():
+    return 'multiple_regression'

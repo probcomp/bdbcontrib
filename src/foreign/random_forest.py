@@ -273,3 +273,6 @@ def deserialize(binary):
         rf_full=state['rf_full'], rf_partial=state['rf_partial'],
         lookup=state['lookup'])
     return rf
+
+def name():
+    return 'random_forest'
