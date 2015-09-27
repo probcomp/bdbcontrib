@@ -16,6 +16,8 @@
 
 # TODO: Update the interface for multivariate targets.
 
+import pickle
+
 import numpy as np
 import pandas as pd
 
@@ -38,7 +40,12 @@ class KeplersLaw(predictor.IForeignPredictor):
     conditions =['Apogee_km', 'Perigee_km']
     targets = ['Period_minutes']
 
-    def __init__(self, df, targets, conditions):
+    def __init__(self, targets=None, conditions=None, noise=None):
+        self.targets = targets
+        self.conditions = conditions
+        self.noise = noise
+
+    def train(self, df, targets, conditions):
         # Obtain the targets column.
         if len(targets) != 1:
             raise ValueError('OrbitalMechanics can only targets one '
@@ -103,5 +110,20 @@ class KeplersLaw(predictor.IForeignPredictor):
         a = 0.5*(abs(apogee_km) + abs(perigee_km)) + EARTH_RADIUS
         return 2 * np.pi * np.sqrt(a**3/GM)
 
-def create_predictor(df, targets, conditions):
-    return KeplersLaw(df, targets, conditions)
+def create(df, targets, conditions):
+    kl = KeplersLaw()
+    kl.train(df, targets, conditions)
+    return kl
+
+def serialize(predictor):
+    state = {'targets': predictor.targets,
+        'conditions': predictor.conditions,
+        'noise': predictor.noise
+        }
+    return pickle.dumps(state)
+
+def deserialize(binary):
+    state = pickle.loads(binary)
+    kl = KeplersLaw(targets=state['targets'], conditions=state['conditions'],
+        noise=state['noise'])
+    return kl

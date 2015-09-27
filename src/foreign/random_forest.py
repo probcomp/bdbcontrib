@@ -16,6 +16,8 @@
 
 # TODO: Update the interface for multivariate targets.
 
+import pickle
+
 import numpy as np
 import pandas as pd
 from sklearn.ensemble import RandomForestClassifier
@@ -30,13 +32,13 @@ class RandomForest(predictor.IForeignPredictor):
     Example
     -------
     >> df = pd.read_csv('/path/to/satellites.csv')
-    >> RF = RandomForest(df)
-    >> RF.probability('Intermediate', Perigee_km=535, Apogee_km=551,
+    >> rf = RandomForest()
+    >> rf.probability('Intermediate', Perigee_km=535, Apogee_km=551,
             Eccentricity=0.00116, Period_minutes=95.5, Launch_Mass_kg=293,
             Power_watts=414,Anticipated_Lifetime=3, Class_of_Orbit='LEO'
             Purpose='Astrophysics', Users='Government/Civil')
     0.8499
-    >> RF.simulate(10, Perigee_km=535, Apogee_km=551,
+    >> rf.simulate(10, Perigee_km=535, Apogee_km=551,
             Eccentricity=0.00116, Period_minutes=95.5, Launch_Mass_kg=293,
             Power_watts=414,Anticipated_Lifetime=3, Class_of_Orbit='LEO',
             Purpose='Astrophysics', Users='Government/Civil')
@@ -49,20 +51,33 @@ class RandomForest(predictor.IForeignPredictor):
     ----------
     Please do not mess around with any (exploring is ok).
     """
-    def __init__(self, df, targets, conditions):
+    def __init__(self, targets=None, conditions_numerical=None,
+            conditions_categorical=None, rf_full=None, rf_partial=None,
+            lookup=None):
+        self.targets = targets
+        self.conditions_numerical = conditions_numerical
+        self.conditions_categorical = conditions_categorical
+        if (conditions_numerical is not None
+                and conditions_categorical is not None):
+            self.conditions = self.conditions_numerical + \
+                self.conditions_categorical
+        self.rf_full = rf_full
+        self.rf_partial = rf_partial
+        self.lookup = lookup
+
+    def train(self, df, targets, conditions):
         # Obtain the targets column.
         if len(targets) != 1:
-            raise ValueError('RandomForest can only targets one '
-                'column. Received {}'.format(targets))
+            raise ValueError('RandomForest requires exactly one column in '
+                'targets. Received {}'.format(targets))
         if targets[0][1].lower() != 'categorical':
             raise ValueError('RandomForest can only classify CATEGORICAL '
                 'columns. Received {}'.format(targets))
         self.targets = [targets[0][0]]
-
         # Obtain the condition columns.
         if len(conditions) < 1:
-            raise ValueError('RandomForest requires at least one conditions '
-                'column. Received {}'.format(conditions))
+            raise ValueError('RandomForest requires at least one column in '
+                'conditions. Received {}'.format(conditions))
         self.conditions_categorical = []
         self.conditions_numerical = []
         for c in conditions:
@@ -72,7 +87,6 @@ class RandomForest(predictor.IForeignPredictor):
                 self.conditions_numerical.append(c[0])
         self.conditions = self.conditions_numerical + \
             self.conditions_categorical
-
         # The dataset.
         self.dataset = pd.DataFrame()
         # Lookup for categoricals to code.
@@ -84,7 +98,6 @@ class RandomForest(predictor.IForeignPredictor):
         # Random Forests.
         self.rf_partial = RandomForestClassifier(n_estimators=100)
         self.rf_full = RandomForestClassifier(n_estimators=100)
-
         # Build the foreign predictor.
         self._init_dataset(df)
         self._init_categorical_lookup()
@@ -208,7 +221,6 @@ class RandomForest(predictor.IForeignPredictor):
             for cat in self.conditions_categorical])
 
         X_numerical = [conditions[col] for col in self.conditions_numerical]
-
         if unseen:
             distribution = self.rf_partial.predict_proba(X_numerical)
             classes = self.rf_partial.classes_
@@ -219,7 +231,6 @@ class RandomForest(predictor.IForeignPredictor):
             distribution = self.rf_full.predict_proba(
                 np.hstack((X_numerical, X_categorical)))
             classes = self.rf_partial.classes_
-
         return distribution[0], classes
 
     def get_targets(self):
@@ -239,5 +250,26 @@ class RandomForest(predictor.IForeignPredictor):
             return -float('inf')
         return np.log(distribution[np.where(classes==targets_val)[0][0]])
 
-def create_predictor(df, targets, conditions):
-    return RandomForest(df, targets, conditions)
+def create(df, targets, conditions):
+    rf = RandomForest()
+    rf.train(df, targets, conditions)
+    return rf
+
+def serialize(predictor):
+    state = {'targets': predictor.targets,
+        'conditions_numerical': predictor.conditions_numerical,
+        'conditions_categorical': predictor.conditions_categorical,
+        'rf_full': predictor.rf_full,
+        'rf_partial': predictor.rf_partial,
+        'lookup': predictor.lookup
+        }
+    return pickle.dumps(state)
+
+def deserialize(binary):
+    state = pickle.loads(binary)
+    rf = RandomForest(targets=state['targets'],
+        conditions_numerical=state['conditions_numerical'],
+        conditions_categorical=state['conditions_categorical'],
+        rf_full=state['rf_full'], rf_partial=state['rf_partial'],
+        lookup=state['lookup'])
+    return rf

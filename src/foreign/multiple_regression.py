@@ -16,6 +16,8 @@
 
 # TODO: Update the interface for multivariate targets.
 
+import pickle
+
 import numpy as np
 import pandas as pd
 
@@ -33,11 +35,27 @@ class MultipleRegression(predictor.IForeignPredictor):
     ----------
     Please do not mess around with any (exploring is ok).
     """
-    def __init__(self, df, targets, conditions):
+    def __init__(self, targets=None, conditions_numerical=None,
+            conditions_categorical=None, mr_full=None, mr_partial=None,
+            mr_full_noise=None, mr_partial_noise=None, lookup=None):
+        self.targets = targets
+        self.conditions_numerical = conditions_numerical
+        self.conditions_categorical = conditions_categorical
+        if (self.conditions_numerical is not None
+                and self.conditions_categorical is not None):
+            self.conditions = self.conditions_numerical + \
+                self.conditions_categorical
+        self.mr_full = mr_full
+        self.mr_partial = mr_partial
+        self.mr_full_noise = mr_full_noise
+        self.mr_partial_noise = mr_partial_noise
+        self.lookup = lookup
+
+    def train(self, df, targets, conditions):
         # Obtain the targets column.
         if len(targets) != 1:
-            raise ValueError('MultipleRegression can only targets one '
-                'column. Received {}'.format(targets))
+            raise ValueError('MultipleRegression requires at least one column '
+                'in targets. Received {}'.format(targets))
         if targets[0][1].lower() != 'numerical':
             raise ValueError('MultipleRegression can only regress NUMERICAL '
                 'columns. Received {}'.format(targets))
@@ -45,8 +63,8 @@ class MultipleRegression(predictor.IForeignPredictor):
 
         # Obtain the condition columns.
         if len(conditions) < 1:
-            raise ValueError('MultipleRegression requires at least one conditions '
-                'column. Received {}'.format(conditions))
+            raise ValueError('MultipleRegression requires at least one '
+                'column in conditions. Received {}'.format(conditions))
         self.conditions_categorical = []
         self.conditions_numerical = []
         for c in conditions:
@@ -227,5 +245,30 @@ class MultipleRegression(predictor.IForeignPredictor):
         prediction, noise = self._compute_targets_distribution(conditions)
         return norm.logpdf(targets_val, loc=prediction, scale=noise)
 
-def create_predictor(df, targets, conditions):
-    return MultipleRegression(df, targets, conditions)
+def create(df, targets, conditions):
+    mr = MultipleRegression()
+    mr.train(df, targets, conditions)
+    return mr
+
+def serialize(predictor):
+    state = {'targets': predictor.targets,
+        'conditions_numerical': predictor.conditions_numerical,
+        'conditions_categorical': predictor.conditions_categorical,
+        'mr_full': predictor.mr_full,
+        'mr_partial': predictor.mr_partial,
+        'mr_full_noise': predictor.mr_full_noise,
+        'mr_partial_noise': predictor.mr_partial_noise,
+        'lookup': predictor.lookup
+        }
+    return pickle.dumps(state)
+
+def deserialize(binary):
+    state = pickle.loads(binary)
+    mr = MultipleRegression(targets=state['targets'],
+        conditions_numerical=state['conditions_numerical'],
+        conditions_categorical=state['conditions_categorical'],
+        mr_full=state['mr_full'], mr_partial=state['mr_partial'],
+        mr_full_noise=state['mr_full_noise'],
+        mr_partial_noise=state['mr_partial_noise'],
+        lookup=state['lookup'])
+    return mr
