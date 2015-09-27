@@ -32,6 +32,8 @@ class IBayesDBForeignPredictor(object):
 
         Simulate and logpdf both require a full realization of all `conditions`.
 
+    TODO: Extended interface for serialization of foreign predictors.
+
     Explicit initialization of foreign predictors using parameters in `__init__`
     is strongly discouraged.
     """
