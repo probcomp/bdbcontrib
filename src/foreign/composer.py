@@ -774,6 +774,11 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
                     WHERE generator_id = ? AND colno = ?
             ''', (genid, fcol))
             name, binary = cursor.fetchall()[0]
-            builder = self.fp_builders[name]
+            builder = self.fp_builders.get(name, None)
+            if builder is None:
+                raise LookupError('Foreign predictor {} for column {} '
+                    'not registered. Currently registered: {}.'.format(
+                        name, bayesdb_generator_column_name(bdb, genid, fcol),
+                        self.fp_builders))
             self.fp_cache[(genid, fcol)] = builder.deserialize(binary)
         return self.fp_cache[(genid, fcol)]
