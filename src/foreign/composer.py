@@ -131,8 +131,9 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
         assert version is not None
         if version == 0:
             # XXX `@` delimiter since `;` breaks TRIGGER.
-            for stmt in composer_schema_1.split('@'):
-                bdb.sql_execute(stmt)
+            with bdb.savepoint():
+                for stmt in composer_schema_1.split('@'):
+                    bdb.sql_execute(stmt)
         return
 
     def create_generator(self, bdb, table, schema, instantiate):
@@ -161,21 +162,18 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
             ('Type_of_Orbit', 'CATEGORICAL'),
             ('Period_minutes', 'NUMERICAL')
         ]
-        # Maps FP target columns (fcol) to their conditions columns .
-        # Currenlty strings, but will be mapped to columns after instantiate.
-        fcols_pcols = {
-            # Orbital Mechanics
-            'Period_minutes' : ['Apogee_km', 'Perigee_km'],
-            # Random Forest
-            'Type_of_Orbit' : ['Apogee_km', 'Perigee_km', 'Eccentricity',
-                'Period_minutes', 'Launch_Mass_kg', 'Power_watts',
-                'Anticipated_Lifetime', 'Class_of_orbit']
-        }
         # Maps target FP columns to module for initializing FP objects
         # Will be replaced by actual object when initialize is called.
         get_fp = {
             'Type_of_Orbit' : importlib.import_module('random_forest'),
             'Period_minutes' : importlib.import_module('keplers_law')
+        }
+        # Maps FP target columns (fcol) to their conditions columns .
+        fcols_pcols = {
+            'Period_minutes' : ['Apogee_km', 'Perigee_km'],
+            'Type_of_Orbit' : ['Apogee_km', 'Perigee_km', 'Eccentricity',
+                'Period_minutes', 'Launch_Mass_kg', 'Power_watts',
+                'Anticipated_Lifetime', 'Class_of_orbit']
         }
         # lcols = local columns modeled by CrossCat.
         lcol_schema = [(col,stat) for (col,stat) in schema if col not in
@@ -206,33 +204,34 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
         """.format(cc_name, ignore, cc_cols)
         bdb.execute(bql)
         # Save lcols/fcols.
-        for colno, _, _ in columns:
-            local = colno not in fcols
-            bdb.sql_execute('''
-                INSERT INTO bayesdb_composer_column_owner
-                    (generator_id, colno, local) VALUES (?,?,?)
-            ''', (genid, colno, int(local),))
-        # Save parents of foreign columns.
-        for fcolno in fcols:
-            for pcolno in fcols[fcolno]:
+        with bdb.savepoint():
+            for colno, _, _ in columns:
+                local = colno not in fcols
                 bdb.sql_execute('''
-                    INSERT INTO bayesdb_composer_column_parents
-                        (generator_id, fcolno, pcolno) VALUES (?,?,?)
-                ''', (genid, fcolno, pcolno,))
-        # Save topological order.
-        topo = self.topolgical_sort(fcols)
-        position = 0
-        for colno, parents in topo:
+                    INSERT INTO bayesdb_composer_column_owner
+                        (generator_id, colno, local) VALUES (?,?,?)
+                ''', (genid, colno, int(local),))
+            # Save parents of foreign columns.
+            for fcolno in fcols:
+                for pcolno in fcols[fcolno]:
+                    bdb.sql_execute('''
+                        INSERT INTO bayesdb_composer_column_parents
+                            (generator_id, fcolno, pcolno) VALUES (?,?,?)
+                    ''', (genid, fcolno, pcolno,))
+            # Save topological order.
+            topo = self.topolgical_sort(fcols)
+            position = 0
+            for colno, parents in topo:
+                bdb.sql_execute('''
+                    INSERT INTO bayesdb_composer_column_toposort
+                        (generator_id, colno, position) VALUES (?,?,?)
+                    ''',(genid, colno, position,))
+                position += 1
+            # Save internal cc generator id.
             bdb.sql_execute('''
-                INSERT INTO bayesdb_composer_column_toposort
-                    (generator_id, colno, position) VALUES (?,?,?)
-                ''',(genid, colno, position,))
-            position += 1
-        # Save internal cc generator id.
-        bdb.sql_execute('''
-            INSERT INTO bayesdb_composer_cc_id
-                (generator_id, crosscat_generator_id) VALUES (?,?)
-        ''',(genid, bayesdb_get_generator(bdb, cc_name),))
+                INSERT INTO bayesdb_composer_cc_id
+                    (generator_id, crosscat_generator_id) VALUES (?,?)
+            ''',(genid, bayesdb_get_generator(bdb, cc_name),))
 
     def drop_generator(self, bdb, genid):
         raise NotImplementedError('Composer generators cannot be dropped. '
