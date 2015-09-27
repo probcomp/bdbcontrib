@@ -188,7 +188,7 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
         self.get_fp = {}
         fcols = {}
         for f in fcols_pcols:
-            fcolno = bayesdb_generator_column_number(bdb, genid,c f)
+            fcolno = bayesdb_generator_column_number(bdb, genid, f)
             fcols[fcolno] = [bayesdb_generator_column_number(bdb,
                 genid, col) for col in fcols_pcols[f]]
             self.get_fp[fcolno] = get_fp[f]
