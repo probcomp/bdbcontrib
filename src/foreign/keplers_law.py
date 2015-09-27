@@ -76,11 +76,14 @@ class KeplersLaw(predictor.IBayesDBForeignPredictor):
             [errors<np.percentile(errors, 95)], [errors]))
         self.noise = np.sqrt(np.mean(errors**2))
 
-    def get_targets(self):
-        return self.targets
-
-    def get_conditions(self):
-        return self.conditions
+    def _compute_period(self, apogee_km, perigee_km):
+        """Computes the period of the satellite in seconds given the apogee_km
+        and perigee_km of the satellite.
+        """
+        GM = 398600.4418
+        EARTH_RADIUS = 6378
+        a = 0.5*(abs(apogee_km) + abs(perigee_km)) + EARTH_RADIUS
+        return 2 * np.pi * np.sqrt(a**3/GM)
 
     def simulate(self, n_samples, conditions):
         if not set(self.conditions).issubset(set(conditions.keys())):
@@ -101,14 +104,11 @@ class KeplersLaw(predictor.IBayesDBForeignPredictor):
             conditions[self.conditions[1]]) / 60.
         return norm.logpdf(targets_val, loc=period, scale=self.noise)
 
-    def _compute_period(self, apogee_km, perigee_km):
-        """Computes the period of the satellite in seconds given the apogee_km
-        and perigee_km of the satellite.
-        """
-        GM = 398600.4418
-        EARTH_RADIUS = 6378
-        a = 0.5*(abs(apogee_km) + abs(perigee_km)) + EARTH_RADIUS
-        return 2 * np.pi * np.sqrt(a**3/GM)
+    def get_targets(self):
+        return self.targets
+
+    def get_conditions(self):
+        return self.conditions
 
 def create(df, targets, conditions):
     kl = KeplersLaw()
@@ -116,10 +116,11 @@ def create(df, targets, conditions):
     return kl
 
 def serialize(predictor):
-    state = {'targets': predictor.targets,
+    state = {
+        'targets': predictor.targets,
         'conditions': predictor.conditions,
         'noise': predictor.noise
-        }
+    }
     return pickle.dumps(state)
 
 def deserialize(binary):

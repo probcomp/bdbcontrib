@@ -201,12 +201,6 @@ class MultipleRegression(predictor.IBayesDBForeignPredictor):
             np.linalg.norm(self.Y-self.mr_full.predict(
                 np.hstack((self.X_numerical, self.X_categorical))))/len(self.Y)
 
-    def get_targets(self):
-        return self.targets
-
-    def get_conditions(self):
-        return self.conditions
-
     def _compute_targets_distribution(self, conditions):
         """Given conditions dict {feature_col:val}, returns the conditional
         mean of the `targets`, and the scale of the Gaussian noise.
@@ -245,13 +239,20 @@ class MultipleRegression(predictor.IBayesDBForeignPredictor):
         prediction, noise = self._compute_targets_distribution(conditions)
         return norm.logpdf(targets_val, loc=prediction, scale=noise)
 
+    def get_targets(self):
+        return self.targets
+
+    def get_conditions(self):
+        return self.conditions
+
 def create(df, targets, conditions):
     mr = MultipleRegression()
     mr.train(df, targets, conditions)
     return mr
 
 def serialize(predictor):
-    state = {'targets': predictor.targets,
+    state = {
+        'targets': predictor.targets,
         'conditions_numerical': predictor.conditions_numerical,
         'conditions_categorical': predictor.conditions_categorical,
         'mr_full': predictor.mr_full,
@@ -259,7 +260,7 @@ def serialize(predictor):
         'mr_full_noise': predictor.mr_full_noise,
         'mr_partial_noise': predictor.mr_partial_noise,
         'lookup': predictor.lookup
-        }
+    }
     return pickle.dumps(state)
 
 def deserialize(binary):

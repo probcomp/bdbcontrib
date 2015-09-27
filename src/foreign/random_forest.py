@@ -233,12 +233,6 @@ class RandomForest(predictor.IBayesDBForeignPredictor):
             classes = self.rf_partial.classes_
         return distribution[0], classes
 
-    def get_targets(self):
-        return self.targets
-
-    def get_conditions(self):
-        return self.conditions
-
     def simulate(self, n_samples, conditions):
         distribution, classes = self._compute_targets_distribution(conditions)
         draws = np.random.multinomial(1, distribution, size=n_samples)
@@ -250,19 +244,26 @@ class RandomForest(predictor.IBayesDBForeignPredictor):
             return -float('inf')
         return np.log(distribution[np.where(classes==targets_val)[0][0]])
 
+    def get_targets(self):
+        return self.targets
+
+    def get_conditions(self):
+        return self.conditions
+
 def create(df, targets, conditions):
     rf = RandomForest()
     rf.train(df, targets, conditions)
     return rf
 
 def serialize(predictor):
-    state = {'targets': predictor.targets,
+    state = {
+        'targets': predictor.targets,
         'conditions_numerical': predictor.conditions_numerical,
         'conditions_categorical': predictor.conditions_categorical,
         'rf_full': predictor.rf_full,
         'rf_partial': predictor.rf_partial,
         'lookup': predictor.lookup
-        }
+    }
     return pickle.dumps(state)
 
 def deserialize(binary):
