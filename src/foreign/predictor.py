@@ -22,7 +22,7 @@ class IForeignPredictor(object):
 
     The primitives that an FP must support are:
 
-        - Initialize, given as inputs a
+        - Train, given as inputs a
             Pandas dataframe, which contains the training data.
             Set of targets, which the FP is responsible for generating.
             Set of conditions, which the FP may use to generate targets.
@@ -31,9 +31,12 @@ class IForeignPredictor(object):
         - Evaluate the logpdf of targets taking certain values.
 
         Simulate and logpdf both require a full realization of all `conditions`.
+
+    Explicit initialization of foreign predictors using parameters in `__init__`
+    is strongly discouraged.
     """
-    def __init__(self, df, targets, conditions):
-        """Initializes and trains the the foriegn predictor.
+    def train(self, df, targets, conditions):
+        """Trains the the foriegn predictor.
 
         Parameters
         ----------
