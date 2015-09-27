@@ -131,6 +131,7 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
     def __init__(self):
         # In-memory map of registered foreign predictor builders.
         self.fp_builders = {}
+        self.fp_cache = {}
 
     def register_fp_builder(self, fp_builder):
         """Register an object which builds a foreign predictor. The `fp_builder`
@@ -766,11 +767,13 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
         return cursor.fetchall()[0][0]
 
     def get_predictor(self, bdb, genid, fcol):
-        cursor = bdb.sql_execute('''
-            SELECT predictor_name, predictor_binary
-                FROM bayesdb_composer_column_foreign_predictor
-                WHERE generator_id = ? AND colno = ?
-        ''', (genid, fcol))
-        name, binary = cursor.fetchall()[0]
-        builder = self.fp_builders[name]
-        return builder.deserialize(binary)
+        if (genid, fcol) not in self.fp_cache:
+            cursor = bdb.sql_execute('''
+                SELECT predictor_name, predictor_binary
+                    FROM bayesdb_composer_column_foreign_predictor
+                    WHERE generator_id = ? AND colno = ?
+            ''', (genid, fcol))
+            name, binary = cursor.fetchall()[0]
+            builder = self.fp_builders[name]
+            self.fp_cache[(genid, fcol)] = builder.deserialize(binary)
+        return self.fp_cache[(genid, fcol)]
