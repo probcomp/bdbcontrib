@@ -639,12 +639,12 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
                     'topological_sort.')
         return graph_sorted
 
-    def get_cc_colno(self, bdb, genid, lcolno):
-        return self.get_cc_colnos(bdb, genid, [lcolno])[0]
+    def get_cc_colno(self, bdb, genid, colno):
+        return self.get_cc_colnos(bdb, genid, [colno])[0]
 
-    def get_cc_colnos(self, bdb, genid, lcolnos):
+    def get_cc_colnos(self, bdb, genid, colnos):
         lcolnames = [bayeslite.core.bayesdb_generator_column_name(bdb,
-            genid, lcolno) for lcolno in lcolnos]
+            genid, colno) for colno in colnos]
         return [bayeslite.core.bayesdb_generator_column_number(bdb,
             self.get_cc_id(bdb, genid), lcolname) for lcolname in lcolnames]
 
