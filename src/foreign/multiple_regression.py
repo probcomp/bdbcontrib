@@ -27,7 +27,7 @@ from sklearn.preprocessing import Imputer
 
 from bdbcontrib.foreign import predictor
 
-class MultipleRegression(predictor.IForeignPredictor):
+class MultipleRegression(predictor.IBayesDBForeignPredictor):
     """
     A MultipleRegression FP. The `targets` must be a single numerical stattype.
 

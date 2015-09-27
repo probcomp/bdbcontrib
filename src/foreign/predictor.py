@@ -14,7 +14,7 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
-class IForeignPredictor(object):
+class IBayesDBForeignPredictor(object):
     """BayesDB foreign predictor interface.
 
     A foreign predictor (FP) is itself an independent object which is typically

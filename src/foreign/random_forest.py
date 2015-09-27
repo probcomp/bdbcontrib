@@ -25,7 +25,7 @@ from sklearn.preprocessing import Imputer
 
 from bdbcontrib.foreign import predictor
 
-class RandomForest(predictor.IForeignPredictor):
+class RandomForest(predictor.IBayesDBForeignPredictor):
     """
     A RandomForest FP. The `targets` must be a single categorical stattype.
 
@@ -33,6 +33,7 @@ class RandomForest(predictor.IForeignPredictor):
     -------
     >> df = pd.read_csv('/path/to/satellites.csv')
     >> rf = RandomForest()
+    >> rf = train(df, `targets`, `conditions`)
     >> rf.probability('Intermediate', Perigee_km=535, Apogee_km=551,
             Eccentricity=0.00116, Period_minutes=95.5, Launch_Mass_kg=293,
             Power_watts=414,Anticipated_Lifetime=3, Class_of_Orbit='LEO'
@@ -45,7 +46,6 @@ class RandomForest(predictor.IForeignPredictor):
     ['Intermediate', 'Intermediate', 'Intermediate', 'Intermediate',
      'Intermediate', 'Intermediate', 'Intermediate', 'Sun-Synchronous',
      'Intermediate', 'Intermediate']
-
 
     Attributes
     ----------
