@@ -77,9 +77,10 @@ CREATE TRIGGER bayesdb_composer_column_toposort_check
     BEFORE INSERT ON bayesdb_composer_column_toposort
 BEGIN
     SELECT CASE
-        WHEN (NOT EXISTS(SELECT generator_id, colno
-                FROM bayesdb_composer_column_owner WHERE colno=NEW.colno AND
-                local = 0))
+        WHEN (NOT EXISTS(SELECT generator_id, colno, local
+                FROM bayesdb_composer_column_owner
+                WHERE generator_id=NEW.generator_id AND colno=NEW.colno AND
+                    local = 0))
         THEN RAISE(ABORT, 'Columns in bayesdb_composer_column_toposort
             must be foreign.')
     END;
@@ -97,6 +98,30 @@ CREATE TABLE bayesdb_composer_column_parents(
         REFERENCES bayesdb_generator_column(generator_id, colno),
     CHECK (fcolno != pcolno)
 );
+@
+CREATE TABLE bayesdb_composer_column_foreign_predictor(
+    generator_id INTEGER NOT NULL REFERENCES bayesdb_generator(id),
+    colno INTEGER NOT NULL,
+    predictor_name TEXT COLLATE NOCASE NOT NULL,
+    predictor_binary BLOB,
+
+    PRIMARY KEY(generator_id, colno),
+    FOREIGN KEY(generator_id, colno)
+        REFERENCES bayesdb_generator_column(generator_id, colno)
+);
+@
+CREATE TRIGGER bayesdb_composer_column_foreign_predictor_check
+    BEFORE INSERT ON bayesdb_composer_column_foreign_predictor
+BEGIN
+    SELECT CASE
+        WHEN (NOT EXISTS(SELECT generator_id, colno, local
+                FROM bayesdb_composer_column_owner
+                WHERE generator_id=NEW.generator_id AND colno=NEW.colno AND
+                    local = 0))
+        THEN RAISE(ABORT, 'Columns in bayesdb_composer_foreign_predictor
+            must be foreign.')
+    END;
+END;
 '''
 
 class Composer(bayeslite.metamodel.IBayesDBMetamodel):
@@ -104,17 +129,42 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
     """
 
     def __init__(self):
-        # Make an account of all data structures.
-        self.cc_id = None   # id of internal CC.
-        self.cc = None      # instance of cc metamodel.
-        self.fcols = None   # dict, key = foreign col, vals = list of parents.
-        self.lcols = None   # list of local cols.
-        self.topo = None    # Same ase self.fcols but keys sorted topologically.
-        self.get_fp = None  # dict, key = foreign col, val = FP instance.
+        # In-memory map of registered foreign predictor builders.
+        self.fp_builders = {}
+
+    def register_fp_builder(self, fp_builder):
+        """Register an object which builds a foreign predictor. The `fp_builder`
+        must have the methods:
+
+        - create(df, targets, conditions)
+            Returns a new foreign predictor, typically by calling its `train`
+            method (see `IBayesDBForeignPredictor`).
+
+        - serialize(predictor)
+            Returns the binary represenation of `predictor`.
+
+        - deserialize(binary)
+            Returns the foreign predictor from its `binary` representation.
+
+        - name()
+            Returns the name of the fp_builder.
+
+        Foreign predictor builders must be registered each time the database is
+        launched.
+        """
+        # Validate the fp_builder.
+        assert hasattr(fp_builder, 'create')
+        assert hasattr(fp_builder, 'serialize')
+        assert hasattr(fp_builder, 'deserialize')
+        assert hasattr(fp_builder, 'name')
+        # Check for duplicates.
+        if fp_builder.name() in self.fp_builders:
+            raise ValueError('A foreign predictor with name {} has already '
+                'been registered. Currently registered: {}'.format(
+                    fp_builder.name(), self.fp_builders))
+        self.fp_builders[fp_builder.name()] = fp_builder
 
     def name(self):
-        """Return the name of the metamodel as a string.
-        """
         return 'composer'
 
     def register(self, bdb):
@@ -137,7 +187,7 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
         return
 
     def create_generator(self, bdb, table, schema, instantiate):
-        # TODO: Parse all this information from the schema.
+        # BEGIN SCHEMA PARSE
         schema = [
             ('Country_of_Operator', 'CATEGORICAL'),
             ('Operator_Owner', 'CATEGORICAL'),
@@ -162,76 +212,83 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
             ('Type_of_Orbit', 'CATEGORICAL'),
             ('Period_minutes', 'NUMERICAL')
         ]
-        # Maps target FP columns to module for initializing FP objects
-        # Will be replaced by actual object when initialize is called.
-        get_fp = {
-            'Type_of_Orbit' : importlib.import_module('random_forest'),
-            'Period_minutes' : importlib.import_module('keplers_law')
+        # Maps target FP column to name of its predictor.
+        fcolname_to_fpname = {
+            'Type_of_Orbit' : 'random_forest',
+            'Period_minutes' : 'keplers_law'
         }
-        # Maps FP target columns (fcol) to their conditions columns .
-        fcols_pcols = {
+        # Maps FP column to their conditions columns .
+        fcolname_to_pcolname = {
             'Period_minutes' : ['Apogee_km', 'Perigee_km'],
             'Type_of_Orbit' : ['Apogee_km', 'Perigee_km', 'Eccentricity',
                 'Period_minutes', 'Launch_Mass_kg', 'Power_watts',
                 'Anticipated_Lifetime', 'Class_of_orbit']
         }
-        # lcols = local columns modeled by CrossCat.
+        # lcols are local columns modeled by CrossCat.
         lcol_schema = [(col,stat) for (col,stat) in schema if col not in
-                fcols_pcols]
+                fcolname_to_pcolname]
+        # END SCHEMA PARSE
         # Instantiate **this** generator.
         genid, columns = instantiate(schema)
         # Convert all strings to to BayesDB column numbers.
         lcols = [bayesdb_generator_column_number(bdb, genid, col[0])
             for col in lcol_schema]
-        self.get_fp = {}
-        fcols = {}
-        for f in fcols_pcols:
+        fcolno_to_pcolnos = {}
+        for f in fcolname_to_pcolname:
             fcolno = bayesdb_generator_column_number(bdb, genid, f)
-            fcols[fcolno] = [bayesdb_generator_column_number(bdb,
-                genid, col) for col in fcols_pcols[f]]
-            self.get_fp[fcolno] = get_fp[f]
+            fcolno_to_pcolnos[fcolno] = [bayesdb_generator_column_number(bdb,
+                genid, col) for col in fcolname_to_pcolname[f]]
         # Create internal crosscat generator.
         SUFFIX = '_cc'
-        cc_name = bayeslite.core.bayesdb_generator_name(bdb, genid) + SUFFIX
-        ignore = ','.join(['{} IGNORE'.format(pair[0]) for pair in schema
-            if pair[0] in fcols])
-        cc_cols = ','.join(['{} {}'.format(pair[0], pair[1]) for pair in
-            lcol_schema])
-        bql = """
-            CREATE GENERATOR {} FOR satellites USING crosscat(
-                GUESS(*), Name IGNORE, {} , {}
-            );
-        """.format(cc_name, ignore, cc_cols)
-        bdb.execute(bql)
-        # Save lcols/fcols.
+        # cc_name = bayeslite.core.bayesdb_generator_name(bdb, genid) + SUFFIX
+        cc_name = 'satcc'
+        # ignore = ','.join(['{} IGNORE'.format(pair[0]) for pair in schema
+        #     if pair[0] in fcolno_to_pcolnos])
+        # cc_cols = ','.join(['{} {}'.format(pair[0], pair[1]) for pair in
+        #     lcol_schema])
+        # bql = """
+        #     CREATE GENERATOR {} FOR satellites USING crosscat(
+        #         GUESS(*), Name IGNORE, {} , {}
+        #     );
+        # """.format(cc_name, ignore, cc_cols)
+        # bdb.execute(bql)
+        # Save lcols/fcolnos.
         with bdb.savepoint():
             for colno, _, _ in columns:
-                local = colno not in fcols
+                local = colno not in fcolno_to_pcolnos
                 bdb.sql_execute('''
                     INSERT INTO bayesdb_composer_column_owner
                         (generator_id, colno, local) VALUES (?,?,?)
                 ''', (genid, colno, int(local),))
             # Save parents of foreign columns.
-            for fcolno in fcols:
-                for pcolno in fcols[fcolno]:
+            for fcolno in fcolno_to_pcolnos:
+                for pcolno in fcolno_to_pcolnos[fcolno]:
                     bdb.sql_execute('''
                         INSERT INTO bayesdb_composer_column_parents
                             (generator_id, fcolno, pcolno) VALUES (?,?,?)
                     ''', (genid, fcolno, pcolno,))
             # Save topological order.
-            topo = self.topolgical_sort(fcols)
+            topo = self.topolgical_sort(fcolno_to_pcolnos)
             position = 0
-            for colno, parents in topo:
+            for colno, _ in topo:
                 bdb.sql_execute('''
                     INSERT INTO bayesdb_composer_column_toposort
                         (generator_id, colno, position) VALUES (?,?,?)
-                    ''',(genid, colno, position,))
+                    ''', (genid, colno, position,))
                 position += 1
             # Save internal cc generator id.
             bdb.sql_execute('''
                 INSERT INTO bayesdb_composer_cc_id
                     (generator_id, crosscat_generator_id) VALUES (?,?)
-            ''',(genid, bayesdb_get_generator(bdb, cc_name),))
+            ''', (genid, bayesdb_get_generator(bdb, cc_name),))
+            # Save predictor names of foreign columns.
+            for fcolno in fcolno_to_pcolnos:
+                fp_name = fcolname_to_fpname[bayesdb_generator_column_name(bdb,
+                    genid, fcolno)]
+                bdb.sql_execute('''
+                    INSERT INTO bayesdb_composer_column_foreign_predictor
+                        (generator_id, colno, predictor_name) VALUES (?,?,?)
+                ''', (genid, fcolno, fp_name))
 
     def drop_generator(self, bdb, genid):
         raise NotImplementedError('Composer generators cannot be dropped. '
@@ -240,30 +297,42 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
     def initialize_models(self, bdb, genid, modelnos, model_config):
         # Initialize internal crosscat. If k models of composer are instantiated
         # then k internal CC models will be created (1-1 mapping).
-        bql = """
-            INITIALIZE {} MODELS FOR {};
-            """.format(len(modelnos),
-                    bayesdb_generator_name(bdb, self.get_cc_id(bdb, genid)))
-        bdb.execute(bql)
+        # bql = """
+        #     INITIALIZE {} MODELS FOR {};
+        #     """.format(len(modelnos),
+        #             bayesdb_generator_name(bdb, self.get_cc_id(bdb, genid)))
+        # bdb.execute(bql)
         # Obtain the dataframe for foreign predictors.
         df = bdbcontrib.cursor_to_df(bdb.execute('''
                 SELECT * FROM {}
                 '''.format(bayesdb_generator_table(bdb, genid))))
         # Initialize the foriegn predictors.
         for fcol in self.get_fcols(bdb, genid):
-            pcols = self.get_pcols(bdb, genid, fcol)
             # Convert column numbers to names.
             targets = \
                 [(bayesdb_generator_column_name(bdb, genid, fcol),
-                bayesdb_generator_column_stattype(bdb, genid, fcol))]
+                    bayesdb_generator_column_stattype(bdb, genid, fcol))]
             conditions = \
                 [(bayesdb_generator_column_name(bdb, genid, pcol),
                     bayesdb_generator_column_stattype(bdb, genid, pcol))
-                    for pcol in pcols]
-            # Overwrite FP module with an actual trained FP instance.
-            initializer = self.get_fp[fcol]
-            self.get_fp[fcol] = initializer.create_predictor(df, targets,
-                conditions)
+                    for pcol in self.get_pcols(bdb, genid, fcol)]
+            # Initialize the foreign predictor.
+            predictor_name = self.get_predictor_name(bdb, genid, fcol)
+            builder = self.fp_builders[predictor_name]
+            predictor = builder.create(df, targets, conditions)
+            # Store in the database.
+            with bdb.savepoint():
+                sql = '''
+                    UPDATE bayesdb_composer_column_foreign_predictor SET
+                        predictor_binary = :predictor_binary
+                        WHERE generator_id = :genid AND colno = :colno
+                '''
+                predictor_binary = builder.serialize(predictor)
+                bdb.sql_execute(sql, {
+                    'genid': genid,
+                    'predictor_binary': predictor_binary,
+                    'colno': fcol
+                })
 
     def drop_models(self, bdb, genid, modelnos=None):
         raise NotImplementedError('Composer generator models cannot be '
@@ -465,7 +534,8 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
                     parent_conf = min(parent_conf, imp_conf)
                     conditions[colname] = imp_val
             assert all(v is not None for c,v in conditions.iteritems())
-            samples = self.get_fp[colno].simulate(numsamples, conditions)
+            predictor = self.get_predictor(bdb, genid, colno)
+            samples = predictor.simulate(numsamples, conditions)
         # Since foreign predictor does not know how to impute, imputation
         # shall occur here in the composer by simulate/logpdf calls.
         stattype = bayesdb_generator_column_stattype(bdb, genid, colno)
@@ -474,8 +544,7 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
             imp_val =  max(((val, samples.count(val)) for val in set(samples)),
                 key=lambda v: v[1])[0]
             if colno in self.get_fcols(bdb, genid):
-                imp_conf = math.exp(self.get_fp[colno].logpdf(imp_val,
-                    conditions))
+                imp_conf = math.exp(predictor.logpdf(imp_val, conditions))
             else:
                 imp_conf = (np.array(samples)==imp_val) / len(samples)
         elif stattype == 'numerical':
@@ -555,17 +624,17 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
             samples[k].update({c:v for c,v in zip(cc_latent, cc_simulated[k])})
             for fcol in self.get_topo(bdb, genid):
                 pcols = self.get_pcols(bdb, genid, fcol)
+                predictor = self.get_predictor(bdb, genid, fcol)
                 # Assert all parents of FP known (evidence or simulated).
                 assert pcols.issubset(set(samples[k]))
                 conditions = {bayesdb_generator_column_name(bdb, genid, c):v
                     for c,v in samples[k].iteritems() if c in pcols}
-                # f is evidence, compute likelihood weight.
+                # f is evidence: compute likelihood weight.
                 if fcol in samples[k]:
-                    w += self.get_fp[fcol].logpdf(samples[k][fcol], conditions)
-                # f is latent, simulate from conditional distribution.
+                    w += predictor.logpdf(samples[k][fcol], conditions)
+                # f is latent: simulate from conditional distribution.
                 else:
-                    fcol_simulated = self.get_fp[fcol].simulate(1, conditions)
-                    samples[k][fcol] = fcol_simulated[0]
+                    samples[k][fcol] = predictor.simulate(1, conditions)[0]
             weights.append(w)
         return samples, weights
 
@@ -683,8 +752,25 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
 
     def get_topo(self, bdb, genid):
         cursor = bdb.sql_execute('''
-                SELECT colno FROM bayesdb_composer_column_toposort
-                    WHERE generator_id = ?
-                    ORDER BY position ASC
+            SELECT colno FROM bayesdb_composer_column_toposort
+                WHERE generator_id = ?
+                ORDER BY position ASC
             ''', (genid,))
         return [row[0] for row in cursor]
+
+    def get_predictor_name(self, bdb, genid, fcol):
+        cursor = bdb.sql_execute('''
+            SELECT predictor_name FROM bayesdb_composer_column_foreign_predictor
+                WHERE generator_id = ? AND colno = ?
+        ''', (genid, fcol))
+        return cursor.fetchall()[0][0]
+
+    def get_predictor(self, bdb, genid, fcol):
+        cursor = bdb.sql_execute('''
+            SELECT predictor_name, predictor_binary
+                FROM bayesdb_composer_column_foreign_predictor
+                WHERE generator_id = ? AND colno = ?
+        ''', (genid, fcol))
+        name, binary = cursor.fetchall()[0]
+        builder = self.fp_builders[name]
+        return builder.deserialize(binary)
