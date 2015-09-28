@@ -22,7 +22,7 @@ import numpy as np
 from bayeslite.core import *
 from bayeslite.exception import BQLError
 from bayeslite.sqlite3_util import sqlite3_quote_name as quote
-from bayeslite.util import logmeanexp
+from bayeslite.util import logmeanexp, casefold
 
 from crosscat.utils import sample_utils as su
 
@@ -31,10 +31,11 @@ import bayeslite.bqlfn
 
 import bdbcontrib
 
-composer_schema_1 = '''
+composer_schema_1 = [
+'''
 INSERT INTO bayesdb_metamodel
     (name, version) VALUES ('composer', 0);
-@
+''','''
 CREATE TABLE bayesdb_composer_cc_id(
     generator_id INTEGER NOT NULL
         REFERENCES bayesdb_generator(id),
@@ -44,7 +45,7 @@ CREATE TABLE bayesdb_composer_cc_id(
     PRIMARY KEY(generator_id, crosscat_generator_id),
     CHECK (generator_id != crosscat_generator_id)
 );
-@
+''','''
 CREATE TABLE bayesdb_composer_column_owner(
     generator_id INTEGER NOT NULL REFERENCES bayesdb_generator(id),
     colno INTEGER NOT NULL,
@@ -54,7 +55,7 @@ CREATE TABLE bayesdb_composer_column_owner(
     FOREIGN KEY(generator_id, colno)
         REFERENCES bayesdb_generator_column(generator_id, colno)
 );
-@
+''','''
 CREATE TABLE bayesdb_composer_column_toposort(
     generator_id INTEGER NOT NULL REFERENCES bayesdb_generator(id),
     colno INTEGER NOT NULL,
@@ -69,7 +70,7 @@ CREATE TABLE bayesdb_composer_column_toposort(
         REFERENCES bayesdb_generator_column(generator_id, colno),
     UNIQUE (generator_id, position)
 );
-@
+''','''
 CREATE TRIGGER bayesdb_composer_column_toposort_check
     BEFORE INSERT ON bayesdb_composer_column_toposort
 BEGIN
@@ -82,7 +83,7 @@ BEGIN
             must be foreign.')
     END;
 END;
-@
+''','''
 CREATE TABLE bayesdb_composer_column_parents(
     generator_id INTEGER NOT NULL REFERENCES bayesdb_generator(id),
     fcolno INTEGER NOT NULL,
@@ -95,7 +96,7 @@ CREATE TABLE bayesdb_composer_column_parents(
         REFERENCES bayesdb_generator_column(generator_id, colno),
     CHECK (fcolno != pcolno)
 );
-@
+''','''
 CREATE TABLE bayesdb_composer_column_foreign_predictor(
     generator_id INTEGER NOT NULL REFERENCES bayesdb_generator(id),
     colno INTEGER NOT NULL,
@@ -106,7 +107,7 @@ CREATE TABLE bayesdb_composer_column_foreign_predictor(
     FOREIGN KEY(generator_id, colno)
         REFERENCES bayesdb_generator_column(generator_id, colno)
 );
-@
+''','''
 CREATE TRIGGER bayesdb_composer_column_foreign_predictor_check
     BEFORE INSERT ON bayesdb_composer_column_foreign_predictor
 BEGIN
@@ -119,7 +120,7 @@ BEGIN
             must be foreign.')
     END;
 END;
-'''
+''']
 
 class Composer(bayeslite.metamodel.IBayesDBMetamodel):
     """A metamodel which composes foreign predictors with CrossCat.
