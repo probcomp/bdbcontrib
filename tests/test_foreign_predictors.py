@@ -17,9 +17,9 @@
 import numpy as np
 import pandas as pd
 
-from bdbcontrib.foreign import random_forest as rf
-from bdbcontrib.foreign import keplers_law as kl
-from bdbcontrib.foreign import multiple_regression as mr
+from bdbcontrib.foreign.random_forest import RandomForest
+from bdbcontrib.foreign.keplers_law import KeplersLaw
+from bdbcontrib.foreign.multiple_regression import MultipleRegression
 
 # TODO: More robust tests exploring more interesting cases. The main use
 # right now is crash testing. Moreover common patterns can be automated.
@@ -36,7 +36,8 @@ def test_random_forest():
     conditions = [(c, 'NUMERICAL') for c in conditions_numerical] + \
         [(c, 'CATEGORICAL') for c in conditions_categorical]
     target = [('Type_of_Orbit', 'CATEGORICAL')]
-    srf_predictor = rf.create(df, target, conditions)
+    srf_predictor = RandomForest()
+    srf_predictor.train(df, target, conditions)
     # Dummy realization of conditions.
     dummy_conditions = {'Perigee_km':535, 'Apogee_km':551,
         'Eccentricity':0.00116, 'Period_minutes':95.5, 'Launch_Mass_kg':293,
@@ -47,8 +48,8 @@ def test_random_forest():
     pdf_val = srf_predictor.logpdf('Intermediate', dummy_conditions)
     assert srf_predictor.logpdf(1, dummy_conditions) == float('-inf')
     # Serialization tests.
-    srf_binary = rf.serialize(srf_predictor)
-    srf_predictor2 = rf.deserialize(srf_binary)
+    srf_binary = RandomForest.serialize(srf_predictor)
+    srf_predictor2 = RandomForest.deserialize(srf_binary)
     srf_predictor2.simulate(10, dummy_conditions)
     pdf_val2 = srf_predictor2.logpdf('Intermediate', dummy_conditions)
     assert np.allclose(pdf_val, pdf_val2)
@@ -57,15 +58,16 @@ def test_keplers_law():
     # Create RandomForest.
     conditions = [('Apogee_km','NUMERICAL'), ('Perigee_km', 'NUMERICAL')]
     target = [('Period_minutes', 'NUMERICAL')]
-    kl_predictor = kl.create(df, target, conditions)
+    kl_predictor = KeplersLaw()
+    kl_predictor.train(df, target, conditions)
     # Dummy realization of conditions.
     dummy_conditions = {'Apogee_km':1000, 'Perigee_km':1000}
     # Crash tests.
     kl_predictor.simulate(10, dummy_conditions)
     pdf_val = kl_predictor.logpdf(1440, dummy_conditions)
     # Serialization tests.
-    kl_binary = kl.serialize(kl_predictor)
-    kl_predictor2 = kl.deserialize(kl_binary)
+    kl_binary = KeplersLaw.serialize(kl_predictor)
+    kl_predictor2 = KeplersLaw.deserialize(kl_binary)
     kl_predictor2.simulate(10, dummy_conditions)
     pdf_val2 = kl_predictor2.logpdf(1440, dummy_conditions)
     assert np.allclose(pdf_val, pdf_val2)
@@ -78,7 +80,8 @@ def test_multiple_regression():
     conditions = [(c, 'NUMERICAL') for c in conditions_numerical] + \
         [(c, 'CATEGORICAL') for c in conditions_categorical]
     target = [('Anticipated_Lifetime', 'NUMERICAL')]
-    mr_predictor = mr.create(df, target, conditions)
+    mr_predictor = MultipleRegression()
+    mr_predictor.train(df, target, conditions)
     # Dummy realization of conditions.
     dummy_conditions = {'Perigee_km':535, 'Apogee_km':551,
         'Eccentricity':0.00116, 'Period_minutes':95.5, 'Launch_Mass_kg':293,
@@ -88,8 +91,8 @@ def test_multiple_regression():
     mr_predictor.simulate(10, dummy_conditions)
     pdf_val = mr_predictor.logpdf(4.9, dummy_conditions)
     # Serialization tests.
-    mr_binary = mr.serialize(mr_predictor)
-    mr_predictor2 = mr.deserialize(mr_binary)
+    mr_binary = MultipleRegression.serialize(mr_predictor)
+    mr_predictor2 = MultipleRegression.deserialize(mr_binary)
     mr_predictor2.simulate(10, dummy_conditions)
     pdf_val2 = mr_predictor2.logpdf(4.9, dummy_conditions)
     assert np.allclose(pdf_val, pdf_val2)
