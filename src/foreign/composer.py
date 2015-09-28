@@ -418,18 +418,18 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
             return self.get_cc(bdb, genid).column_mutual_information(bdb,
                 self.get_cc_id(bdb, genid), modelno, cc_colnos[0], cc_colnos[1],
                 numsamples=numsamples)
-        # Simple Monte Carlo by simulating from the joint
-        # distributions, and computing the joint and marginal densities.
+        # Simulate from joint.
         Q, Y = [colno0, colno1], []
-        samples = self.simulate(bdb, genid, modelno, Y, Q,
+        QY_samples = self.simulate(bdb, genid, modelno, Y, Q,
             numpredictions=numsamples)
+        # Simple Monte Carlo.
         mi = logpx = logpy = logpxy = 0
-        for s in samples:
+        for s in QY_samples:
             Qx = [(colno0, s[0])]
-            logpx = self._joint_logpdf(bdb, genid, modelno, Qx, [])
             Qy = [(colno1, s[1])]
-            logpy = self._joint_logpdf(bdb, genid, modelno, Qy, [])
             Qxy = Qx+Qy
+            logpx = self._joint_logpdf(bdb, genid, modelno, Qx, [])
+            logpy = self._joint_logpdf(bdb, genid, modelno, Qy, [])
             logpxy = self._joint_logpdf(bdb, genid, modelno, Qxy, [])
             mi += logpx - logpx - logpy
         # TODO: Use linfoot?
@@ -462,14 +462,14 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
         if n_samples is None:
             n_samples = 200
         # (Q,Y) marginal joint density.
-        joint_samples, joint_weights = self._weighted_sample(bdb, genid,
-            modelno, Q+Y, n_samples=n_samples)
+        _, QY_weights = self._weighted_sample(bdb, genid, modelno, Q+Y,
+            n_samples=n_samples)
         # Y marginal density.
-        evidence_samples, evidence_weights = self._weighted_sample(bdb,
-            genid, modelno, Q+Y, n_samples=n_samples)
+        _, Y_weights = self._weighted_sample(bdb, genid, modelno,
+            Q+Y, n_samples=n_samples)
         # XXX TODO Keep sampling until logpQY <= logpY
-        logpQY = logmeanexp(joint_weights)
-        logpY = logmeanexp(evidence_weights)
+        logpQY = logmeanexp(QY_weights)
+        logpY = logmeanexp(Y_weights)
         return logpQY - logpY
 
     def predict_confidence(self, bdb, genid, modelno, colno, rowid,
@@ -610,26 +610,26 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
         weights = []
         w0 = 0
         # Assess likelihood of evidence at root.
-        cc_evidence = [(c, v) for c,v in Y if c in self.get_lcols(bdb, genid)]
-        if cc_evidence:
-            w0 += self._joint_logpdf_cc(bdb, genid, modelno, cc_evidence, [])
-        # Simulate latent CCs.
-        cc_latent = [c for c in self.get_lcols(bdb, genid) if c not in
+        Y_cc = [(c, v) for c,v in Y if c in self.get_lcols(bdb, genid)]
+        if Y_cc:
+            w0 += self._joint_logpdf_cc(bdb, genid, modelno, Y_cc, [])
+        # Simulate latent ccs.
+        Q_cc = [c for c in self.get_lcols(bdb, genid) if c not in
                 samples[0]]
-        cc_simulated = self.get_cc(bdb, genid).simulate(bdb,
-            self.get_cc_id(bdb, genid), modelno, cc_evidence, cc_latent,
-            numpredictions=n_samples)
+        V_cc = self.get_cc(bdb, genid).simulate(bdb,
+                self.get_cc_id(bdb, genid), modelno, Y_cc, Q_cc,
+                numpredictions=n_samples)
         for k in xrange(n_samples):
             w = w0
-            # Add simulated lcols.
-            samples[k].update({c:v for c,v in zip(cc_latent, cc_simulated[k])})
+            # Add simulated Q_cc.
+            samples[k].update({c:v for c,v in zip(Q_cc, V_cc[k])})
             for fcol in self.get_topo(bdb, genid):
                 pcols = self.get_pcols(bdb, genid, fcol)
                 predictor = self.get_predictor(bdb, genid, fcol)
-                # Assert all parents of FP known (evidence or simulated).
+                # All parents of FP known (evidence or simulated)?
                 assert pcols.issubset(set(samples[k]))
                 conditions = {bayesdb_generator_column_name(bdb, genid, c):v
-                    for c,v in samples[k].iteritems() if c in pcols}
+                        for c,v in samples[k].iteritems() if c in pcols}
                 # f is evidence: compute likelihood weight.
                 if fcol in samples[k]:
                     w += predictor.logpdf(samples[k][fcol], conditions)
@@ -654,22 +654,22 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
                 else:
                     return -float('inf')
         # Convert.
-        Qi = []
+        Q_cc = []
         for (col, val) in Q:
             if col not in ignore:
-                Qi.append((self.get_cc_colno(bdb, genid, col), val))
-        Yi = []
+                Q_cc.append((self.get_cc_colno(bdb, genid, col), val))
+        Y_cc = []
         for (col, val) in Y:
-            Yi.append((self.get_cc_colno(bdb, genid, col), val))
+            Y_cc.append((self.get_cc_colno(bdb, genid, col), val))
         # Chain rule.
         prob = 0
-        for (col, val) in Qi:
+        for (col, val) in Q_cc:
             r = self.get_cc(bdb, genid).column_value_probability(bdb,
-                    self.get_cc_id(bdb, genid), modelno, col, val, Yi)
+                    self.get_cc_id(bdb, genid), modelno, col, val, Y_cc)
             if r == 0:
                 return -float('inf')
             prob += math.log(r)
-            Yi.append((col,val))
+            Y_cc.append((col,val))
         return prob
 
     def get_cc_colno(self, bdb, genid, colno):
