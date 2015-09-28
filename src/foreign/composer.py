@@ -449,33 +449,33 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
         # TODO: Use linfoot?
         return mi
 
-    def conditional_mutual_information(self, bdb, genid, modelno, X, Y, Z, B,
+    def conditional_mutual_information(self, bdb, genid, modelno, X, W, Z, B,
             numsamples=100):
         # WARNING: SUPER EXPERIMENTAL.
-        # Computes the conditional mutual information I(X:Y|Z,B=b), defined
-        # defined as the expectation E_z~Z{X:Y|Z=z,B=b}.
-        # X, Y, and Z must each be a list [colno, ..].
+        # Computes the conditional mutual information I(X:W|Z,B=b), defined
+        # defined as the expectation E_z~Z{X:W|Z=z,B=b}.
+        # X, W, and Z must each be a list [colno, ..].
         # B is an evidence list [(colno,val), ..].
         # All sets must be disjoint.
-        all_cols = X + Y + Z + [b[0] for b in B]
+        all_cols = X + W + Z + [b[0] for b in B]
         if len(all_cols) != len(set(all_cols)):
             raise ValueError('Duplicate colnos received in '
                 'conditional_mutual_information.\n'
-                'X: {}\nY: {}\nZ: {}\nB: {}'.format(X, Y, Z, B))
+                'X: {}\nW: {}\nZ: {}\nB: {}'.format(X, W, Z, B))
         # Simulate from joint.
-        XYZ_samples = self.simulate(bdb, genid, modelno, B, X+Y+Z,
+        XWZ_samples = self.simulate(bdb, genid, modelno, B, X+W+Z,
             numpredictions=numsamples)
         # Simple Monte Carlo
-        mi = logpz = logpxyz = logpxz = logpyz = 0
-        for s in XYZ_samples:
+        mi = logpz = logpxwz = logpxz = logpwz = 0
+        for s in XWZ_samples:
             Qz = zip(Z, [s[z] for z in Z])
             Qx = zip(X, [s[x] for x in X])
-            Qy = zip(Y, [s[y] for y in Y])
+            Qw = zip(W, [s[w] for w in W])
             logpz = self._joint_logpdf(bdb, genid, modelno, Qz, B)
-            logpxyz = self._joint_logpdf(bdb, genid, modelno, Qx+Qy+Qz, B)
+            logpxwz = self._joint_logpdf(bdb, genid, modelno, Qx+Qw+Qz, B)
             logpxz = self._joint_logpdf(bdb, genid, modelno, Qx+Qz, B)
-            logpyz = self._joint_logpdf(bdb, genid, modelno, Qy+Qz, B)
-            mi += logpz + logpxyz - logpxz - logpyz
+            logpwz = self._joint_logpdf(bdb, genid, modelno, Qw+Qz, B)
+            mi += logpz + logpxwz - logpxz - logpwz
         # TODO: If negative, teport to user that reliable answer cannot be
         # returned with current `numsamples`.
         # TODO: linfoo?
