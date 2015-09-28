@@ -24,6 +24,7 @@ import pandas as pd
 from scipy.stats import norm
 from sklearn.preprocessing import Imputer
 
+import bdbcontrib
 from bdbcontrib.foreign import predictor
 
 class KeplersLaw(predictor.IBayesDBForeignPredictor):
@@ -37,7 +38,10 @@ class KeplersLaw(predictor.IBayesDBForeignPredictor):
     Please do not mess around with any (exploring is ok).
     """
     @classmethod
-    def create(cls, df, targets, conditions):
+    def create(cls, bdb, table, targets, conditions):
+        df = bdbcontrib.cursor_to_df(bdb.execute('''
+                SELECT * FROM {}
+        '''.format(table)))
         kl = cls()
         kl.train(df, targets, conditions)
         return kl

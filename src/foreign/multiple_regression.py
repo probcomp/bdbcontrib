@@ -25,6 +25,7 @@ from scipy.stats import norm
 from sklearn.linear_model import LinearRegression
 from sklearn.preprocessing import Imputer
 
+import bdbcontrib
 from bdbcontrib.foreign import predictor
 
 class MultipleRegression(predictor.IBayesDBForeignPredictor):
@@ -36,7 +37,10 @@ class MultipleRegression(predictor.IBayesDBForeignPredictor):
     Please do not mess around with any (exploring is ok).
     """
     @classmethod
-    def create(cls, df, targets, conditions):
+    def create(cls, bdb, table, targets, conditions):
+        df = bdbcontrib.cursor_to_df(bdb.execute('''
+                SELECT * FROM {}
+        '''.format(table)))
         mr = cls()
         mr.train(df, targets, conditions)
         return mr

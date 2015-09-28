@@ -23,6 +23,7 @@ import pandas as pd
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.preprocessing import Imputer
 
+import bdbcontrib
 from bdbcontrib.foreign import predictor
 
 class RandomForest(predictor.IBayesDBForeignPredictor):
@@ -52,7 +53,10 @@ class RandomForest(predictor.IBayesDBForeignPredictor):
     Please do not mess around with any (exploring is ok).
     """
     @classmethod
-    def create(cls, df, targets, conditions):
+    def create(cls, bdb, table, targets, conditions):
+        df = bdbcontrib.cursor_to_df(bdb.execute('''
+                SELECT * FROM {}
+        '''.format(table)))
         rf = cls()
         rf.train(df, targets, conditions)
         return rf
