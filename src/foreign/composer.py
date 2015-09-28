@@ -175,7 +175,7 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
             raise ValueError('A foreign predictor with name "{}" has already '
                 'been registered. Currently registered: {}'.format(
                     builder.name(), self.predictor_builder))
-        self.predictor_builder[builder.name()] = builder
+        self.predictor_builder[casefold(builder.name())] = builder
 
     def name(self):
         return 'composer'
@@ -193,81 +193,46 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
             version = row[0]
         assert version is not None
         if version == 0:
-            # XXX `@` delimiter since `;` breaks TRIGGER.
             with bdb.savepoint():
-                for stmt in composer_schema_1.split('@'):
+                for stmt in composer_schema_1:
                     bdb.sql_execute(stmt)
         return
 
     def create_generator(self, bdb, table, schema, instantiate):
-        # BEGIN SCHEMA PARSE
-        schema = [
-            ('Country_of_Operator', 'CATEGORICAL'),
-            ('Operator_Owner', 'CATEGORICAL'),
-            ('Users', 'CATEGORICAL'),
-            ('Purpose', 'CATEGORICAL'),
-            ('Class_of_orbit', 'CATEGORICAL'),
-            ('Perigee_km', 'NUMERICAL'),
-            ('Apogee_km', 'NUMERICAL'),
-            ('Eccentricity', 'NUMERICAL'),
-            ('Launch_Mass_kg', 'NUMERICAL'),
-            ('Dry_Mass_kg', 'NUMERICAL'),
-            ('Power_watts', 'NUMERICAL'),
-            ('Date_of_Launch', 'NUMERICAL'),
-            ('Anticipated_Lifetime', 'NUMERICAL'),
-            ('Contractor', 'CATEGORICAL'),
-            ('Country_of_Contractor', 'CATEGORICAL'),
-            ('Launch_Site', 'CATEGORICAL'),
-            ('Launch_Vehicle', 'CATEGORICAL'),
-            ('Source_Used_for_Orbital_Data', 'CATEGORICAL'),
-            ('longitude_radians_of_geo', 'NUMERICAL'),
-            ('Inclination_radians', 'NUMERICAL'),
-            ('Type_of_Orbit', 'CATEGORICAL'),
-            ('Period_minutes', 'NUMERICAL')
-        ]
-        # Maps target FP column to name of its predictor.
-        fcolname_to_fpname = {
-            'Type_of_Orbit' : 'random_forest',
-            'Period_minutes' : 'keplers_law'
-        }
-        # Maps FP column to their conditions columns .
-        fcolname_to_pcolname = {
-            'Period_minutes' : ['Apogee_km', 'Perigee_km'],
-            'Type_of_Orbit' : ['Apogee_km', 'Perigee_km', 'Eccentricity',
-                'Period_minutes', 'Launch_Mass_kg', 'Power_watts',
-                'Anticipated_Lifetime', 'Class_of_orbit']
-        }
-        # lcols are local columns modeled by CrossCat.
-        lcol_schema = [(col,stat) for (col,stat) in schema if col not in
-                fcolname_to_pcolname]
-        # END SCHEMA PARSE
+        # Parse the schema.
+        (columns, lcols, fcols, fcol_to_pcols, fcol_to_fpred,
+            dependencies) = self.parse(schema)
         # Instantiate **this** generator.
-        genid, columns = instantiate(schema)
-        # Convert all strings to to BayesDB column numbers.
-        lcols = [bayesdb_generator_column_number(bdb, genid, col[0])
-            for col in lcol_schema]
+        genid, bdbcolumns = instantiate(columns.items())
+        # Create internal crosscat generator. The name will be the same as
+        # this generator name, with a _cc suffix.
+        SUFFIX = '_cc'
+        cc_name = bayeslite.core.bayesdb_generator_name(bdb, genid) + SUFFIX
+        # cc_name = 'satcc'
+        # Create strings for crosscat schema.
+        cc_cols = ','.join(['{} {}'.format(c, columns[c]) for c in lcols])
+        cc_dep = []
+        for dep in dependencies:
+            if dep[0] == True:
+                cc_dep.append('DEPENDENT({})'.format(','.join(dep[1])))
+            else:
+                cc_dep.append('INDEPENDENT({})'.format(','.join(dep[1])))
+        cc_dep = ','.join(cc_dep)
+        bql = """
+            CREATE GENERATOR {} FOR satellites USING crosscat(
+                {}, {}
+            );
+        """.format(cc_name, cc_cols, cc_dep)
+        bdb.execute(bql)
+        # Convert strings to column numbers.
         fcolno_to_pcolnos = {}
-        for f in fcolname_to_pcolname:
+        for f in fcol_to_pcols:
             fcolno = bayesdb_generator_column_number(bdb, genid, f)
             fcolno_to_pcolnos[fcolno] = [bayesdb_generator_column_number(bdb,
-                genid, col) for col in fcolname_to_pcolname[f]]
-        # Create internal crosscat generator.
-        SUFFIX = '_cc'
-        # cc_name = bayeslite.core.bayesdb_generator_name(bdb, genid) + SUFFIX
-        cc_name = 'satcc'
-        # ignore = ','.join(['{} IGNORE'.format(pair[0]) for pair in schema
-        #     if pair[0] in fcolno_to_pcolnos])
-        # cc_cols = ','.join(['{} {}'.format(pair[0], pair[1]) for pair in
-        #     lcol_schema])
-        # bql = """
-        #     CREATE GENERATOR {} FOR satellites USING crosscat(
-        #         GUESS(*), Name IGNORE, {} , {}
-        #     );
-        # """.format(cc_name, ignore, cc_cols)
-        # bdb.execute(bql)
-        # Save lcols/fcolnos.
+                genid, col) for col in fcol_to_pcols[f]]
         with bdb.savepoint():
-            for colno, _, _ in columns:
+            # Save lcols/fcolnos.
+            for colno, _, _ in bdbcolumns:
                 local = colno not in fcolno_to_pcolnos
                 bdb.sql_execute('''
                     INSERT INTO bayesdb_composer_column_owner
@@ -296,12 +261,12 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
             ''', (genid, bayesdb_get_generator(bdb, cc_name),))
             # Save predictor names of foreign columns.
             for fcolno in fcolno_to_pcolnos:
-                fp_name = fcolname_to_fpname[bayesdb_generator_column_name(bdb,
-                    genid, fcolno)]
+                fp_name = fcol_to_fpred[casefold(
+                        bayesdb_generator_column_name(bdb,genid, fcolno))]
                 bdb.sql_execute('''
                     INSERT INTO bayesdb_composer_column_foreign_predictor
                         (generator_id, colno, predictor_name) VALUES (?,?,?)
-                ''', (genid, fcolno, fp_name))
+                ''', (genid, fcolno, casefold(fp_name)))
 
     def drop_generator(self, bdb, genid):
         raise NotImplementedError('Composer generators cannot be dropped. '
@@ -310,11 +275,11 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
     def initialize_models(self, bdb, genid, modelnos, model_config):
         # Initialize internal crosscat. If k models of composer are instantiated
         # then k internal CC models will be created (1-1 mapping).
-        # bql = """
-        #     INITIALIZE {} MODELS FOR {};
-        #     """.format(len(modelnos),
-        #             bayesdb_generator_name(bdb, self.cc_id(bdb, genid)))
-        # bdb.execute(bql)
+        bql = """
+            INITIALIZE {} MODELS FOR {};
+            """.format(len(modelnos),
+                    bayesdb_generator_name(bdb, self.cc_id(bdb, genid)))
+        bdb.execute(bql)
         # Obtain the dataframe for foreign predictors.
         df = bdbcontrib.cursor_to_df(bdb.execute('''
                 SELECT * FROM {}
@@ -793,6 +758,192 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
                         self.predictor_builder))
             self.predictor_cache[(genid, fcol)] = builder.deserialize(binary)
         return self.predictor_cache[(genid, fcol)]
+
+    def parse(self, schema):
+        """Parse the given `schema` for a `composer` metamodel. An example
+        of a schema is:
+
+        CREATE GENERATOR foo FOR satellites USING composer(
+            default (
+                Country_of_Operator CATEGORICAL, Operator_Owner
+                CATEGORICAL, Users CATEGORICAL, Purpose CATEGORICAL,
+                Class_of_orbit CATEGORICAL, Perigee_km NUMERICAL, Apogee_km
+                NUMERICAL, Eccentricity NUMERICAL, Launch_Mass_kg NUMERICAL,
+                Dry_Mass_kg NUMERICAL, Power_watts NUMERICAL, Date_of_Launch
+                NUMERICAL, Anticipated_Lifetime NUMERICAL, Contractor
+                CATEGORICAL, Country_of_Contractor CATEGORICAL, Launch_Site
+                CATEGORICAL, Launch_Vehicle CATEGORICAL,
+                Source_Used_for_Orbital_Data CATEGORICAL,
+                longitude_radians_of_geo NUMERICAL, Inclination_radians
+                NUMERICAL
+            ),
+            random_forest (
+                Type_of_Orbit CATEGORICAL
+                    GIVEN Apogee_km, Perigee_km,
+                        Eccentricity, Period_minutes, Launch_Mass_kg,
+                        Power_watts, Anticipated_Lifetime, Class_of_orbit
+            ),
+            keplers_law (
+                Period_minutes NUMERICAL
+                    GIVEN Perigee_km, Apogee_km
+            ),
+            multiple_regression (
+                Anticipated_Lifetime NUMERICAL
+                    GIVEN Dry_Mass_kg, Launch_Mass_kg, Purpose
+            ),
+            dependent(Launch_Mass_kg, Dry_Mass_kg, Power_watts),
+            dependent(Perigee_km, Apogee_km),
+            independent(Operator_Owner, Inclination_radians)
+        );
+
+        The schema must adhere to the following rules:
+
+        - Default metamodel is identified `default` or `crosscat`. Every
+        `colname` must have its `stattype` declared. IGNORE and GUESS(*) are
+        forbidden.
+
+        - Foriegn predictors are identified by the `name()` method of the object
+         used when `Composer.register_foreign_predictor` was invoked.
+        For example:
+
+            >> from bdbcontrib.foreign.random_forest import RandomForest
+            >> composer.register_foreign_predictor(random_forest.RandomForest)
+            >> RandomForest.name()
+            random_forest
+
+        The grammar inside foreign predictor directives is:
+            <target> <stattype> GIVEN <condition> [...[condition]]
+
+        - All columns specified in `dependent` and `independent` directives must
+        be modeled by the `default` metamodel.
+
+        Parameters
+        ----------
+        schema : list<list>
+            The `schema` as parsed by bayesdb.
+
+        Returns
+        -------
+        columns : dict(str:str)
+            A dict(colname:stattype) mapping every `colname` declared in
+            `schema` to its `stattype`.
+
+        lcols : list<str>
+            A list of columns modeled by `default` model.
+
+        fcols : list<str>
+            A list of columns modeled by foreign predictor.
+
+        fcol_to_pcols : dict(str:list<str>)
+            A dict(fcol:conditions) mapping `fcol` to a list of its parent
+            columns.
+
+        fcol_to_fpred : dict(str:str)
+            A dict(fcol:fpred) mapping `fcol` to the name of its foreign
+            predictor. The values in the dictionary are keys in
+            `self.predictor_builder`.
+
+        dependencies : list(<tuple(<bool>,<list<str>)>)
+            A list of dependency constraints. Each entry in the list is a tuple.
+            For example, (True, ['foo', 'bar', 'baz']) means the three
+            variables are mutually and pairwise *dependent*.
+        """
+        # Allowed keywords.
+        DIRECTIVES = ['crosscat', 'default', 'dependent', 'independent'] + \
+            self.predictor_builder.keys()
+        STATTYPES = ['numerical', 'categorical']
+        # Data structures to return.
+        columns = {}
+        lcols = []
+        fcols = []
+        fcol_to_pcols = dict()
+        fcol_to_fpred = dict()
+        dependencies = []
+        # Parse!
+        for block in schema:
+            if len(block) == 0:
+                continue
+            directive = casefold(block[0])
+            commands = block[1]
+            if directive not in DIRECTIVES:
+                raise ValueError('Unknown directive "{}".\n'
+                    'Available directives: {}.'.format(directive, DIRECTIVES))
+            if not isinstance(commands, list):
+                raise ValueError('Unknown commands in "{}" directive: {}.'\
+                        .format(directive, commands))
+            if directive == 'default' or directive == 'crosscat':
+                while commands:
+                    c = casefold(commands.pop(0))
+                    if c == ',':
+                        continue
+                    s = casefold(commands.pop(0))
+                    if s not in STATTYPES:
+                        raise ValueError('Invalid stattype "{}".'.format(s))
+                    columns[c] = s
+                    lcols.append(c)
+            elif directive == 'independent':
+                ind = []
+                while commands:
+                    c = casefold(commands.pop(0))
+                    if c == ',':
+                        continue
+                    ind.append(c)
+                dependencies.append((False, ind))
+            elif directive == 'dependent':
+                dep = []
+                while commands:
+                    c = casefold(commands.pop(0))
+                    if c == ',':
+                        continue
+                    dep.append(c)
+                dependencies.append((True, dep))
+            elif directive in self.predictor_builder:
+                c = casefold(commands.pop(0))
+                s = casefold(commands.pop(0))
+                if s not in STATTYPES:
+                    raise ValueError('Invalid stattype "{}".'.format(s))
+                columns[c] = s
+                given = casefold(commands.pop(0))
+                if given != 'given':
+                    raise ValueError('Execpted GIVEN keyword, received: {}.'\
+                            .format(given))
+                conditions = []
+                while commands:
+                    r = casefold(commands.pop(0))
+                    if r == ',':
+                        continue
+                    conditions.append(r)
+                fcols.append(c)
+                fcol_to_pcols[c] = conditions
+                fcol_to_fpred[c] = directive
+        # Unique lcols.
+        if len(lcols) != len(set(lcols)):
+            raise ValueError('Duplicate default columns enountered: {}.'\
+                .format(lcols))
+        # Unique fcols.
+        if len(fcols) != len(set(fcols)):
+            raise ValueError('Duplicate foreign columns enountered: {}.'\
+                .format(fcols))
+        # All stattypes declared.
+        for f, c in fcol_to_pcols.iteritems():
+            for r in c:
+                if r not in columns:
+                    raise ValueError('No stattype declaration for "{}".'\
+                        .format(r))
+        # No col both lcol and fcol.
+        for l in lcols:
+            if l in fcol_to_pcols:
+                raise ValueError('Column "{}" can only be modeled once.'\
+                    .format(l))
+        # No non-default dependencies.
+        for dep in dependencies:
+            for col in dep[1]:
+                if col not in lcols:
+                    raise ValueError('Column "{}" with dependency constraint '
+                        'must have default model.'.format(col))
+        # Return the hodgepodge.
+        return (columns, lcols, fcols, fcol_to_pcols, fcol_to_fpred,
+            dependencies)
 
     @staticmethod
     def topological_sort(graph):
