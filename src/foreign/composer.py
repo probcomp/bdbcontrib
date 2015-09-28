@@ -131,7 +131,7 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
     def __init__(self):
         # In-memory map of registered foreign predictor builders.
         self.fp_builders = {}
-        self.fp_cache = {}
+        self.predictor_cache = {}
 
     def register_foreign_predictor(self, fp_builder):
         """Register an object which builds a foreign predictor. The `fp_builder`
@@ -763,7 +763,7 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
         return cursor.fetchall()[0][0]
 
     def predictor(self, bdb, genid, fcol):
-        if (genid, fcol) not in self.fp_cache:
+        if (genid, fcol) not in self.predictor_cache:
             cursor = bdb.sql_execute('''
                 SELECT predictor_name, predictor_binary
                     FROM bayesdb_composer_column_foreign_predictor
@@ -776,8 +776,8 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
                     'not registered. Currently registered: {}.'.format(
                         name, bayesdb_generator_column_name(bdb, genid, fcol),
                         self.fp_builders))
-            self.fp_cache[(genid, fcol)] = builder.deserialize(binary)
-        return self.fp_cache[(genid, fcol)]
+            self.predictor_cache[(genid, fcol)] = builder.deserialize(binary)
+        return self.predictor_cache[(genid, fcol)]
 
     @staticmethod
     def topological_sort(graph):
