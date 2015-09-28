@@ -89,7 +89,7 @@ END;
 CREATE TABLE bayesdb_composer_column_parents(
     generator_id INTEGER NOT NULL REFERENCES bayesdb_generator(id),
     fcolno INTEGER NOT NULL,
-    pcolno BOOLEAN NOT NULL,
+    pcolno INTEGER NOT NULL,
 
     PRIMARY KEY(generator_id, fcolno, pcolno),
     FOREIGN KEY(generator_id, fcolno)
