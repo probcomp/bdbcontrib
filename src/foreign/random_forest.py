@@ -51,6 +51,38 @@ class RandomForest(predictor.IBayesDBForeignPredictor):
     ----------
     Please do not mess around with any (exploring is ok).
     """
+    @classmethod
+    def create(cls, df, targets, conditions):
+        rf = cls()
+        rf.train(df, targets, conditions)
+        return rf
+
+    @classmethod
+    def serialize(cls, predictor):
+        state = {
+            'targets': predictor.targets,
+            'conditions_numerical': predictor.conditions_numerical,
+            'conditions_categorical': predictor.conditions_categorical,
+            'rf_full': predictor.rf_full,
+            'rf_partial': predictor.rf_partial,
+            'lookup': predictor.lookup
+        }
+        return pickle.dumps(state)
+
+    @classmethod
+    def deserialize(cls, binary):
+        state = pickle.loads(binary)
+        rf = cls(targets=state['targets'],
+            conditions_numerical=state['conditions_numerical'],
+            conditions_categorical=state['conditions_categorical'],
+            rf_full=state['rf_full'], rf_partial=state['rf_partial'],
+            lookup=state['lookup'])
+        return rf
+
+    @classmethod
+    def name(cls):
+        return 'random_forest'
+
     def __init__(self, targets=None, conditions_numerical=None,
             conditions_categorical=None, rf_full=None, rf_partial=None,
             lookup=None):
@@ -249,31 +281,3 @@ class RandomForest(predictor.IBayesDBForeignPredictor):
 
     def get_conditions(self):
         return self.conditions
-
-def create(df, targets, conditions):
-    rf = RandomForest()
-    rf.train(df, targets, conditions)
-    return rf
-
-def serialize(predictor):
-    state = {
-        'targets': predictor.targets,
-        'conditions_numerical': predictor.conditions_numerical,
-        'conditions_categorical': predictor.conditions_categorical,
-        'rf_full': predictor.rf_full,
-        'rf_partial': predictor.rf_partial,
-        'lookup': predictor.lookup
-    }
-    return pickle.dumps(state)
-
-def deserialize(binary):
-    state = pickle.loads(binary)
-    rf = RandomForest(targets=state['targets'],
-        conditions_numerical=state['conditions_numerical'],
-        conditions_categorical=state['conditions_categorical'],
-        rf_full=state['rf_full'], rf_partial=state['rf_partial'],
-        lookup=state['lookup'])
-    return rf
-
-def name():
-    return 'random_forest'

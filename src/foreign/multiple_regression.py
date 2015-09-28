@@ -35,6 +35,42 @@ class MultipleRegression(predictor.IBayesDBForeignPredictor):
     ----------
     Please do not mess around with any (exploring is ok).
     """
+    @classmethod
+    def create(cls, df, targets, conditions):
+        mr = cls()
+        mr.train(df, targets, conditions)
+        return mr
+
+    @classmethod
+    def serialize(cls, predictor):
+        state = {
+            'targets': predictor.targets,
+            'conditions_numerical': predictor.conditions_numerical,
+            'conditions_categorical': predictor.conditions_categorical,
+            'mr_full': predictor.mr_full,
+            'mr_partial': predictor.mr_partial,
+            'mr_full_noise': predictor.mr_full_noise,
+            'mr_partial_noise': predictor.mr_partial_noise,
+            'lookup': predictor.lookup
+        }
+        return pickle.dumps(state)
+
+    @classmethod
+    def deserialize(cls, binary):
+        state = pickle.loads(binary)
+        mr = cls(targets=state['targets'],
+            conditions_numerical=state['conditions_numerical'],
+            conditions_categorical=state['conditions_categorical'],
+            mr_full=state['mr_full'], mr_partial=state['mr_partial'],
+            mr_full_noise=state['mr_full_noise'],
+            mr_partial_noise=state['mr_partial_noise'],
+            lookup=state['lookup'])
+        return mr
+
+    @classmethod
+    def name(cls):
+        return 'multiple_regression'
+
     def __init__(self, targets=None, conditions_numerical=None,
             conditions_categorical=None, mr_full=None, mr_partial=None,
             mr_full_noise=None, mr_partial_noise=None, lookup=None):
@@ -244,35 +280,3 @@ class MultipleRegression(predictor.IBayesDBForeignPredictor):
 
     def get_conditions(self):
         return self.conditions
-
-def create(df, targets, conditions):
-    mr = MultipleRegression()
-    mr.train(df, targets, conditions)
-    return mr
-
-def serialize(predictor):
-    state = {
-        'targets': predictor.targets,
-        'conditions_numerical': predictor.conditions_numerical,
-        'conditions_categorical': predictor.conditions_categorical,
-        'mr_full': predictor.mr_full,
-        'mr_partial': predictor.mr_partial,
-        'mr_full_noise': predictor.mr_full_noise,
-        'mr_partial_noise': predictor.mr_partial_noise,
-        'lookup': predictor.lookup
-    }
-    return pickle.dumps(state)
-
-def deserialize(binary):
-    state = pickle.loads(binary)
-    mr = MultipleRegression(targets=state['targets'],
-        conditions_numerical=state['conditions_numerical'],
-        conditions_categorical=state['conditions_categorical'],
-        mr_full=state['mr_full'], mr_partial=state['mr_partial'],
-        mr_full_noise=state['mr_full_noise'],
-        mr_partial_noise=state['mr_partial_noise'],
-        lookup=state['lookup'])
-    return mr
-
-def name():
-    return 'multiple_regression'

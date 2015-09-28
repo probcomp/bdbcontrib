@@ -36,9 +36,31 @@ class KeplersLaw(predictor.IBayesDBForeignPredictor):
     ----------
     Please do not mess around with any (exploring is ok).
     """
-    # XXX TEMPORARY HACK for testing purposes.
-    conditions =['Apogee_km', 'Perigee_km']
-    targets = ['Period_minutes']
+    @classmethod
+    def create(cls, df, targets, conditions):
+        kl = cls()
+        kl.train(df, targets, conditions)
+        return kl
+
+    @classmethod
+    def serialize(cls, predictor):
+        state = {
+            'targets': predictor.targets,
+            'conditions': predictor.conditions,
+            'noise': predictor.noise
+        }
+        return pickle.dumps(state)
+
+    @classmethod
+    def deserialize(cls, binary):
+        state = pickle.loads(binary)
+        kl = cls(targets=state['targets'], conditions=state['conditions'],
+            noise=state['noise'])
+        return kl
+
+    @classmethod
+    def name(cls):
+        return 'keplers_law'
 
     def __init__(self, targets=None, conditions=None, noise=None):
         self.targets = targets
@@ -109,25 +131,3 @@ class KeplersLaw(predictor.IBayesDBForeignPredictor):
 
     def get_conditions(self):
         return self.conditions
-
-def create(df, targets, conditions):
-    kl = KeplersLaw()
-    kl.train(df, targets, conditions)
-    return kl
-
-def serialize(predictor):
-    state = {
-        'targets': predictor.targets,
-        'conditions': predictor.conditions,
-        'noise': predictor.noise
-    }
-    return pickle.dumps(state)
-
-def deserialize(binary):
-    state = pickle.loads(binary)
-    kl = KeplersLaw(targets=state['targets'], conditions=state['conditions'],
-        noise=state['noise'])
-    return kl
-
-def name():
-    return 'keplers_law'
