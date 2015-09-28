@@ -269,7 +269,7 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
                             (generator_id, fcolno, pcolno) VALUES (?,?,?)
                     ''', (genid, fcolno, pcolno,))
             # Save topological order.
-            topo = self.topolgical_sort(fcolno_to_pcolnos)
+            topo = self.topological_sort(fcolno_to_pcolnos)
             position = 0
             for colno, _ in topo:
                 bdb.sql_execute('''
@@ -672,42 +672,6 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
             Yi.append((col,val))
         return prob
 
-    # TODO: Move this to somewhere reasonable?
-    def topolgical_sort(self, graph):
-        """Topologically sort a directed graph represented as an adjacency list.
-        Assumes that edges are incoming, ie (10:[8,7]) means 8->10 and 7->10.
-
-        Parameters
-        ----------
-        graph : list or dict
-            Adjacency list or dict representing the graph, for example:
-                graph_l = [(10, [8, 7]), (5, [8, 7, 9, 10, 11, 13, 15])]
-                graph_d = {10: [8, 7], 5: [8, 7, 9, 10, 11, 13, 15]}
-
-        Returns
-        -------
-        graph_sorted : list
-            An adjacency list, where the order of the nodes is listed
-            in topological order.
-        """
-        graph_sorted = []
-        graph = dict(graph)
-        # Run until the unsorted graph is empty.
-        while graph:
-            acyclic = False
-            for node, edges in graph.items():
-                for edge in edges:
-                    if edge in graph:
-                        break
-                else:
-                    acyclic = True
-                    del graph[node]
-                    graph_sorted.append((node, edges))
-            if not acyclic:
-                raise RuntimeError('A cyclic dependency occurred in '
-                    'topological_sort.')
-        return graph_sorted
-
     def get_cc_colno(self, bdb, genid, colno):
         return self.get_cc_colnos(bdb, genid, [colno])[0]
 
@@ -782,3 +746,39 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
                         self.fp_builders))
             self.fp_cache[(genid, fcol)] = builder.deserialize(binary)
         return self.fp_cache[(genid, fcol)]
+
+    @staticmethod
+    def topological_sort(graph):
+        """Topologically sort a directed graph represented as an adjacency list.
+        Assumes that edges are incoming, ie (10:[8,7]) means 8->10 and 7->10.
+
+        Parameters
+        ----------
+        graph : list or dict
+            Adjacency list or dict representing the graph, for example:
+                graph_l = [(10, [8, 7]), (5, [8, 7, 9, 10, 11, 13, 15])]
+                graph_d = {10: [8, 7], 5: [8, 7, 9, 10, 11, 13, 15]}
+
+        Returns
+        -------
+        graph_sorted : list
+            An adjacency list, where the order of the nodes is listed
+            in topological order.
+        """
+        graph_sorted = []
+        graph = dict(graph)
+        # Run until the unsorted graph is empty.
+        while graph:
+            acyclic = False
+            for node, edges in graph.items():
+                for edge in edges:
+                    if edge in graph:
+                        break
+                else:
+                    acyclic = True
+                    del graph[node]
+                    graph_sorted.append((node, edges))
+            if not acyclic:
+                raise RuntimeError('A cyclic dependency occurred in '
+                    'topological_sort.')
+        return graph_sorted
