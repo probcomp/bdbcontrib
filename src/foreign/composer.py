@@ -130,11 +130,11 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
 
     def __init__(self):
         # In-memory map of registered foreign predictor builders.
-        self.fp_builders = {}
+        self.predictor_builder = {}
         self.predictor_cache = {}
 
-    def register_foreign_predictor(self, fp_builder):
-        """Register an object which builds a foreign predictor. The `fp_builder`
+    def register_foreign_predictor(self, builder):
+        """Register an object which builds a foreign predictor. The `builder`
         must have the methods:
 
         - create(df, targets, conditions)
@@ -148,22 +148,36 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
             Returns the foreign predictor from its `binary` representation.
 
         - name()
-            Returns the name of the fp_builder.
+            Returns the name of the builder.
 
-        Foreign predictor builders must be registered each time the database is
+        The current design pattern is to include these four methods in the
+        class implementing `IBayesDBForeignPreidctor` as @classmethods. For
+        example, suppose RandomForest is a class implementing
+        `IBayesDBForeignPreidctor`, then registering RandomForest is achieved
+        by registering the **class** instance.
+
+        >> from bdbcontrib.foreign.random_forest import RandomForest
+        >> composer.register_foreign_predictor(RandomForest)
+
+        Explicitly initializing a foreign predictor instance is not
+        necessary. The `composer` will create, train, and serialize
+        all foreign predictors declared in the `schema` when the BQL query
+        INITIALIZE is called.
+
+        Foreign predictors must be registered each time the database is
         launched.
         """
-        # Validate the fp_builder.
-        assert hasattr(fp_builder, 'create')
-        assert hasattr(fp_builder, 'serialize')
-        assert hasattr(fp_builder, 'deserialize')
-        assert hasattr(fp_builder, 'name')
+        # Validate the builder.
+        assert hasattr(builder, 'create')
+        assert hasattr(builder, 'serialize')
+        assert hasattr(builder, 'deserialize')
+        assert hasattr(builder, 'name')
         # Check for duplicates.
-        if fp_builder.name() in self.fp_builders:
+        if builder.name() in self.predictor_builder:
             raise ValueError('A foreign predictor with name {} has already '
                 'been registered. Currently registered: {}'.format(
-                    fp_builder.name(), self.fp_builders))
-        self.fp_builders[fp_builder.name()] = fp_builder
+                    builder.name(), self.predictor_builder))
+        self.predictor_builder[builder.name()] = builder
 
     def name(self):
         return 'composer'
@@ -319,7 +333,7 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
                     for pcol in self.pcols(bdb, genid, fcol)]
             # Initialize the foreign predictor.
             predictor_name = self.predictor_name(bdb, genid, fcol)
-            builder = self.fp_builders[predictor_name]
+            builder = self.predictor_builder[predictor_name]
             predictor = builder.create(df, targets, conditions)
             # Store in the database.
             with bdb.savepoint():
@@ -770,12 +784,12 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
                     WHERE generator_id = ? AND colno = ?
             ''', (genid, fcol))
             name, binary = cursor.fetchall()[0]
-            builder = self.fp_builders.get(name, None)
+            builder = self.predictor_builder.get(name, None)
             if builder is None:
                 raise LookupError('Foreign predictor {} for column {} '
                     'not registered. Currently registered: {}.'.format(
                         name, bayesdb_generator_column_name(bdb, genid, fcol),
-                        self.fp_builders))
+                        self.predictor_builder))
             self.predictor_cache[(genid, fcol)] = builder.deserialize(binary)
         return self.predictor_cache[(genid, fcol)]
 
