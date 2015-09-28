@@ -387,29 +387,21 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
 
     def column_mutual_information(self, bdb, genid, modelno, colno0, colno1,
             numsamples=100):
-        # TODO: Allow conditional mutual information.
-        # Two cc columns, delegate.
-        lcols = self.lcols(bdb, genid)
-        if colno0 in lcols and colno1 in lcols:
-            cc_colnos = self.cc_colnos(bdb, genid, [colno0, colno1])
-            return self.cc(bdb, genid).column_mutual_information(bdb,
-                self.cc_id(bdb, genid), modelno, cc_colnos[0], cc_colnos[1],
-                numsamples=numsamples)
-        # Simulate from joint.
-        Q, Y = [colno0, colno1], []
-        QY_samples = self.simulate(bdb, genid, modelno, Y, Q,
-            numpredictions=numsamples)
-        # Simple Monte Carlo.
-        mi = logpx = logpy = logpxy = 0
-        for s in QY_samples:
-            Qx = [(colno0, s[0])]
-            Qy = [(colno1, s[1])]
-            Qxy = Qx+Qy
-            logpx = self._joint_logpdf(bdb, genid, modelno, Qx, [])
-            logpy = self._joint_logpdf(bdb, genid, modelno, Qy, [])
-            logpxy = self._joint_logpdf(bdb, genid, modelno, Qxy, [])
-            mi += logpx - logpx - logpy
-        # TODO: Use linfoot?
+        # XXX Aggregator only.
+        X = [colno0]
+        W = [colno1]
+        Z = Y = []
+        mi = []
+        if modelno is None:
+            n_model = 0
+            while bayesdb_generator_has_model(bdb, genid, n_model):
+                mi.append(self.conditional_mutual_information(bdb, genid,
+                    n_model, X, W, Z, Y))
+                n_model += 1
+            mi = mi/n_model
+        else:
+            mi = self.conditional_mutual_information(bdb, genid, modelno, X, W,
+                Z, Y)
         return mi
 
     def conditional_mutual_information(self, bdb, genid, modelno, X, W, Z, Y,
@@ -434,15 +426,19 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
             Qz = zip(Z, [s[z] for z in Z])
             Qx = zip(X, [s[x] for x in X])
             Qw = zip(W, [s[w] for w in W])
-            logpz = self._joint_logpdf(bdb, genid, modelno, Qz, Y)
+            if Qz:
+                logpz = self._joint_logpdf(bdb, genid, modelno, Qz, Y)
+            else:
+                logpz = 0
             logpxwz = self._joint_logpdf(bdb, genid, modelno, Qx+Qw+Qz, Y)
             logpxz = self._joint_logpdf(bdb, genid, modelno, Qx+Qz, Y)
             logpwz = self._joint_logpdf(bdb, genid, modelno, Qw+Qz, Y)
             mi += logpz + logpxwz - logpxz - logpwz
-        # TODO: If negative, teport to user that reliable answer cannot be
+        # TODO: linfoot?
+        # TODO: If negative, report to user that reliable answer cannot be
         # returned with current `numsamples`.
-        # TODO: linfoo?
-        return mi
+        # Averaging is in direct space is correct.
+        return mi/numsamples
 
     def column_value_probability(self, bdb, genid, modelno, colno, value,
             constraints):
@@ -478,7 +474,7 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
             n_samples=n_samples)
         # Y marginal density.
         _, Y_weights = self._weighted_sample(bdb, genid, modelno,
-            Q+Y, n_samples=n_samples)
+            Y, n_samples=n_samples)
         # XXX TODO Keep sampling until logpQY <= logpY
         logpQY = logmeanexp(QY_weights)
         logpY = logmeanexp(Y_weights)
