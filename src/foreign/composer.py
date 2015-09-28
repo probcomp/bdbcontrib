@@ -133,7 +133,7 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
         self.fp_builders = {}
         self.fp_cache = {}
 
-    def register_fp_builder(self, fp_builder):
+    def register_foreign_predictor(self, fp_builder):
         """Register an object which builds a foreign predictor. The `fp_builder`
         must have the methods:
 
