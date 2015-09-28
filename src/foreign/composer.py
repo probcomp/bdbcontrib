@@ -15,7 +15,6 @@
 #   limitations under the License.
 
 import itertools
-import importlib
 import math
 
 import numpy as np
@@ -23,7 +22,7 @@ import numpy as np
 from bayeslite.core import *
 from bayeslite.exception import BQLError
 from bayeslite.sqlite3_util import sqlite3_quote_name as quote
-from bayeslite.util import logsumexp, logmeanexp
+from bayeslite.util import logmeanexp
 
 from crosscat.utils import sample_utils as su
 
@@ -31,8 +30,6 @@ import bayeslite.metamodel
 import bayeslite.bqlfn
 
 import bdbcontrib
-from bdbcontrib.foreign.keplers_law import KeplersLaw
-from bdbcontrib.foreign.random_forest import RandomForest
 
 composer_schema_1 = '''
 INSERT INTO bayesdb_metamodel
@@ -174,7 +171,7 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
         assert hasattr(builder, 'name')
         # Check for duplicates.
         if builder.name() in self.predictor_builder:
-            raise ValueError('A foreign predictor with name {} has already '
+            raise ValueError('A foreign predictor with name "{}" has already '
                 'been registered. Currently registered: {}'.format(
                     builder.name(), self.predictor_builder))
         self.predictor_builder[builder.name()] = builder
@@ -351,7 +348,7 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
 
     def drop_models(self, bdb, genid, modelnos=None):
         raise NotImplementedError('Composer generator models cannot be '
-            'dropped. Feature coming soon.')
+            'dropped yet.')
 
     def analyze_models(self, bdb, genid, modelnos=None, iterations=1,
                 max_seconds=None, ckpt_iterations=None, ckpt_seconds=None):
@@ -505,6 +502,9 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
             raise ValueError('Invalid modelno argument for '
                 'internal _joint_logpdf. An integer modelno '
                 'is required, not None.')
+        if len(Q) == 0:
+            raise ValueError('Invalid query argument Q for '
+                'internal _joint_logpdf: len(Q) == 0.')
         if n_samples is None:
             n_samples = 200
         # (Q,Y) marginal joint density.
@@ -537,8 +537,8 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
             row = cursor.next()
         except StopIteration:
             generator = bayesdb_generator_table(bdb, genid)
-            raise BQLError(bdb, 'No such row in table {}'
-                ' for generator {}: {}'.format(table, generator, rowid))
+            raise BQLError(bdb, 'No such row in table {} '
+                'for generator {}: {}.'.format(table, generator, rowid))
         # Account for multiple imputations if imputing parents.
         parent_conf = 1
         # Predicting lcol.
@@ -604,7 +604,7 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
             imp_conf = su.continuous_imputation_confidence(samples, None, None,
                 n_steps=1000)
         else:
-            raise ValueError('Unknown stattype {} for a foreign predictor '
+            raise ValueError('Unknown stattype "{}" for a foreign predictor '
                 'column encountered in predict_confidence.'.format(stattype))
         return imp_val, imp_conf * parent_conf
 
@@ -786,8 +786,8 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
             name, binary = cursor.fetchall()[0]
             builder = self.predictor_builder.get(name, None)
             if builder is None:
-                raise LookupError('Foreign predictor {} for column {} '
-                    'not registered. Currently registered: {}.'.format(
+                raise LookupError('Foreign predictor "{}" for column "{}" '
+                    'not registered, currently registered: {}.'.format(
                         name, bayesdb_generator_column_name(bdb, genid, fcol),
                         self.predictor_builder))
             self.predictor_cache[(genid, fcol)] = builder.deserialize(binary)
