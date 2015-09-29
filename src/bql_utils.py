@@ -15,6 +15,7 @@
 #   limitations under the License.
 
 import pandas as pd
+import json
 
 import bayeslite.core
 from bayeslite import bql_quote_name as quote
@@ -304,3 +305,25 @@ def get_column_descriptive_metadata(bdb, table_name, column_names, md_field):
         import pdb
         pdb.set_trace()
     return short_names
+
+
+def current_session_id(bdb):
+    """Returns the current integer session id."""
+    return bdb.session_id
+
+
+def dump_session_as_json(bdb, session_id):
+    """Returns a JSON string representing the list of SQL or BQL entries (e.g.
+    queries) executed within session `session_id`."""
+    current_session = current_session_id(bdb)
+    if session_id > current_session or session_id < 1:
+        raise ValueError('No such session (%d)' % session_id)
+    bql = 'SELECT * FROM bayesdb_session_entries WHERE session_id == ?'
+    entries = bdb.sql_execute(bql, (session_id,))
+    return json.dumps([entry for entry in entries])
+
+
+def dump_current_session_as_json(bdb):
+    """Returns a JSON string representing the current sesion (see
+    `dump_session_as_json`)"""
+    return dump_session_as_json(bdb, current_session_id(bdb))
