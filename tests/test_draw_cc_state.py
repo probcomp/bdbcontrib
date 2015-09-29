@@ -20,6 +20,7 @@ import bayeslite
 import os
 import pandas as pd
 import random
+import cStringIO as StringIO
 
 from bayeslite.read_pandas import bayesdb_read_pandas_df
 from bdbcontrib.crosscat_utils import draw_state
@@ -63,6 +64,11 @@ def draw_a_cc_state(filename):
                separator_width=1, separator_color=(0., 0., 1., 1.),
                short_names=False, nan_color=(1, .15, .25, 1.))
     plt.savefig(filename)
+
+def test_draw_cc_smoke():
+    f = StringIO.StringIO()
+    draw_a_cc_state(f)
+    assert len(f.getvalue()) > 1000
 
 if __name__ == '__main__':
     draw_a_cc_state('state.png')
