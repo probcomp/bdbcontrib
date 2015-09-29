@@ -66,14 +66,14 @@ def main():
 
     plt.figure(tight_layout=True, facecolor='white')
     _pairplot(df, bdb=bdb, generator_name='plottest_cc',
-             use_shortname=False, colorby='four_8', show_contour=False,
+             colorby='four_8', show_contour=False,
              show_full=False)
     plt.savefig('fig0.png')
 
     # again, without tril to check that outer axes render correctly
     plt.figure(tight_layout=True, facecolor='white')
     _pairplot(df, bdb=bdb, generator_name='plottest_cc',
-             use_shortname=False, colorby='four_8', show_contour=True,
+             colorby='four_8', show_contour=True,
              show_full=False)
     plt.savefig('fig1.png')
 
