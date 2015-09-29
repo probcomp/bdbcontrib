@@ -231,6 +231,11 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
             fcolno_to_pcolnos[fcolno] = [bayesdb_generator_column_number(bdb,
                 genid, col) for col in fcol_to_pcols[f]]
         with bdb.savepoint():
+            # Save internal cc generator id.
+            bdb.sql_execute('''
+                INSERT INTO bayesdb_composer_cc_id
+                    (generator_id, crosscat_generator_id) VALUES (?,?)
+            ''', (genid, bayesdb_get_generator(bdb, cc_name),))
             # Save lcols/fcolnos.
             for colno, _, _ in bdbcolumns:
                 local = colno not in fcolno_to_pcolnos
@@ -254,11 +259,6 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
                         (generator_id, colno, position) VALUES (?,?,?)
                     ''', (genid, colno, position,))
                 position += 1
-            # Save internal cc generator id.
-            bdb.sql_execute('''
-                INSERT INTO bayesdb_composer_cc_id
-                    (generator_id, crosscat_generator_id) VALUES (?,?)
-            ''', (genid, bayesdb_get_generator(bdb, cc_name),))
             # Save predictor names of foreign columns.
             for fcolno in fcolno_to_pcolnos:
                 fp_name = fcol_to_fpred[casefold(
