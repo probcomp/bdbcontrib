@@ -79,7 +79,7 @@ def mi_hist(bdb, generator, col1, col2, num_samples=1000, bins=5):
 
 
 def heatmap(bdb, bql, vmin=None, vmax=None, row_ordering=None,
-        col_ordering=None):
+            col_ordering=None):
     """Plot clustered heatmap of pairwise matrix.
 
     Parameters
@@ -88,6 +88,18 @@ def heatmap(bdb, bql, vmin=None, vmax=None, row_ordering=None,
         Active BayesDB instance.
     bql : str
         The BQL to run and plot. Must be a PAIRWISE BQL query.
+    **kwargs : dict
+        Passed to df_heatmap
+    Returns
+    -------
+    clustermap: seaborn.clustermap
+    """
+    df = bqlu.cursor_to_df(bdb.execute(bql))
+    df.fillna(0, inplace=True)
+    return df_heatmap(df, **kwargs)
+
+def df_heatmap(df, vmin=None, vmax=None, row_ordering=None, col_ordering=None):
+    '''Plot clustered heatmap of pairwise dataframe.
     vmin: float
         Minimun value of the colormap.
     vmax: float
@@ -95,22 +107,18 @@ def heatmap(bdb, bql, vmin=None, vmax=None, row_ordering=None,
     row_ordering, col_ordering: list<int>
         Specify the order of labels on the x and y axis of the heatmap. To
         access the row and column indices from a clustermap object, use:
-        clustermap.dendrogram_row.reordered_ind  (for rows)
+        clustermap.dendrogram_row.reordered_ind (for rows)
         clustermap.dendrogram_col.reordered_ind (for cols)
 
     Returns
     -------
     clustermap: seaborn.clustermap
-    """
-    df = bqlu.cursor_to_df(bdb.execute(bql))
-    df.fillna(0, inplace=True)
-    c = (df.shape[0]**.5)/4.0
+    '''
+    half_root_col = (df.shape[0] ** .5) / 2.0
     clustermap_kws = {'linewidths': 0.2, 'vmin': vmin, 'vmax': vmax,
-        'figsize':(c, .8*c)}
-
-    clustermap = zmatrix(df, clustermap_kws=clustermap_kws,
-        row_ordering=row_ordering, col_ordering=col_ordering)
-
+                      'figsize': (half_root_col, .8 * half_root_col)}
+    clustermap = zmatrix(this_block, clustermap_kws=clustermap_kws,
+                         row_ordering=row_ordering, col_ordering=col_ordering)
     return clustermap
 
 
