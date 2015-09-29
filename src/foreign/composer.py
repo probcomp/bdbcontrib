@@ -135,7 +135,7 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
         """Register an object which builds a foreign predictor. The `builder`
         must have the methods:
 
-        - create(df, targets, conditions)
+        - create(bdb, table, targets, conditions)
             Returns a new foreign predictor, typically by calling its `train`
             method (see `IBayesDBForeignPredictor`).
 
@@ -280,10 +280,6 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
             """.format(len(modelnos),
                     bayesdb_generator_name(bdb, self.cc_id(bdb, genid)))
         bdb.execute(bql)
-        # Obtain the dataframe for foreign predictors.
-        df = bdbcontrib.cursor_to_df(bdb.execute('''
-                SELECT * FROM {}
-                '''.format(bayesdb_generator_table(bdb, genid))))
         # Initialize the foriegn predictors.
         for fcol in self.fcols(bdb, genid):
             # Convert column numbers to names.
@@ -295,9 +291,10 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
                     bayesdb_generator_column_stattype(bdb, genid, pcol))
                     for pcol in self.pcols(bdb, genid, fcol)]
             # Initialize the foreign predictor.
+            table_name = bayesdb_generator_table(bdb, genid)
             predictor_name = self.predictor_name(bdb, genid, fcol)
             builder = self.predictor_builder[predictor_name]
-            predictor = builder.create(df, targets, conditions)
+            predictor = builder.create(bdb, table_name, targets, conditions)
             # Store in the database.
             with bdb.savepoint():
                 sql = '''
