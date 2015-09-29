@@ -21,8 +21,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 import os
 import pandas as pd
+import cStringIO as StringIO
 
-from bayeslite.read_csv import bayesdb_read_csv_file
+from bayeslite.read_csv import bayesdb_read_csv
 from bdbcontrib.bql_utils import cursor_to_df
 from bdbcontrib.plot_utils import _pairplot
 
@@ -45,12 +46,14 @@ def main():
     df['four_8'] = col_four
     df['five_c'] = col_five
 
-    filename = 'plottest.csv'
-    df.to_csv(filename)
+    csv_str = StringIO.StringIO()
+    df.to_csv(csv_str)
 
     os.environ['BAYESDB_WIZARD_MODE']='1'
     bdb = bayeslite.bayesdb_open()
-    bayesdb_read_csv_file(bdb, 'plottest', filename, header=True, create=True)
+    # XXX Do we not have a bayesdb_read_df ?
+    bayesdb_read_csv(bdb, 'plottest', StringIO.StringIO(csv_str.getvalue()),
+                     header=True, create=True)
     bdb.execute('''
         create generator plottest_cc for plottest using crosscat(guess(*))
     ''')
