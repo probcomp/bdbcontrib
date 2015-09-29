@@ -27,7 +27,7 @@ from bayeslite.read_csv import bayesdb_read_csv
 from bdbcontrib.bql_utils import cursor_to_df
 from bdbcontrib.plot_utils import _pairplot
 
-def main():
+def prepare():
     df = pd.DataFrame()
     num_rows = 400
     alphabet = ['A', 'B', 'C', 'D', 'E']
@@ -66,19 +66,18 @@ def main():
     """
     cursor = bdb.execute('SELECT one_n, zero_5, five_c, four_8 FROM plottest')
     df = cursor_to_df(cursor)
+    return (df, bdb)
 
+def do(prepped, location, **kwargs):
+    (df, bdb) = prepped
     plt.figure(tight_layout=True, facecolor='white')
     _pairplot(df, bdb=bdb, generator_name='plottest_cc',
-             colorby='four_8', show_contour=False,
-             show_full=False)
-    plt.savefig('fig0.png')
-
-    # again, without tril to check that outer axes render correctly
-    plt.figure(tight_layout=True, facecolor='white')
-    _pairplot(df, bdb=bdb, generator_name='plottest_cc',
-             colorby='four_8', show_contour=True,
-             show_full=False)
-    plt.savefig('fig1.png')
+              show_full=False, **kwargs)
+    plt.savefig(location)
 
 if __name__ == '__main__':
-    main()
+    ans = prepare()
+    do(ans, 'fig0.png', colorby='four_8', show_contour=False)
+    do(ans, 'fig1.png', colorby='four_8', show_contour=True)
+    do(ans, 'fig2.png', show_contour=False)
+    print "Figures saved in 'fig0.png', 'fig1.png', 'fig2.png'"
