@@ -14,8 +14,6 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
-# XXX AUTOMATE ME XXX
-
 import bayeslite
 import matplotlib.pyplot as plt
 import numpy as np
@@ -74,6 +72,18 @@ def do(prepped, location, **kwargs):
     _pairplot(df, bdb=bdb, generator_name='plottest_cc',
               show_full=False, **kwargs)
     plt.savefig(location)
+
+def test_pairplot_smoke():
+    ans = prepare()
+    f = StringIO.StringIO()
+    do(ans, f, colorby='four_8', show_contour=False)
+    assert len(f.getvalue()) > 1000
+    f = StringIO.StringIO()
+    do(ans, f, colorby='four_8', show_contour=True)
+    assert len(f.getvalue()) > 1000
+    f = StringIO.StringIO()
+    do(ans, f, show_contour=False)
+    assert len(f.getvalue()) > 1000
 
 if __name__ == '__main__':
     ans = prepare()
