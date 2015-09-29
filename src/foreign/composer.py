@@ -708,8 +708,11 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
             weights.append(w)
         return samples, weights
 
-    # TODO migrate to a reasonable place (ie sample_utils in CrossCat).
     def _joint_logpdf_cc(self, bdb, genid, modelno, Q, Y):
+        # Evaluates the joint logpdf of crosscat columns. This is acheived by
+        # invoking column_value_probability on univariate columns with
+        # cascading the constraints (the chain rule). This function really
+        # belongs somewhere in the famous sample_utils module in crosscat.
         # Ensure consistency for nodes in both query and evidence.
         lcols = self.lcols(bdb, genid)
         ignore = set()
