@@ -26,7 +26,7 @@ from bdbcontrib.crosscat_utils import draw_state
 from crosscat.utils import data_utils as du
 from matplotlib import pyplot as plt
 
-def main():
+def draw_a_cc_state(filename):
     rng_seed = random.randrange(10000)
     num_rows = 100
     num_cols = 50
@@ -62,7 +62,7 @@ def main():
     ax = draw_state(bdb, 'plottest', 'plottest_cc', 0,
                     separator_width=1, separator_color=(0., 0., 1., 1.),
                     short_names=False, nan_color=(1, .15, .25, 1.))
-    plt.savefig('state.png')
+    plt.savefig(filename)
 
 if __name__ == '__main__':
-    main()
+    draw_a_cc_state('state.png')
