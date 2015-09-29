@@ -17,7 +17,6 @@
 import bayeslite
 import pandas
 import pytest
-import tempfile
 
 from bayeslite.read_pandas import bayesdb_read_pandas_df
 from bdbcontrib import crosscat_utils
