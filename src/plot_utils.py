@@ -78,7 +78,7 @@ def mi_hist(bdb, generator, col1, col2, num_samples=1000, bins=5):
     return figure
 
 
-def heatmap(bdb, bql, **kwargs):
+def heatmap(bdb, bql, selectors=None, **kwargs):
     """Plot clustered heatmap of pairwise matrix.
 
     Parameters
@@ -87,6 +87,12 @@ def heatmap(bdb, bql, **kwargs):
         Active BayesDB instance.
     bql : str
         The BQL to run and plot. Must be a PAIRWISE BQL query.
+    selectors : [lambda name --> bool]
+        Rather than plot the full NxN matrix all together, make separate plots
+        for each combination of these selectors, plotting them in sequence.
+        If selectors are specified, returns a list of clustermaps, having
+        shown and closed each one.
+
     **kwargs : dict
         Passed to zmatrix: vmin, vmax, row_ordering, col_ordering
 
@@ -96,7 +102,18 @@ def heatmap(bdb, bql, **kwargs):
     """
     df = bqlu.cursor_to_df(bdb.execute(bql))
     df.fillna(0, inplace=True)
-    return zmatrix(df, **kwargs)
+    if selectors is None:
+        return zmatrix(df, **kwargs)
+    results = []
+    for n0selector in selectors:
+      n0selection = deps['name0'].map(n0selector)
+      for n1selector in selectors:
+        n1selection = deps['name1'].map(n1selector)
+        this_block = deps[n0selection & n1selection]
+        results.append(zmatrix(this_block, vmin=0, vmax=1))
+        plt.show()
+        plt.close('all')
+    return results
 
 def pairplot(bdb, bql, generator_name=None, show_contour=False, colorby=None,
         show_missing=False, show_full=False):
