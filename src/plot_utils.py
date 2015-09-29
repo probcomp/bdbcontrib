@@ -249,7 +249,7 @@ def gen_collapsed_legend_from_dict(hl_colors_dict, loc=0, title=None,
     fontsize : int
         legend entry and title fontsize
     wrap_threshold : int
-        max number of charachters before wordwrap
+        max number of characters before wordwrap
 
     Returns
     -------
