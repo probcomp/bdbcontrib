@@ -14,8 +14,11 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
-import bayeslite
+import matplotlib
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+
+import bayeslite
 import numpy as np
 import os
 import pandas as pd

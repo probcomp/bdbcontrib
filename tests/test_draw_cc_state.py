@@ -14,6 +14,10 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
+import matplotlib
+matplotlib.use("Agg")
+from matplotlib import pyplot as plt
+
 import bayeslite
 import os
 import pandas as pd
@@ -23,7 +27,6 @@ import cStringIO as StringIO
 from bayeslite.read_pandas import bayesdb_read_pandas_df
 from bdbcontrib.crosscat_utils import draw_state
 from crosscat.utils import data_utils as du
-from matplotlib import pyplot as plt
 
 def draw_a_cc_state(filename):
     rng_seed = random.randrange(10000)
