@@ -168,5 +168,20 @@ def country_purpose_queries(bdb):
 ## Driver                                                           ##
 ######################################################################
 
-plot_results(analyze_fileset(["output/satellites-2015-09-24-axch-4m-%di.bdb" % j
-                              for j in range(4)]))
+import cPickle as pickle # json doesn't like tuple dict keys
+
+def save_query_results(filename):
+    results = analyze_fileset(["output/satellites-2015-09-24-axch-4m-%di.bdb" % j
+                               for j in range(4)])
+    with open(filename, "w") as f:
+        pickle.dump(results, f)
+    log("Saved query results to %s" % filename)
+
+def plot_query_results(filename):
+    log("Loading query results from %s" % filename)
+    with open(filename, "r") as f:
+        results = pickle.load(f)
+    plot_results(results)
+
+# save_query_results("results.json")
+plot_query_results("results.json")
