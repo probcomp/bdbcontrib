@@ -128,7 +128,9 @@ def plot_results(results, basename="fig", ext=".png"):
     for query in queries:
         grid = plot_results_q(results, query)
         grid.fig.suptitle(query)
-        grid.savefig(basename + "-" + string.replace(query, " ", "-") + ext)
+        figname = basename + "-" + string.replace(query, " ", "-") + ext
+        grid.savefig(figname)
+        log("Query '%s' results saved to %s" % (query, figname))
 
 ######################################################################
 ## Queries                                                          ##
@@ -167,4 +169,4 @@ def country_purpose_queries(bdb):
 ######################################################################
 
 plot_results(analyze_fileset(["output/satellites-2015-09-24-axch-4m-%di.bdb" % j
-                              for j in range(2)]))
+                              for j in range(4)]))
