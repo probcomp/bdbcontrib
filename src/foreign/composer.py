@@ -269,8 +269,36 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
                 ''', (genid, fcolno, casefold(fp_name)))
 
     def drop_generator(self, bdb, genid):
-        raise NotImplementedError('Composer generators cannot be dropped. '
-            'Feature coming soon.')
+        with bdb.savepoint():
+            # Clear caches.
+            keys = [k for k in self.predictor_cache if k[0] == genid]
+            for k in keys:
+                del self.predictor_cache[k]
+            # Obtain before losing references.
+            cc, cc_id = self.cc(bdb, genid), self.cc_id(bdb, genid)
+            # Delete tables reverse order of insertion.
+            bdb.sql_execute('''
+                DELETE FROM bayesdb_composer_column_foreign_predictor
+                    WHERE generator_id = ?
+            ''', (genid,))
+            bdb.sql_execute('''
+                DELETE FROM bayesdb_composer_cc_id
+                    WHERE generator_id = ?
+            ''', (genid,))
+            bdb.sql_execute('''
+                DELETE FROM bayesdb_composer_column_toposort
+                    WHERE generator_id = ?
+            ''', (genid,))
+            bdb.sql_execute('''
+                DELETE FROM bayesdb_composer_column_parents
+                    WHERE generator_id = ?
+            ''', (genid,))
+            bdb.sql_execute('''
+                DELETE FROM bayesdb_composer_column_owner
+                    WHERE generator_id = ?
+            ''', (genid,))
+            # Drop internal crosscat.
+            cc.drop_generator(bdb, cc_id)
 
     def initialize_models(self, bdb, genid, modelnos, model_config):
         # Initialize internal crosscat. If k models of composer are instantiated
