@@ -643,6 +643,7 @@ def zmatrix(data_df, clustermap_kws=None, row_ordering=None,
     else:
         return sns.clustermap(NonZeroDWIMFrameWrapper(data_df), **clustermap_kws)
 
+
 # TODO: bdb, and table_name should be optional arguments
 def _pairplot(df, bdb=None, generator_name=None, use_shortname=False,
         show_contour=False, colorby=None, show_missing=False, show_full=False):
