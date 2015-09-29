@@ -310,8 +310,8 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
                 })
 
     def drop_models(self, bdb, genid, modelnos=None):
-        raise NotImplementedError('Composer generator models cannot be '
-            'dropped yet.')
+        raise NotImplementedError('Individual models from compser cannot '
+            'be dropped.')
 
     def analyze_models(self, bdb, genid, modelnos=None, iterations=1,
                 max_seconds=None, ckpt_iterations=None, ckpt_seconds=None):
@@ -745,10 +745,9 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
             name, binary = cursor.fetchall()[0]
             builder = self.predictor_builder.get(name, None)
             if builder is None:
-                raise LookupError('Foreign predictor "{}" for column "{}" '
-                    'not registered, currently registered: {}.'.format(
-                        name, bayesdb_generator_column_name(bdb, genid, fcol),
-                        self.predictor_builder))
+                raise LookupError('Foreign predictor for column "{}" '
+                    'not registered: "{}".'.format(name,
+                        bayesdb_generator_column_name(bdb, genid, fcol)))
             self.predictor_cache[(genid, fcol)] = builder.deserialize(binary)
         return self.predictor_cache[(genid, fcol)]
 
