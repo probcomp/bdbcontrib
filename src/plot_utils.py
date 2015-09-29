@@ -645,7 +645,7 @@ def zmatrix(data_df, clustermap_kws=None, row_ordering=None,
 
 
 # TODO: bdb, and table_name should be optional arguments
-def _pairplot(df, bdb=None, generator_name=None, use_shortname=False,
+def _pairplot(df, bdb=None, generator_name=None,
         show_contour=False, colorby=None, show_missing=False, show_full=False):
     """Plots the columns in data_df in a facet grid.
 
@@ -663,9 +663,6 @@ def _pairplot(df, bdb=None, generator_name=None, use_shortname=False,
         the generator for the data allows pairplot to choose plot types.
     generator_name : str
         The name of generator associated with `df` and `bdb`.
-    use_shortname : bool
-        If True, use column shortnames (requires codebook) for axis lables,
-        otherwise use the column names in `df`.
     show_contour : bool
         If True, KDE contours are plotted on top of scatter plots
         and histograms.
