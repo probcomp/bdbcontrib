@@ -14,8 +14,6 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
-# XXX AUTOMATE ME XXX
-
 import bayeslite
 import os
 import pandas as pd
@@ -70,5 +68,7 @@ def test_draw_cc_smoke():
     draw_a_cc_state(f)
     assert len(f.getvalue()) > 1000
 
+# For manually inspecting the generated figure.
 if __name__ == '__main__':
     draw_a_cc_state('state.png')
+    print "Figure saved to 'state.png'"
