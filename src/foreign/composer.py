@@ -625,10 +625,46 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
         return self.cc(bdb, genid).row_similarity(bdb,
             self.cc_id(bdb, genid), modelno, rowid, target_rowid, cc_colnos)
 
-    def row_column_predictive_probability(self, bdb, genid, modelno,
-            rowid, colno):
-        raise NotImplementedError('PREDICTIVE PROBABILITY is being retired. '
-            'Please use PROBABILITY OF <[...]> [GIVEN [...]] instead.')
+    def row_column_predictive_probability(self, bdb, genid, modelno, rowid,
+            colno):
+        # XXX I am not convinced that asking for the
+        # predictive probability of X given constraints Y (different from those
+        # in the table) and a rowid is a query that the system can currently
+        # implement reasonably.
+        #   - crosscat ignores all constraints given the rowid, which does not
+        # hold for models in general.
+        #   - specifying constraints different from actual observations may
+        # change the latent parameters associated with `rowid`, so the
+        # better behavior is to, in a SAVEPOINT, run ANALYZE, sample from
+        # the posterior given new constraints, evaluate the logpdf, then
+        # ROLLBACK.
+        #   - The statistics of the rowid need to be removed from
+        # the row cluster parameters before asking for the 'predictive
+        # probability', using the typical Bayesian definition.
+        # For now, I have decided to treat this query as a convenience around
+        # ESTIMATE PROBABILITY OF colno GIVEN <all other cols from table>.
+        # End rant.
+        # Obtain all values for all other columns.
+        colnos = bayesdb_generator_column_numbers(bdb, genid)
+        colnames = bayesdb_generator_column_names(bdb, genid)
+        table = bayesdb_generator_table(bdb, genid)
+        sql = '''
+            SELECT {} FROM {} WHERE _rowid_ = ?
+        '''.format(','.join(map(quote, colnames)), quote(table))
+        cursor = bdb.sql_execute(sql, (rowid,))
+        row = None
+        try:
+            row = cursor.next()
+        except StopIteration:
+            generator = bayesdb_generator_table(bdb, genid)
+            raise BQLError(bdb, 'No such row in table {} for generator {}: {}'\
+                .format(table, generator, rowid))
+        # Obtain query and constraints (return 0 for missing query value).
+        Q = [(c,v) for c,v in zip(colnos, row) if c == colno and v is not None]
+        if not Q:
+            return 0
+        Y = [(c,v) for c,v in zip(colnos, row) if c != colno and v is not None]
+        return self.column_value_probability(bdb, genid, modelno, Q[0], Q[1], Y)
 
     def _weighted_sample(self, bdb, genid, modelno, Y, n_samples=None):
         # Returns a list of [(sample, weight), ...]
