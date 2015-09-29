@@ -78,8 +78,7 @@ def mi_hist(bdb, generator, col1, col2, num_samples=1000, bins=5):
     return figure
 
 
-def heatmap(bdb, bql, vmin=None, vmax=None, row_ordering=None,
-        col_ordering=None):
+def heatmap(bdb, bql, **kwargs):
     """Plot clustered heatmap of pairwise matrix.
 
     Parameters
@@ -88,15 +87,8 @@ def heatmap(bdb, bql, vmin=None, vmax=None, row_ordering=None,
         Active BayesDB instance.
     bql : str
         The BQL to run and plot. Must be a PAIRWISE BQL query.
-    vmin: float
-        Minimun value of the colormap.
-    vmax: float
-        Maximum value of the colormap.
-    row_ordering, col_ordering: list<int>
-        Specify the order of labels on the x and y axis of the heatmap. To
-        access the row and column indices from a clustermap object, use:
-        clustermap.dendrogram_row.reordered_ind  (for rows)
-        clustermap.dendrogram_col.reordered_ind (for cols)
+    **kwargs : dict
+        Passed to zmatrix: vmin, vmax, row_ordering, col_ordering
 
     Returns
     -------
@@ -104,15 +96,7 @@ def heatmap(bdb, bql, vmin=None, vmax=None, row_ordering=None,
     """
     df = bqlu.cursor_to_df(bdb.execute(bql))
     df.fillna(0, inplace=True)
-    c = (df.shape[0]**.5)/4.0
-    clustermap_kws = {'linewidths': 0.2, 'vmin': vmin, 'vmax': vmax,
-        'figsize':(c, .8*c)}
-
-    clustermap = zmatrix(df, clustermap_kws=clustermap_kws,
-        row_ordering=row_ordering, col_ordering=col_ordering)
-
-    return clustermap
-
+    return zmatrix(df, **kwargs)
 
 def pairplot(bdb, bql, generator_name=None, show_contour=False, colorby=None,
         show_missing=False, show_full=False):
@@ -613,13 +597,21 @@ def zmatrix(data_df, clustermap_kws=None, row_ordering=None,
         index, column, and values that let clustermap know how to reshape the
         data. If the query does not follow the standard ESTIMATE PAIRWISE
         output, it may be necessary to define `pivot_kws`.
+        Other keywords here include vmin and vmax, linewidths, figsize, etc.
+    row_ordering, col_ordering : list<int>
+        Specify the order of labels on the x and y axis of the heatmap.
+        To access the row and column indices from a clustermap object, use:
+        clustermap.dendrogram_row.reordered_ind (for rows)
+        clustermap.dendrogram_col.reordered_ind (for cols)
 
     Returns
     -------
     clustermap: seaborn.clustermap
     """
     if clustermap_kws is None:
-        clustermap_kws = {}
+        half_root_col = (data_df.shape[0] ** .5) / 2.0
+        clustermap_kws = {'linewidths': 0.2, 'vmin': vmin, 'vmax': vmax,
+                          'figsize': (half_root_col, .8 * half_root_col)}
 
     if clustermap_kws.get('pivot_kws', None) is None:
         # XXX: If the user doesnt tell us otherwise, we assume that this comes
@@ -653,7 +645,7 @@ def zmatrix(data_df, clustermap_kws=None, row_ordering=None,
 
 
 # TODO: bdb, and table_name should be optional arguments
-def _pairplot(df, bdb=None, generator_name=None, use_shortname=False,
+def _pairplot(df, bdb=None, generator_name=None,
         show_contour=False, colorby=None, show_missing=False, show_full=False):
     """Plots the columns in data_df in a facet grid.
 
@@ -671,9 +663,6 @@ def _pairplot(df, bdb=None, generator_name=None, use_shortname=False,
         the generator for the data allows pairplot to choose plot types.
     generator_name : str
         The name of generator associated with `df` and `bdb`.
-    use_shortname : bool
-        If True, use column shortnames (requires codebook) for axis lables,
-        otherwise use the column names in `df`.
     show_contour : bool
         If True, KDE contours are plotted on top of scatter plots
         and histograms.
