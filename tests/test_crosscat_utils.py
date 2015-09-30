@@ -97,6 +97,8 @@ def test_get_metadata():
     generator_name = 'tmp_cc'
     pandas_df = get_test_df()
 
+    import os
+    os.environ['BAYESDB_WIZARD_MODE']='1'
     with bayeslite.bayesdb_open() as bdb:
         bayesdb_read_pandas_df(bdb, table_name, pandas_df, create=True)
         bdb.execute('''
