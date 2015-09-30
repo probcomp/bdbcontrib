@@ -37,9 +37,9 @@ filestamp = '-' + timestamp + '-' + user
 def out_file_name(base, ext):
     return out_dir + '/' + base + filestamp + ext
 
-num_models = 4
-num_iters = 3 # Expect this to run for ~30 minutes on probcomp
-checkpoint_freq = 1
+num_models = 9
+num_iters = 12 # Expect this to run for ~30 minutes on probcomp
+checkpoint_freq = 2
 seed = 0
 
 csv_file = 'satellites.csv'

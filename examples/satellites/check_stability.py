@@ -32,9 +32,9 @@ import bayeslite
 ## Query running and result accumulation                            ##
 ######################################################################
 
-model_schedule = [1,2]
+model_schedule = [1,2,3]
 model_skip = model_schedule[-1]
-n_replications = 2
+n_replications = 3
 # TODO Expect the number of models in the file to be at least
 # model_skip * n_replications; excess models are wasted.
 
@@ -230,9 +230,10 @@ def country_purpose_queries(bdb):
 
 import cPickle as pickle # json doesn't like tuple dict keys
 
+import glob
+
 def save_query_results(filename):
-    results = analyze_fileset(["output/satellites-2015-09-24-axch-4m-%di.bdb" % j
-                               for j in range(4)])
+    results = analyze_fileset(glob.glob("output/*i.bdb"))
     with open(filename, "w") as f:
         pickle.dump(results, f)
     log("Saved query results to %s" % filename)
