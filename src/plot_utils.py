@@ -525,7 +525,12 @@ def do_kdeplot(plot_df, unused_vartypes, **kwargs):
         try:
             sns.kdeplot(df.ix[:, :2].values, ax=ax)
         except ValueError:
-            # With the skewed distribution, we get:
+            # Displaying a plot without a requested contour is better
+            # than crashing.
+            pass
+
+            # This actually happens: with the 'skewed_numeric_5'
+            # distribution in tests/test_plot_utils.py, we get:
             # seaborn/distributions.py:597: in kdeplot
             #     ax, **kwargs)
             # seaborn/distributions.py:380: in _bivariate_kdeplot
@@ -548,7 +553,6 @@ def do_kdeplot(plot_df, unused_vartypes, **kwargs):
             # >       return umr_minimum(a, axis, None, out, keepdims)
             # E       ValueError: zero-size array to reduction operation
             #                     minimum which has no identity
-            pass
 
     return ax
 
