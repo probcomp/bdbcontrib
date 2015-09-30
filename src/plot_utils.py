@@ -227,16 +227,6 @@ MODEL_TO_TYPE_LOOKUP = {
     'symmetric_dirichlet_discrete': 'categorical',
 }
 
-# XXX: Working around a seaborn bug:
-class NonZeroDWIMSeriesWrapper(pd.Series):
-    pass
-#    def __nonzero__(self):
-#        return not self.empty
-class NonZeroDWIMFrameWrapper(pd.DataFrame):
-    pass
-#    def __nonzero__(self):
-#        return not self.empty
-
 
 def rotate_tick_labels(ax, axis='x', rotation=90):
     if axis.lower() == 'x':
@@ -412,10 +402,10 @@ def do_hist(data_srs, **kwargs):
         if colors is not None:
             for val, color in colors.iteritems():
                 subdf = data_srs.loc[data_srs.ix[:, 1] == val]
-                sns.distplot(NonZeroDWIMFrameWrapper(drop_inf_and_nan(subdf.ix[:, 0])),
+                sns.distplot(drop_inf_and_nan(subdf.ix[:, 0]),
                              kde=do_kde, ax=ax, color=color, bins=bins)
         else:
-            sns.distplot(NonZeroDWIMFrameWrapper(drop_inf_and_nan(data_srs)),
+            sns.distplot(drop_inf_and_nan(data_srs),
                          kde=do_kde, ax=ax, bins=bins)
 
     return ax
@@ -472,7 +462,7 @@ def do_violinplot(plot_df, vartypes, **kwargs):
         axis = sns.violinplot(
             x=plot_df.columns[0],
             y=plot_df.columns[1],
-            data=NonZeroDWIMFrameWrapper(plot_df),
+            data=plot_df,
             order=sub_vals, hue=plot_df.columns[2],
             names=sub_vals, ax=ax, orient=("v" if vert else "h"),
             palette=colors, inner='quartile')
@@ -481,7 +471,7 @@ def do_violinplot(plot_df, vartypes, **kwargs):
         sns.violinplot(
             x=plot_df.columns[0],
             y=plot_df.columns[1],
-            data=NonZeroDWIMFrameWrapper(plot_df),
+            data=plot_df,
             order=unique_vals, names=unique_vals, ax=ax,
             orient=("v" if vert else "h"),
             color='SteelBlue', inner='quartile')
@@ -631,9 +621,9 @@ def zmatrix(data_df, clustermap_kws=None, row_ordering=None,
         df = df.ix[:, col_ordering]
         df = df.ix[row_ordering, :]
         del clustermap_kws['pivot_kws']
-        return sns.heatmap(NonZeroDWIMFrameWrapper(df), **clustermap_kws), row_ordering, col_ordering
+        return sns.heatmap(df, **clustermap_kws), row_ordering, col_ordering
     else:
-        return sns.clustermap(NonZeroDWIMFrameWrapper(data_df), **clustermap_kws)
+        return sns.clustermap(data_df, **clustermap_kws)
 
 
 # TODO: bdb, and table_name should be optional arguments
