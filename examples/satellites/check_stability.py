@@ -53,13 +53,13 @@ def analyze_fileset(files):
     opaquely.
 
     """
-    # Keys are (file_name, model_ct, name, type); values are aggregated results
+    # Keys are (file_name, model_ct, name); values are aggregated results
     results = {}
     for fname in files:
         log("processing file %s" % fname)
         with bayeslite.bayesdb_open(fname) as bdb:
-            res = [((fname, model_ct, name, qtype), ress)
-                   for ((model_ct, name, qtype), ress)
+            res = [((fname, model_ct, name), ress)
+                   for ((model_ct, name), ress)
                    in analyze_queries(bdb).iteritems()]
             incorporate(results, res)
     return results
@@ -96,37 +96,37 @@ def incorporate(running, new):
 # yes and no for booleans vs accumulating lists of reals).
 def inc_singleton(qtype, val):
     if qtype == 'num':
-        return [val]
+        return ('num', [val])
     elif qtype == 'bool':
         if val:
-            return (1, 0)
+            return ('bool', (1, 0))
         else:
-            return (0, 1)
+            return ('bool', (0, 1))
     else:
         raise Exception("Unknown singleton type %s for %s" % (qtype, val))
 
 def merge_one(so_far, val):
-    # XXX Really should extract the type tag from the key or something
-    if isinstance(so_far, list) and isinstance(val, list):
-        so_far.extend(val)
-        return so_far
-    elif isinstance(so_far, tuple) and isinstance(val, tuple):
-        # XXX Assume boolean counts
-        (t1, f1) = so_far
-        (t2, f2) = val
-        return (t1+t2, f1+f2)
+    (tp1, item1) = so_far
+    (tp2, item2) = val
+    if tp1 == 'num' and tp2 == 'num':
+        item1.extend(item2)
+        return ('num', item1)
+    elif tp1 == 'bool' and tp2 == 'bool':
+        (t1, f1) = item1
+        (t2, f2) = item2
+        return ('bool', (t1+t2, f1+f2))
     else:
         raise Exception("Type mismatch in merge into %s of %s" % (so_far, val))
 
 def analyze_queries(bdb):
-    results = {} # Keys are (model_ct, name, type); values are aggregated results
+    results = {} # Keys are (model_ct, name); values are aggregated results
     for spec in model_specs():
         (low, high) = spec
         model_ct = high - low
         with model_restriction(bdb, "satellites_cc", spec):
             log("querying models %d-%d" % (low, high-1))
             for queryset in [country_purpose_queries]:
-                qres = [((model_ct, name, qtype), inc_singleton(qtype, res))
+                qres = [((model_ct, name), inc_singleton(qtype, res))
                         for (name, qtype, res) in queryset(bdb)]
                 incorporate(results, qres)
     return results
@@ -135,7 +135,7 @@ def analyze_queries(bdb):
 ## Visualization                                                    ##
 ######################################################################
 
-# results :: {(fname, model_ct, query_name) : list value}
+# results :: {(fname, model_ct, query_name) : tagged aggregated value}
 
 def num_replications(results):
     replication_counts = set((len(l) for l in results.values()))
@@ -150,9 +150,9 @@ def analysis_count_from_file_name(fname):
     return int(re.match(r'.*-[0-9]*m-([0-9]*)i.bdb', fname).group(1))
 
 def plot_results_numerical(results, query):
-    # results :: dict (file_name, model_ct, query_name) : result_set
+    # results :: dict (file_name, model_ct, query_name) : tagged result_set
     data = ((analysis_count_from_file_name(fname), model_ct, value)
-        for ((fname, model_ct, qname, qtype), values) in results.iteritems()
+        for ((fname, model_ct, qname), (qtype, values)) in results.iteritems()
         if qname == query and qtype == 'num'
         for value in values)
     cols = ["num iterations", "n_models", "value"]
@@ -163,10 +163,11 @@ def plot_results_numerical(results, query):
     return g
 
 def plot_results_boolean(results):
-    # results :: dict (file_name, model_ct, query_name) : result_set
+    # results :: dict (file_name, model_ct, query_name) : tagged result_set
     data = ((analysis_count_from_file_name(fname), model_ct, qname, float(t)/(t+f))
-            for ((fname, model_ct, qname, qtype), (t, f)) in results.iteritems()
-        if qtype == 'bool')
+        for ((fname, model_ct, qname), (qtype, value)) in results.iteritems()
+        if qtype == 'bool'
+        for (t, f) in [value])
     cols = ["num iterations", "n_models", "query", "freq"]
     df = pd.DataFrame.from_records(data, columns=cols) \
                      .sort(["num iterations", "n_models"])
@@ -177,7 +178,7 @@ def plot_results_boolean(results):
 def plot_results(results, basename="fig", ext=".png"):
     replications = num_replications(results)
     queries = sorted(set((qname, qtype)
-                         for ((_, _, qname, qtype), _) in results.iteritems()))
+                         for ((_, _, qname), (qtype, _)) in results.iteritems()))
     for query, qtype in queries:
         if not qtype == 'num': continue
         grid = plot_results_numerical(results, query)
