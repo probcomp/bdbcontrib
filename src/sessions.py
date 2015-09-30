@@ -34,7 +34,7 @@ def clear_all_sessions(bdb):
     bdb.clear_all_sessions()
 
 
-def send_session_data(bdb, session_id):
+def send_session_data(bdb):
     """Send all saved session history."""
     session_id = current_session_id(bdb)
     for id in range(1, session_id+1):
