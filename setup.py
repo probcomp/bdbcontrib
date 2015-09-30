@@ -119,6 +119,7 @@ setup(
     ],
     tests_require=[
         'pytest',
+        'pillow'
     ],
     packages=[
         'bdbcontrib',
