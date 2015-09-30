@@ -344,22 +344,6 @@ def prep_plot_df(data_df, var_names):
 def drop_inf_and_nan(np_Series):
     return np_Series.replace([-np.inf, np.inf], np.nan).dropna()
 
-# XXX: Should not be computing this ourselves. Newer Seaborn is happier.
-def _safer_freedman_diaconis_bins(a):
-    """Calculate number of hist bins using Freedman-Diaconis rule."""
-    # From 0.6 https://github.com/mwaskom/seaborn/blob/master/seaborn/distributions.py
-    from seaborn.utils import iqr
-    a = np.asarray(a)
-    try:
-        h = 2 * iqr(a) / (len(a) ** (1 / 3))
-        # fall back to sqrt(a) bins if iqr is 0
-        if h == 0:
-            return np.sqrt(a.size)
-        else:
-            return np.ceil((a.max() - a.min()) / h)
-    except TypeError:  # Because there is no 75th percentile of this data type?
-        return np.sqrt(a.size)
-
 def do_hist(data_srs, **kwargs):
     ax = kwargs.get('ax', None)
     bdb = kwargs.get('bdb', None)
@@ -398,15 +382,12 @@ def do_hist(data_srs, **kwargs):
         ax.set_xticklabels(uvals)
     else:
         do_kde = True
-        bins = _safer_freedman_diaconis_bins(data_srs)
         if colors is not None:
             for val, color in colors.iteritems():
                 subdf = data_srs.loc[data_srs.ix[:, 1] == val]
                 sns.distplot(drop_inf_and_nan(subdf.ix[:, 0]),
-                             kde=do_kde, ax=ax, color=color, bins=bins)
-        else:
-            sns.distplot(drop_inf_and_nan(data_srs),
-                         kde=do_kde, ax=ax, bins=bins)
+                             kde=do_kde, ax=ax, color=color)
+            sns.distplot(drop_inf_and_nan(data_srs), kde=do_kde, ax=ax)
 
     return ax
 
@@ -491,7 +472,7 @@ def do_violinplot(plot_df, vartypes, **kwargs):
 def do_kdeplot(plot_df, unused_vartypes, **kwargs):
     # XXX: kdeplot is not a good choice for small amounts of data because
     # it uses a kernel density estimator to crease a smooth heatmap. On the
-    # other hadnd, scatter plots are uniformative given lots of data---the
+    # other hand, scatter plots are uninformative given lots of data---the
     # points get jumbled up. We may just want to set a threshold (N=100)?
 
     ax = kwargs.get('ax', None)
@@ -541,7 +522,37 @@ def do_kdeplot(plot_df, unused_vartypes, **kwargs):
                         zorder=1)
 
     if show_contour:
-        sns.kdeplot(df.ix[:, :2].values, ax=ax)
+        try:
+            sns.kdeplot(df.ix[:, :2].values, ax=ax)
+        except ValueError:
+            # Displaying a plot without a requested contour is better
+            # than crashing.
+            pass
+
+            # This actually happens: with the 'skewed_numeric_5'
+            # distribution in tests/test_plot_utils.py, we get:
+            # seaborn/distributions.py:597: in kdeplot
+            #     ax, **kwargs)
+            # seaborn/distributions.py:380: in _bivariate_kdeplot
+            #     cset = contour_func(xx, yy, z, n_levels, **kwargs)
+            # matplotlib/axes/_axes.py:5333: in contour
+            #     return mcontour.QuadContourSet(self, *args, **kwargs)
+            # matplotlib/contour.py:1429: in __init__
+            #     ContourSet.__init__(self, ax, *args, **kwargs)
+            # matplotlib/contour.py:876: in __init__
+            #     self._process_levels()
+            # matplotlib/contour.py:1207: in _process_levels
+            #     self.vmin = np.amin(self.levels)
+            # numpy/core/fromnumeric.py:2224: in amin
+            #     out=out, keepdims=keepdims)
+            # _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+            # a = array([], dtype=float64),
+            # axis = None, out = None, keepdims = False
+            #
+            #     def _amin(a, axis=None, out=None, keepdims=False):
+            # >       return umr_minimum(a, axis, None, out, keepdims)
+            # E       ValueError: zero-size array to reduction operation
+            #                     minimum which has no identity
 
     return ax
 

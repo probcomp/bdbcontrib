@@ -35,7 +35,7 @@ def prepare():
     alphabet = ['A', 'B', 'C', 'D', 'E']
     dist_of_five = np.random.choice(range(5), num_rows,
                                     p=np.array([1, .4, .3, .2, .1]) / 2.)
-    df['numeric_1'] = [np.random.randn() + x for x in dist_of_five]
+    df['floats_1'] = [np.random.randn() + x for x in dist_of_five]
     df['categorical_1'] = [alphabet[i] for i in dist_of_five]
 
     dist_of_five = np.random.choice(range(5), num_rows,
@@ -48,6 +48,15 @@ def prepare():
 
     df['many_ints_4'] = np.random.randn(num_rows)
 
+    # Need >= 75% to be zero to trigger inter-quartile-range == 0.
+    foo = np.random.choice(
+        range(4), num_rows, p=[200./256, 40./256, 10./256, 6./256])
+    # Need >= 30 unique to be numeric instead of categorical,
+    # so perturb the non-zeros:
+    foo = [ i * np.random.random() for i in foo ]
+    from seaborn.utils import iqr
+    assert iqr(foo) == 0
+    df['skewed_numeric_5'] = foo
     csv_str = StringIO()
     df.to_csv(csv_str)
 
@@ -115,7 +124,8 @@ def test_pairplot_smoke():
 
 def test_one_variable():
     (df, bdb) = prepare()
-    for var in ['categorical_1', 'few_ints_3', 'floats_3', 'many_ints_4']:
+    for var in ['categorical_1', 'few_ints_3', 'floats_3', 'many_ints_4',
+                'skewed_numeric_5']:
       cursor = bdb.execute('SELECT %s FROM plottest' % (var,))
       df = cursor_to_df(cursor)
       f = StringIO()
