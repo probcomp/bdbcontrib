@@ -468,40 +468,23 @@ def do_violinplot(plot_df, vartypes, **kwargs):
     unique_vals = np.sort(unique_vals)
     n_vals = len(plot_df[groupby].unique())
     if dummy:
-        order_key = dict((val, i) for i, val in enumerate(unique_vals))
-        base_width = 0.75/len(colors)
-        violin_width = base_width
-        for i, (val, color) in enumerate(colors.iteritems()):
-            subdf = plot_df.loc[plot_df.ix[:, 2] == val]
-            if subdf.empty:
-                continue
-
-            if vert:
-                vals = subdf.columns[1]
-            else:
-                vals = subdf.columns[0]
-
-            # Not every categorical value is guaranteed to appear in each subdf.
-            # Here we compensate.
-            sub_vals = np.sort(subdf[groupby].unique())
-            positions = []
-
-            for category in sub_vals:
-                positions.append(base_width * i + order_key[category] +
-                                 base_width / 2 - .75/2)
-
-            sns.violinplot(NonZeroDWIMSeriesWrapper(subdf[vals]),
-                           groupby=subdf[groupby], order=sub_vals,
-                names=sub_vals, vert=vert, ax=ax, positions=positions,
-                widths=violin_width, color=color)
+        sub_vals = np.sort(plot_df[groupby].unique())
+        axis = sns.violinplot(
+            x=plot_df.columns[0],
+            y=plot_df.columns[1],
+            data=NonZeroDWIMFrameWrapper(plot_df),
+            order=sub_vals, hue=plot_df.columns[2],
+            names=sub_vals, ax=ax, orient=("v" if vert else "h"),
+            palette=colors, inner='quartile')
+        axis.legend_ = None
     else:
-        if vert:
-            vals = plot_df.columns[1]
-        else:
-            vals = plot_df.columns[0]
-        sns.violinplot(NonZeroDWIMSeriesWrapper(plot_df[vals]), groupby=plot_df[groupby],
-            order=unique_vals, names=unique_vals, vert=vert, ax=ax, positions=0,
-            color='SteelBlue')
+        sns.violinplot(
+            x=plot_df.columns[0],
+            y=plot_df.columns[1],
+            data=NonZeroDWIMFrameWrapper(plot_df),
+            order=unique_vals, names=unique_vals, ax=ax,
+            orient=("v" if vert else "h"),
+            color='SteelBlue', inner='quartile')
 
     if vert:
         ax.set_xlim([-.5, n_vals-.5])
