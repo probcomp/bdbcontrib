@@ -50,14 +50,15 @@ def analyze_fileset(files):
     opaquely.
 
     """
-    # Keys are (file_name, model_ct, name); values are aggregated results
+    # Keys are (file_name, model_ct, name, type); values are aggregated results
     results = {}
     for fname in files:
         log("processing file %s" % fname)
         with bayeslite.bayesdb_open(fname) as bdb:
-            incorporate(results,
-                [((fname, model_ct, name), ress)
-                 for ((model_ct, name), ress) in analyze_queries(bdb).iteritems()])
+            res = [((fname, model_ct, name, qtype), ress)
+                   for ((model_ct, name, qtype), ress)
+                   in analyze_queries(bdb).iteritems()]
+            incorporate(results, res)
     return results
 
 def model_specs():
@@ -99,15 +100,16 @@ def merge_one(so_far, val):
     return so_far
 
 def analyze_queries(bdb):
-    results = {} # Keys are (model_ct, name); values are aggregated results
+    results = {} # Keys are (model_ct, name, type); values are aggregated results
     for spec in model_specs():
         (low, high) = spec
         model_ct = high - low
         with model_restriction(bdb, "satellites_cc", spec):
             log("querying models %d-%d" % (low, high-1))
             for queryset in [country_purpose_queries]:
-                incorporate(results, [((model_ct, name), inc_singleton(res))
-                                      for (name, res) in queryset(bdb)])
+                qres = [((model_ct, name, qtype), inc_singleton(res))
+                        for (name, qtype, res) in queryset(bdb)]
+                incorporate(results, qres)
     return results
 
 ######################################################################
@@ -131,7 +133,7 @@ def analysis_count_from_file_name(fname):
 def plot_results_q(results, query):
     # results :: dict (file_name, model_ct, query_name) : result_set
     data = ((analysis_count_from_file_name(fname), model_ct, value)
-        for ((fname, model_ct, qname), values) in results.iteritems()
+        for ((fname, model_ct, qname, _), values) in results.iteritems()
         if qname == query
         for value in values)
     cols = ["num iterations", "n_models", "value"]
@@ -144,8 +146,9 @@ def plot_results_q(results, query):
 
 def plot_results(results, basename="fig", ext=".png"):
     replications = num_replications(results)
-    queries = sorted(set(qname for ((_, _, qname), _) in results.iteritems()))
-    for query in queries:
+    queries = sorted(set((qname, qtype)
+                         for ((_, _, qname, qtype), _) in results.iteritems()))
+    for query, qtype in queries:
         grid = plot_results_q(results, query)
         grid.fig.suptitle(query + ", %d replications" % replications)
         figname = basename + "-" + string.replace(query, " ", "-") + ext
@@ -179,9 +182,9 @@ def country_purpose_queries(bdb):
     results = bdb.execute(hist_sql).fetchall()
     usa_top = results[0][0] == 'USA' and results[0][1] == 'Communications'
     by_much = results[0][2] > 2*results[1][2]
-    return [ ("USA-Communications count", usa_ct),
-             ("USA-Communications is top", usa_top),
-             ("USA-Communications is top by 2x", by_much),
+    return [ ("USA-Communications count", "num", usa_ct),
+             ("USA-Communications is top", "bool", usa_top),
+             ("USA-Communications is top by 2x", "bool", by_much),
          ]
 
 ######################################################################
