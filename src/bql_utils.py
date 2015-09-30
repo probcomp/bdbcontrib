@@ -65,7 +65,7 @@ def nullify(bdb, table, value):
     ----------
     bdb : bayeslite.BayesDB
         bayesdb database object
-    return table : str
+    table : str
         The name of the table on which to act
     value : stringable
         The value to replace with ``NULL``
