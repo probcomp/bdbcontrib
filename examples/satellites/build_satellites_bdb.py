@@ -125,6 +125,8 @@ execute('INITIALIZE %d MODELS FOR satellites_cc' % (num_models,))
 cur_iter_ct = 0
 
 def snapshot():
+    log('vacuuming')
+    bdb.sql_execute('vacuum')
     cur_infix = '-%dm-%di' % (num_models, cur_iter_ct)
     save_file_name = out_file_name('satellites', cur_infix + '.bdb')
     meta_file_name = out_file_name('satellites', cur_infix + '-meta.txt')

@@ -249,5 +249,5 @@ def plot_query_results(filename):
         results = pickle.load(f)
     plot_results(results)
 
-# save_query_results("results.json")
+save_query_results("results.json")
 plot_query_results("results.json")
