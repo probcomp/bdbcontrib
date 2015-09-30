@@ -56,8 +56,8 @@ def mi_hist(bdb, generator, col1, col2, num_samples=1000, bins=5):
         SELECT COUNT(modelno) FROM bayesdb_generator_model
             WHERE generator_id = ?
     '''
-    c = bdb.execute(bql, (generator_id,))
-    num_models = c.next()[0]
+    counts = bdb.execute(bql, (generator_id,))
+    num_models = counts.next()[0]
 
     figure, ax = plt.subplots(figsize=(6, 6))
 
@@ -67,9 +67,9 @@ def mi_hist(bdb, generator, col1, col2, num_samples=1000, bins=5):
             ESTIMATE MUTUAL INFORMATION OF {} WITH {} USING {} SAMPLES FROM {}
                 USING MODEL {} LIMIT 1
         '''.format(col1, col2, num_samples, generator, modelno)
-        c = bdb.execute(bql)
-        mi = c.next()[0]
-        mis.append(mi)
+        cursor = bdb.execute(bql)
+        mutual_information = cursor.next()[0]
+        mis.append(mutual_information)
     ax.hist(mis, bins, normed=True)
     ax.set_xlabel('Mutual Information')
     ax.set_ylabel('Density')
@@ -78,8 +78,7 @@ def mi_hist(bdb, generator, col1, col2, num_samples=1000, bins=5):
     return figure
 
 
-def heatmap(bdb, bql, vmin=None, vmax=None, row_ordering=None,
-        col_ordering=None):
+def heatmap(bdb, bql, selectors=None, **kwargs):
     """Plot clustered heatmap of pairwise matrix.
 
     Parameters
@@ -88,15 +87,14 @@ def heatmap(bdb, bql, vmin=None, vmax=None, row_ordering=None,
         Active BayesDB instance.
     bql : str
         The BQL to run and plot. Must be a PAIRWISE BQL query.
-    vmin: float
-        Minimun value of the colormap.
-    vmax: float
-        Maximum value of the colormap.
-    row_ordering, col_ordering: list<int>
-        Specify the order of labels on the x and y axis of the heatmap. To
-        access the row and column indices from a clustermap object, use:
-        clustermap.dendrogram_row.reordered_ind  (for rows)
-        clustermap.dendrogram_col.reordered_ind (for cols)
+    selectors : [lambda name --> bool]
+        Rather than plot the full NxN matrix all together, make separate plots
+        for each combination of these selectors, plotting them in sequence.
+        If selectors are specified, returns a list of clustermaps, having
+        shown and closed each one.
+
+    **kwargs : dict
+        Passed to zmatrix: vmin, vmax, row_ordering, col_ordering
 
     Returns
     -------
@@ -104,15 +102,18 @@ def heatmap(bdb, bql, vmin=None, vmax=None, row_ordering=None,
     """
     df = bqlu.cursor_to_df(bdb.execute(bql))
     df.fillna(0, inplace=True)
-    c = (df.shape[0]**.5)/4.0
-    clustermap_kws = {'linewidths': 0.2, 'vmin': vmin, 'vmax': vmax,
-        'figsize':(c, .8*c)}
-
-    clustermap = zmatrix(df, clustermap_kws=clustermap_kws,
-        row_ordering=row_ordering, col_ordering=col_ordering)
-
-    return clustermap
-
+    if selectors is None:
+        return zmatrix(df, **kwargs)
+    results = []
+    for n0selector in selectors:
+      n0selection = deps['name0'].map(n0selector)
+      for n1selector in selectors:
+        n1selection = deps['name1'].map(n1selector)
+        this_block = deps[n0selection & n1selection]
+        results.append(zmatrix(this_block, vmin=0, vmax=1))
+        plt.show()
+        plt.close('all')
+    return results
 
 def pairplot(bdb, bql, generator_name=None, show_contour=False, colorby=None,
         show_missing=False, show_full=False):
@@ -147,12 +148,12 @@ def pairplot(bdb, bql, generator_name=None, show_contour=False, colorby=None,
     figure : matplotlib.figure.Figure
     """
     df = bqlu.cursor_to_df(bdb.execute(bql))
-    c = len(df.columns)*4
     figure = _pairplot(df, bdb=bdb, generator_name=generator_name,
         show_contour=show_contour, colorby=colorby, show_missing=show_missing,
         show_full=show_full)
     figure.tight_layout()
-    figure.set_size_inches((c,c))
+    inches = len(df.columns) * 4
+    figure.set_size_inches((inches, inches))
 
     return figure
 
@@ -202,14 +203,14 @@ def barplot(bdb, bql):
     """
     df = bqlu.cursor_to_df(bdb.execute(bql))
 
-    c = df.shape[0]/2.0
-    figure, ax = plt.subplots(figsize=(c, 5))
+    height_inches = df.shape[0] / 2.0
+    figure, ax = plt.subplots(figsize=(height_inches, 5))
 
-    ax.bar([x-.5 for x in range(df.shape[0])], df.ix[:, 1].values,
+    ax.bar([x - .5 for x in range(df.shape[0])], df.ix[:, 1].values,
         color='#333333', edgecolor='#333333')
     ax.set_xticks(range(df.shape[0]))
     ax.set_xticklabels(df.ix[:, 0].values, rotation=90)
-    ax.set_xlim([-1, df.shape[0]-.5])
+    ax.set_xlim([-1, df.shape[0] - .5])
     ax.set_ylabel(df.columns[1])
     ax.set_xlabel(df.columns[0])
     ax.set_title('\n    '.join(wrap(bql, 80)))
@@ -228,11 +229,13 @@ MODEL_TO_TYPE_LOOKUP = {
 
 # XXX: Working around a seaborn bug:
 class NonZeroDWIMSeriesWrapper(pd.Series):
-    def __nonzero__(self):
-        return not self.empty
+    pass
+#    def __nonzero__(self):
+#        return not self.empty
 class NonZeroDWIMFrameWrapper(pd.DataFrame):
-    def __nonzero__(self):
-        return not self.empty
+    pass
+#    def __nonzero__(self):
+#        return not self.empty
 
 
 def rotate_tick_labels(ax, axis='x', rotation=90):
@@ -241,7 +244,7 @@ def rotate_tick_labels(ax, axis='x', rotation=90):
     elif axis.lower() == 'y':
         _, labels = ax.get_yticks()
     else:
-        raise ValueError('axis must b x or y')
+        raise ValueError('axis must be x or y')
     plt.setp(labels, rotation=rotation)
 
 
@@ -265,7 +268,7 @@ def gen_collapsed_legend_from_dict(hl_colors_dict, loc=0, title=None,
     fontsize : int
         legend entry and title fontsize
     wrap_threshold : int
-        max number of charachters before wordwrap
+        max number of characters before wordwrap
 
     Returns
     -------
@@ -275,10 +278,7 @@ def gen_collapsed_legend_from_dict(hl_colors_dict, loc=0, title=None,
         raise TypeError("hl_colors_dict must be a dict")
 
     colors = list(set(hl_colors_dict.values()))
-    collapsed_dict = dict(zip(colors, [[] for i in range(len(colors))]))
-
-    for color in colors:
-        collapsed_dict[color] == []
+    collapsed_dict = dict(zip(colors, [[]] * len(colors)))
 
     for label, color in hl_colors_dict.iteritems():
         collapsed_dict[color].append(str(label))
@@ -337,7 +337,7 @@ def get_bayesdb_col_type(column_name, df_column, bdb=None,
         return guess_column_type(df_column)
 
 
-def conv_categorical_vals_to_numeric(data_srs, bdb=None, generator_name=None):
+def conv_categorical_vals_to_numeric(data_srs):
     # TODO: get real valuemap from btable
     unique_vals = sorted(data_srs.unique().tolist())
     lookup = dict(zip(unique_vals, range(len(unique_vals))))
@@ -392,8 +392,7 @@ def do_hist(data_srs, **kwargs):
     data_srs = data_srs.dropna()
 
     if dtype == 'categorical':
-        vals, uvals, _ = conv_categorical_vals_to_numeric(
-            data_srs.ix[:, 0], bdb=bdb, generator_name=generator_name)
+        vals, uvals, _ = conv_categorical_vals_to_numeric(data_srs.ix[:, 0])
         if colors is not None:
             color_lst = []
             stacks = []
@@ -422,19 +421,15 @@ def do_hist(data_srs, **kwargs):
     return ax
 
 
-def do_heatmap(plot_df, vartypes, **kwargs):
+def do_heatmap(plot_df, unused_vartypes, **kwargs):
     ax = kwargs.get('ax', None)
-    bdb = kwargs.get('bdb', None)
-    generator_name = kwargs.get('generator_name', None)
 
     plot_df = plot_df.dropna()
     if ax is None:
         ax = plt.gca()
 
-    vals_x, uvals_x, _ = conv_categorical_vals_to_numeric(
-        plot_df.ix[:, 0], bdb=bdb, generator_name=generator_name)
-    vals_y, uvals_y, _ = conv_categorical_vals_to_numeric(
-        plot_df.ix[:, 1], bdb=bdb, generator_name=generator_name)
+    vals_x, uvals_x, _ = conv_categorical_vals_to_numeric(plot_df.ix[:, 0])
+    vals_y, uvals_y, _ = conv_categorical_vals_to_numeric(plot_df.ix[:, 1])
 
     bins_x = len(uvals_x)
     bins_y = len(uvals_y)
@@ -453,10 +448,7 @@ def do_heatmap(plot_df, vartypes, **kwargs):
 
 def do_violinplot(plot_df, vartypes, **kwargs):
     ax = kwargs.get('ax', None)
-    bdb = kwargs.get('bdb', None)
-    generator_name = kwargs.get('generator_name', None)
     colors = kwargs.get('colors', None)
-    # dummy = kwargs.get('dummy', False)
 
     dummy = plot_df.shape[1] == 3
 
@@ -471,46 +463,28 @@ def do_violinplot(plot_df, vartypes, **kwargs):
     else:
         groupby = plot_df.columns[1]
 
-    _, unique_vals, _ = conv_categorical_vals_to_numeric(
-        plot_df[groupby], bdb=bdb, generator_name=generator_name)
+    _, unique_vals, _ = conv_categorical_vals_to_numeric(plot_df[groupby])
 
     unique_vals = np.sort(unique_vals)
     n_vals = len(plot_df[groupby].unique())
     if dummy:
-        order_key = dict((val, i) for i, val in enumerate(unique_vals))
-        base_width = 0.75/len(colors)
-        violin_width = base_width
-        for i, (val, color) in enumerate(colors.iteritems()):
-            subdf = plot_df.loc[plot_df.ix[:, 2] == val]
-            if subdf.empty:
-                continue
-
-            if vert:
-                vals = subdf.columns[1]
-            else:
-                vals = subdf.columns[0]
-
-            # not evey categorical value is guaranteed to appear in each subdf.
-            # Here we compensate.
-            sub_vals = np.sort(subdf[groupby].unique())
-            positions = []
-
-            for v in sub_vals:
-                positions.append(base_width*i + order_key[v] + base_width/2
-                                 - .75/2)
-
-            sns.violinplot(NonZeroDWIMSeriesWrapper(subdf[vals]),
-                           groupby=subdf[groupby], order=sub_vals,
-                names=sub_vals, vert=vert, ax=ax, positions=positions,
-                widths=violin_width, color=color)
+        sub_vals = np.sort(plot_df[groupby].unique())
+        axis = sns.violinplot(
+            x=plot_df.columns[0],
+            y=plot_df.columns[1],
+            data=NonZeroDWIMFrameWrapper(plot_df),
+            order=sub_vals, hue=plot_df.columns[2],
+            names=sub_vals, ax=ax, orient=("v" if vert else "h"),
+            palette=colors, inner='quartile')
+        axis.legend_ = None
     else:
-        if vert:
-            vals = plot_df.columns[1]
-        else:
-            vals = plot_df.columns[0]
-        sns.violinplot(NonZeroDWIMSeriesWrapper(plot_df[vals]), groupby=plot_df[groupby],
-            order=unique_vals, names=unique_vals, vert=vert, ax=ax, positions=0,
-            color='SteelBlue')
+        sns.violinplot(
+            x=plot_df.columns[0],
+            y=plot_df.columns[1],
+            data=NonZeroDWIMFrameWrapper(plot_df),
+            order=unique_vals, names=unique_vals, ax=ax,
+            orient=("v" if vert else "h"),
+            color='SteelBlue', inner='quartile')
 
     if vert:
         ax.set_xlim([-.5, n_vals-.5])
@@ -524,7 +498,7 @@ def do_violinplot(plot_df, vartypes, **kwargs):
     return ax
 
 
-def do_kdeplot(plot_df, vartypes, **kwargs):
+def do_kdeplot(plot_df, unused_vartypes, **kwargs):
     # XXX: kdeplot is not a good choice for small amounts of data because
     # it uses a kernel density estimator to crease a smooth heatmap. On the
     # other hadnd, scatter plots are uniformative given lots of data---the
@@ -600,7 +574,7 @@ def do_pair_plot(plot_df, vartypes, **kwargs):
 
 
 def zmatrix(data_df, clustermap_kws=None, row_ordering=None,
-        col_ordering=None):
+        col_ordering=None, vmin=None, vmax=None):
     """Plots a clustermap from an ESTIMATE PAIRWISE query.
 
     Parameters
@@ -613,13 +587,23 @@ def zmatrix(data_df, clustermap_kws=None, row_ordering=None,
         index, column, and values that let clustermap know how to reshape the
         data. If the query does not follow the standard ESTIMATE PAIRWISE
         output, it may be necessary to define `pivot_kws`.
+        Other keywords here include vmin and vmax, linewidths, figsize, etc.
+    row_ordering, col_ordering : list<int>
+        Specify the order of labels on the x and y axis of the heatmap.
+        To access the row and column indices from a clustermap object, use:
+        clustermap.dendrogram_row.reordered_ind (for rows)
+        clustermap.dendrogram_col.reordered_ind (for cols)
+    vmin, vmax : float
+        The minimum and maximum values of the colormap.
 
     Returns
     -------
     clustermap: seaborn.clustermap
     """
     if clustermap_kws is None:
-        clustermap_kws = {}
+        half_root_col = (data_df.shape[0] ** .5) / 2.0
+        clustermap_kws = {'linewidths': 0.2, 'vmin': vmin, 'vmax': vmax,
+                          'figsize': (half_root_col, .8 * half_root_col)}
 
     if clustermap_kws.get('pivot_kws', None) is None:
         # XXX: If the user doesnt tell us otherwise, we assume that this comes
@@ -653,7 +637,7 @@ def zmatrix(data_df, clustermap_kws=None, row_ordering=None,
 
 
 # TODO: bdb, and table_name should be optional arguments
-def _pairplot(df, bdb=None, generator_name=None, use_shortname=False,
+def _pairplot(df, bdb=None, generator_name=None,
         show_contour=False, colorby=None, show_missing=False, show_full=False):
     """Plots the columns in data_df in a facet grid.
 
@@ -671,9 +655,6 @@ def _pairplot(df, bdb=None, generator_name=None, use_shortname=False,
         the generator for the data allows pairplot to choose plot types.
     generator_name : str
         The name of generator associated with `df` and `bdb`.
-    use_shortname : bool
-        If True, use column shortnames (requires codebook) for axis lables,
-        otherwise use the column names in `df`.
     show_contour : bool
         If True, KDE contours are plotted on top of scatter plots
         and histograms.
@@ -743,7 +724,7 @@ def _pairplot(df, bdb=None, generator_name=None, use_shortname=False,
         do_hist(data_df, dtype=vartype, ax=ax, bdb=bdb,
             generator_name=generator_name, colors=colors)
         if vartype == 'categorical':
-            rotate_tick_labels(ax)
+            pass  # rotate_tick_labels(ax)
         return
 
     xmins = np.ones((n_vars, n_vars))*float('Inf')
@@ -790,8 +771,8 @@ def _pairplot(df, bdb=None, generator_name=None, use_shortname=False,
                 xmins[y_pos, x_pos] = ax.get_xlim()[0]
                 xmaxs[y_pos, x_pos] = ax.get_xlim()[1]
 
-            ax.set_xlabel(var_name_x, fontweight = 'bold')
-            ax.set_ylabel(var_name_y, fontweight = 'bold')
+            ax.set_xlabel(var_name_x, fontweight='bold')
+            ax.set_ylabel(var_name_y, fontweight='bold')
 
     for x_pos in range(n_vars):
         for y_pos in range(n_vars):

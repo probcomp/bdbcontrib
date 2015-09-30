@@ -14,6 +14,12 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
+# Because this test may indirectly import pylab, which would peg the
+# matplotlib backend, which might prevent a later test from drawing
+# pictures headless.  &#&*%(@#^&!@.
+import matplotlib
+matplotlib.use("Agg")
+
 import pytest
 import tempfile
 
