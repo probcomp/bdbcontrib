@@ -15,6 +15,7 @@
 #   limitations under the License.
 
 import contextlib
+import re
 import string
 import time
 
@@ -112,15 +113,21 @@ def analyze_queries(bdb):
 ## Visualization                                                    ##
 ######################################################################
 
+def analysis_count_from_file_name(fname):
+    return int(re.match(r'.*-[0-9]*m-([0-9]*)i.bdb', fname).group(1))
+
 def plot_results_q(results, query):
     # results :: dict (file_name, model_ct, query_name) : result_set
-    data = ((fname, model_ct, value)
+    data = ((analysis_count_from_file_name(fname), model_ct, value)
         for ((fname, model_ct, qname), values) in results.iteritems()
         if qname == query
         for value in values)
-    df = pd.DataFrame.from_records(data, columns=["file", "n_models", "value"]).replace([False, True], [0,1])
+    cols = ["num iterations", "n_models", "value"]
+    df = pd.DataFrame.from_records(data, columns=cols) \
+                     .replace([False, True], [0,1]) \
+                     .sort(["num iterations", "n_models"])
     g = sns.FacetGrid(df, col="n_models")
-    g.map(sns.violinplot, "file", "value")
+    g.map(sns.violinplot, "num iterations", "value")
     return g
 
 def plot_results(results, basename="fig", ext=".png"):
