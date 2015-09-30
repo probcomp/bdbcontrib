@@ -22,6 +22,9 @@ import warnings
 
 import pandas as pd
 import seaborn as sns
+import matplotlib
+matplotlib.use("Agg")
+import matplotlib.pylab as plt
 
 import bayeslite
 
@@ -89,15 +92,31 @@ def incorporate(running, new):
         else:
             running[key] = more
 
-# These two functions are placeholders for type-dependent aggregation
-# of intermediate values (e.g., counting yes and no for booleans vs
-# accumulating lists of reals).
-def inc_singleton(val):
-    return [val]
+# Type-dependent aggregation of intermediate values (e.g., counting
+# yes and no for booleans vs accumulating lists of reals).
+def inc_singleton(qtype, val):
+    if qtype == 'num':
+        return [val]
+    elif qtype == 'bool':
+        if val:
+            return (1, 0)
+        else:
+            return (0, 1)
+    else:
+        raise Exception("Unknown singleton type %s for %s" % (qtype, val))
 
 def merge_one(so_far, val):
-    so_far.extend(val)
-    return so_far
+    # XXX Really should extract the type tag from the key or something
+    if isinstance(so_far, list) and isinstance(val, list):
+        so_far.extend(val)
+        return so_far
+    elif isinstance(so_far, tuple) and isinstance(val, tuple):
+        # XXX Assume boolean counts
+        (t1, f1) = so_far
+        (t2, f2) = val
+        return (t1+t2, f1+f2)
+    else:
+        raise Exception("Type mismatch in merge into %s of %s" % (so_far, val))
 
 def analyze_queries(bdb):
     results = {} # Keys are (model_ct, name, type); values are aggregated results
@@ -107,7 +126,7 @@ def analyze_queries(bdb):
         with model_restriction(bdb, "satellites_cc", spec):
             log("querying models %d-%d" % (low, high-1))
             for queryset in [country_purpose_queries]:
-                qres = [((model_ct, name, qtype), inc_singleton(res))
+                qres = [((model_ct, name, qtype), inc_singleton(qtype, res))
                         for (name, qtype, res) in queryset(bdb)]
                 incorporate(results, qres)
     return results
@@ -130,18 +149,29 @@ def num_replications(results):
 def analysis_count_from_file_name(fname):
     return int(re.match(r'.*-[0-9]*m-([0-9]*)i.bdb', fname).group(1))
 
-def plot_results_q(results, query):
+def plot_results_numerical(results, query):
     # results :: dict (file_name, model_ct, query_name) : result_set
     data = ((analysis_count_from_file_name(fname), model_ct, value)
-        for ((fname, model_ct, qname, _), values) in results.iteritems()
-        if qname == query
+        for ((fname, model_ct, qname, qtype), values) in results.iteritems()
+        if qname == query and qtype == 'num'
         for value in values)
     cols = ["num iterations", "n_models", "value"]
     df = pd.DataFrame.from_records(data, columns=cols) \
-                     .replace([False, True], [0,1]) \
                      .sort(["num iterations", "n_models"])
     g = sns.FacetGrid(df, col="n_models")
     g.map(sns.violinplot, "num iterations", "value")
+    return g
+
+def plot_results_boolean(results):
+    # results :: dict (file_name, model_ct, query_name) : result_set
+    data = ((analysis_count_from_file_name(fname), model_ct, qname, float(t)/(t+f))
+            for ((fname, model_ct, qname, qtype), (t, f)) in results.iteritems()
+        if qtype == 'bool')
+    cols = ["num iterations", "n_models", "query", "freq"]
+    df = pd.DataFrame.from_records(data, columns=cols) \
+                     .sort(["num iterations", "n_models"])
+    g = sns.FacetGrid(df, col="n_models", hue="query")
+    g.map(plt.plot, "num iterations", "freq").add_legend()
     return g
 
 def plot_results(results, basename="fig", ext=".png"):
@@ -149,11 +179,17 @@ def plot_results(results, basename="fig", ext=".png"):
     queries = sorted(set((qname, qtype)
                          for ((_, _, qname, qtype), _) in results.iteritems()))
     for query, qtype in queries:
-        grid = plot_results_q(results, query)
+        if not qtype == 'num': continue
+        grid = plot_results_numerical(results, query)
         grid.fig.suptitle(query + ", %d replications" % replications)
         figname = basename + "-" + string.replace(query, " ", "-") + ext
         grid.savefig(figname)
         log("Query '%s' results saved to %s" % (query, figname))
+    grid = plot_results_boolean(results)
+    grid.fig.suptitle("Boolean queries, %d replications" % replications)
+    figname = basename + "-boolean-queries" + ext
+    grid.savefig(figname)
+    log("Boolean query results saved to %s" % (figname,))
 
 ######################################################################
 ## Queries                                                          ##
