@@ -53,10 +53,7 @@ def prepare():
         range(4), num_rows, p=[200./256, 40./256, 10./256, 6./256])
     # Need >= 30 unique to be numeric instead of categorical,
     # so perturb the non-zeros:
-    foo = [ i * np.random.random() for i in foo ]
-    from seaborn.utils import iqr
-    assert iqr(foo) == 0
-    df['skewed_numeric_5'] = foo
+    df['skewed_numeric_5'] = [ i * np.random.random() for i in foo ]
     csv_str = StringIO()
     df.to_csv(csv_str)
 
