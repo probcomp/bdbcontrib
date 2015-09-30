@@ -229,11 +229,13 @@ MODEL_TO_TYPE_LOOKUP = {
 
 # XXX: Working around a seaborn bug:
 class NonZeroDWIMSeriesWrapper(pd.Series):
-    def __nonzero__(self):
-        return not self.empty
+    pass
+#    def __nonzero__(self):
+#        return not self.empty
 class NonZeroDWIMFrameWrapper(pd.DataFrame):
-    def __nonzero__(self):
-        return not self.empty
+    pass
+#    def __nonzero__(self):
+#        return not self.empty
 
 
 def rotate_tick_labels(ax, axis='x', rotation=90):
@@ -242,7 +244,7 @@ def rotate_tick_labels(ax, axis='x', rotation=90):
     elif axis.lower() == 'y':
         _, labels = ax.get_yticks()
     else:
-        raise ValueError('axis must b x or y')
+        raise ValueError('axis must be x or y')
     plt.setp(labels, rotation=rotation)
 
 
@@ -722,7 +724,7 @@ def _pairplot(df, bdb=None, generator_name=None,
         do_hist(data_df, dtype=vartype, ax=ax, bdb=bdb,
             generator_name=generator_name, colors=colors)
         if vartype == 'categorical':
-            rotate_tick_labels(ax)
+            pass  # rotate_tick_labels(ax)
         return
 
     xmins = np.ones((n_vars, n_vars))*float('Inf')
