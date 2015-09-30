@@ -18,6 +18,7 @@ import contextlib
 import re
 import string
 import time
+import warnings
 
 import pandas as pd
 import seaborn as sns
@@ -113,6 +114,17 @@ def analyze_queries(bdb):
 ## Visualization                                                    ##
 ######################################################################
 
+# results :: {(fname, model_ct, query_name) : list value}
+
+def num_replications(results):
+    replication_counts = set((len(l) for l in results.values()))
+    replication_count = next(iter(replication_counts))
+    if len(replication_counts) > 1:
+        msg = "Non-rectangular results found; replication counts range " \
+              "over %s, using %s", (replication_counts, replication_count)
+        warnings.warn(msg)
+    return replication_count
+
 def analysis_count_from_file_name(fname):
     return int(re.match(r'.*-[0-9]*m-([0-9]*)i.bdb', fname).group(1))
 
@@ -131,10 +143,11 @@ def plot_results_q(results, query):
     return g
 
 def plot_results(results, basename="fig", ext=".png"):
+    replications = num_replications(results)
     queries = sorted(set(qname for ((_, _, qname), _) in results.iteritems()))
     for query in queries:
         grid = plot_results_q(results, query)
-        grid.fig.suptitle(query)
+        grid.fig.suptitle(query + ", %d replications" % replications)
         figname = basename + "-" + string.replace(query, " ", "-") + ext
         grid.savefig(figname)
         log("Query '%s' results saved to %s" % (query, figname))
