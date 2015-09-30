@@ -22,7 +22,7 @@ import bayeslite
 import numpy as np
 import os
 import pandas as pd
-import cStringIO as StringIO
+from cStringIO import StringIO
 
 from bayeslite.read_csv import bayesdb_read_csv
 from bdbcontrib.bql_utils import cursor_to_df
@@ -48,13 +48,13 @@ def prepare():
 
     df['many_ints_4'] = np.random.randn(num_rows)
 
-    csv_str = StringIO.StringIO()
+    csv_str = StringIO()
     df.to_csv(csv_str)
 
     os.environ['BAYESDB_WIZARD_MODE']='1'
     bdb = bayeslite.bayesdb_open()
     # XXX Do we not have a bayesdb_read_df ?
-    bayesdb_read_csv(bdb, 'plottest', StringIO.StringIO(csv_str.getvalue()),
+    bayesdb_read_csv(bdb, 'plottest', flush(csv_str),
                      header=True, create=True)
     bdb.execute('''
         create generator plottest_cc for plottest using crosscat(guess(*))
@@ -98,32 +98,37 @@ def has_nontrivial_contents_over_white_background(imgfile):
     assert zeros < len(hist) * .9
     return True
 
+def flush(f):
+    return StringIO(f.getvalue())
+
 def test_pairplot_smoke():
     ans = prepare()
-    f = StringIO.StringIO()
+    f = StringIO()
     do(ans, f, colorby='categorical_2', show_contour=False)
-    assert has_nontrivial_contents_over_white_background(f)
-    f = StringIO.StringIO()
+    assert has_nontrivial_contents_over_white_background(flush(f))
+    f = StringIO()
     do(ans, f, colorby='categorical_2', show_contour=True)
-    assert has_nontrivial_contents_over_white_background(f)
-    f = StringIO.StringIO()
+    assert has_nontrivial_contents_over_white_background(flush(f))
+    f = StringIO()
     do(ans, f, show_contour=False)
-    assert has_nontrivial_contents_over_white_background(f)
+    assert has_nontrivial_contents_over_white_background(flush(f))
 
 def test_one_variable():
     (df, bdb) = prepare()
-    f = StringIO.StringIO()
     for var in ['categorical_1', 'few_ints_3', 'floats_3', 'many_ints_4']:
       cursor = bdb.execute('SELECT %s FROM plottest' % (var,))
       df = cursor_to_df(cursor)
+      f = StringIO()
       do((df, bdb), f, show_contour=False)
-      assert has_nontrivial_contents_over_white_background(f)
+      assert has_nontrivial_contents_over_white_background(flush(f))
       cursor = bdb.execute('SELECT %s, categorical_2 FROM plottest' % (var,))
       df = cursor_to_df(cursor)
+      f = StringIO()
       do((df, bdb), f, colorby='categorical_2', show_contour=False)
-      assert has_nontrivial_contents_over_white_background(f)
+      assert has_nontrivial_contents_over_white_background(flush(f))
+      f = StringIO()
       do((df, bdb), f, colorby='categorical_2', show_contour=True)
-      assert has_nontrivial_contents_over_white_background(f)
+      assert has_nontrivial_contents_over_white_background(flush(f))
 
 
 if __name__ == '__main__':
