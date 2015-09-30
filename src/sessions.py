@@ -1,4 +1,5 @@
 import json
+import requests
 
 def list_sessions(bdb):
     """Lists all saved sessions with the number of entries in each, and whether
@@ -37,9 +38,14 @@ def clear_all_sessions(bdb):
 def send_session_data(bdb):
     """Send all saved session history."""
     session_id = current_session_id(bdb)
+    probcomp_url = 'http://probcomp.csail.mit.edu/bayesdb/save_sessions.cgi'
     for id in range(1, session_id+1):
+        print 'Sending session %d to %s ...' % (id, probcomp_url)
         json_string = dump_session_as_json(bdb, id)
-        # TODO send it
+        print json_string
+        r = requests.post(probcomp_url,
+                data={'session_json' : json_string})
+        print 'Response: %s' % (r.text,)
 
 
 def stop_saving_session_entries(bdb):
@@ -50,5 +56,4 @@ def stop_saving_session_entries(bdb):
 def start_saving_session_entries(bdb):
     """Turn on saving of session entries"""
     bdb.set_save_sessions()
-
 

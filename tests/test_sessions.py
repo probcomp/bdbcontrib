@@ -50,14 +50,14 @@ print sessions.dump_current_session_as_json(bdb)
 print 'dump session 2 as json'
 print sessions.dump_session_as_json(bdb, 1)
 
-print 'delete all entries'
-bdb.sql_execute('DELETE FROM bayesdb_session_entries;')
+#print 'delete all entries'
+#bdb.sql_execute('DELETE FROM bayesdb_session_entries;')
 
 print 'select all entries'
 print q('select * from bayesdb_session_entries;')
 
-#print 'clear all session data'
-print sessions.clear_all_sessions(bdb)
+#print 'cllear all session data'
+#print sessions.clear_all_sessions(bdb)
 
 print 'list all sessions'
 print bdbcontrib.cursor_to_df(sessions.list_sessions(bdb))
@@ -88,3 +88,5 @@ q('select * from bayesdb_session_entries where completed=0 order by time')
 print 'list all entries (shoud be more stuff)'
 print bdbcontrib.cursor_to_df(bdb.sql_execute('select id,session_id from bayesdb_session_entries;'))
 
+print 'send out the sessions to the servser'
+sessions.send_session_data(bdb)
