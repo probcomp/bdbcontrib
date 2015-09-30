@@ -138,7 +138,12 @@ def analyze_queries(bdb):
 # results :: {(fname, model_ct, query_name) : tagged aggregated value}
 
 def num_replications(results):
-    replication_counts = set((len(l) for l in results.values()))
+    replication_counts = \
+        set((len(l) for (qtype, l) in results.values()
+             if qtype == 'num')).union(
+        set((t+f for (qtype, l) in results.values()
+             if qtype == 'bool'
+             for (t, f) in [l])))
     replication_count = next(iter(replication_counts))
     if len(replication_counts) > 1:
         msg = "Non-rectangular results found; replication counts range " \
