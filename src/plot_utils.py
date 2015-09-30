@@ -387,6 +387,7 @@ def do_hist(data_srs, **kwargs):
                 subdf = data_srs.loc[data_srs.ix[:, 1] == val]
                 sns.distplot(drop_inf_and_nan(subdf.ix[:, 0]),
                              kde=do_kde, ax=ax, color=color)
+        else:
             sns.distplot(drop_inf_and_nan(data_srs), kde=do_kde, ax=ax)
 
     return ax
