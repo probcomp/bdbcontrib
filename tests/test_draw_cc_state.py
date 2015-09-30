@@ -14,19 +14,21 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
-# XXX AUTOMATE ME XXX
+import matplotlib
+matplotlib.use("Agg")
+from matplotlib import pyplot as plt
 
 import bayeslite
 import os
 import pandas as pd
 import random
+import cStringIO as StringIO
 
 from bayeslite.read_pandas import bayesdb_read_pandas_df
 from bdbcontrib.crosscat_utils import draw_state
 from crosscat.utils import data_utils as du
-from matplotlib import pyplot as plt
 
-def main():
+def draw_a_cc_state(filename):
     rng_seed = random.randrange(10000)
     num_rows = 100
     num_cols = 50
@@ -41,7 +43,7 @@ def main():
     # generate some clustered data
     ccmd = du.generate_clean_state(rng_seed, num_clusters, num_cols, num_rows,
                                    num_splits)
-    T, M_c, M_r, X_L, X_D = ccmd
+    T, _M_c, _M_r, _X_L, _X_D = ccmd
 
     for row in range(num_rows):
         for col in range(num_cols):
@@ -59,10 +61,17 @@ def main():
     bdb.execute('initialize 4 models for {}'.format(generator_name))
     bdb.execute('analyze {} for 10 iterations wait'.format(generator_name))
     plt.figure(facecolor='white', tight_layout=False)
-    ax = draw_state(bdb, 'plottest', 'plottest_cc', 0,
-                    separator_width=1, separator_color=(0., 0., 1., 1.),
-                    short_names=False, nan_color=(1, .15, .25, 1.))
-    plt.savefig('state.png')
+    draw_state(bdb, 'plottest', 'plottest_cc', 0,
+               separator_width=1, separator_color=(0., 0., 1., 1.),
+               short_names=False, nan_color=(1, .15, .25, 1.))
+    plt.savefig(filename)
 
+def test_draw_cc_smoke():
+    f = StringIO.StringIO()
+    draw_a_cc_state(f)
+    assert len(f.getvalue()) > 1000
+
+# For manually inspecting the generated figure.
 if __name__ == '__main__':
-    main()
+    draw_a_cc_state('state.png')
+    print "Figure saved to 'state.png'"

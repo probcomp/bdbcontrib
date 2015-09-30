@@ -14,10 +14,16 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
+# Because this test may indirectly import pylab (e.g. via importing
+# bdbcontrib.crosscat_utils), which would peg the matplotlib backend,
+# which might prevent a later test from drawing pictures headless.
+# &#&*%(@#^&!@.
+import matplotlib
+matplotlib.use("Agg")
+
 import bayeslite
 import pandas
 import pytest
-import tempfile
 
 from bayeslite.read_pandas import bayesdb_read_pandas_df
 from bdbcontrib import crosscat_utils

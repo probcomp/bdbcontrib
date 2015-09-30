@@ -14,19 +14,21 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
-# XXX AUTOMATE ME XXX
+import matplotlib
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
 
 import bayeslite
-import matplotlib.pyplot as plt
 import numpy as np
 import os
 import pandas as pd
+import cStringIO as StringIO
 
-from bayeslite.read_csv import bayesdb_read_csv_file
+from bayeslite.read_csv import bayesdb_read_csv
 from bdbcontrib.bql_utils import cursor_to_df
 from bdbcontrib.plot_utils import _pairplot
 
-def main():
+def prepare():
     df = pd.DataFrame()
     num_rows = 400
     alphabet = ['A', 'B', 'C', 'D', 'E']
@@ -45,12 +47,14 @@ def main():
     df['four_8'] = col_four
     df['five_c'] = col_five
 
-    filename = 'plottest.csv'
-    df.to_csv(filename)
+    csv_str = StringIO.StringIO()
+    df.to_csv(csv_str)
 
     os.environ['BAYESDB_WIZARD_MODE']='1'
     bdb = bayeslite.bayesdb_open()
-    bayesdb_read_csv_file(bdb, 'plottest', filename, header=True, create=True)
+    # XXX Do we not have a bayesdb_read_df ?
+    bayesdb_read_csv(bdb, 'plottest', StringIO.StringIO(csv_str.getvalue()),
+                     header=True, create=True)
     bdb.execute('''
         create generator plottest_cc for plottest using crosscat(guess(*))
     ''')
@@ -63,26 +67,30 @@ def main():
     """
     cursor = bdb.execute('SELECT one_n, zero_5, five_c, four_8 FROM plottest')
     df = cursor_to_df(cursor)
+    return (df, bdb)
 
+def do(prepped, location, **kwargs):
+    (df, bdb) = prepped
     plt.figure(tight_layout=True, facecolor='white')
     _pairplot(df, bdb=bdb, generator_name='plottest_cc',
-             use_shortname=False, colorby='four_8', show_contour=False,
-             show_full=False)
-    plt.savefig('fig0.png')
+              show_full=False, **kwargs)
+    plt.savefig(location)
 
-    # again, without tril to check that outer axes render correctly
-    plt.figure(tight_layout=True, facecolor='white')
-    _pairplot(df, bdb=bdb, generator_name='plottest_cc',
-             use_shortname=False, colorby='four_8', show_contour=True,
-             show_full=False)
-    plt.savefig('fig1.png')
-
-    # again, to exercise the no-color-by code path
-    plt.figure(tight_layout=True, facecolor='white')
-    _pairplot(df, bdb=bdb, generator_name='plottest_cc',
-             use_shortname=False, show_contour=False,
-             show_full=False)
-    plt.savefig('fig2.png')
+def test_pairplot_smoke():
+    ans = prepare()
+    f = StringIO.StringIO()
+    do(ans, f, colorby='four_8', show_contour=False)
+    assert len(f.getvalue()) > 1000
+    f = StringIO.StringIO()
+    do(ans, f, colorby='four_8', show_contour=True)
+    assert len(f.getvalue()) > 1000
+    f = StringIO.StringIO()
+    do(ans, f, show_contour=False)
+    assert len(f.getvalue()) > 1000
 
 if __name__ == '__main__':
-    main()
+    ans = prepare()
+    do(ans, 'fig0.png', colorby='four_8', show_contour=False)
+    do(ans, 'fig1.png', colorby='four_8', show_contour=True)
+    do(ans, 'fig2.png', show_contour=False)
+    print "Figures saved in 'fig0.png', 'fig1.png', 'fig2.png'"
