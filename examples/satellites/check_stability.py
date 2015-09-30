@@ -32,9 +32,9 @@ import bayeslite
 ## Query running and result accumulation                            ##
 ######################################################################
 
-model_schedule = [1,2,3]
+model_schedule = [1,3,6]
 model_skip = model_schedule[-1]
-n_replications = 3
+n_replications = 10
 # TODO Expect the number of models in the file to be at least
 # model_skip * n_replications; excess models are wasted.
 
@@ -76,7 +76,7 @@ def model_specs():
 @contextlib.contextmanager
 def model_restriction(bdb, gen_name, spec):
     (low, high) = spec
-    model_count = 4 # TODO !
+    model_count = 60 # TODO !
     with bdb.savepoint_rollback():
         if low > 0:
             bdb.execute('''DROP MODELS 0-%d FROM %s''' % (low-1, gen_name))
