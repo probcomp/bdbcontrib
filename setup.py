@@ -24,7 +24,8 @@ setup(
     version='0.1.dev',
     packages=[
         'bdbcontrib',
-        'bdbcontrib.foreign'
+        'bdbcontrib.predictors',
+        'bdbcontrib.metamodels'
     ],
     package_dir={
         'bdbcontrib': 'src',
