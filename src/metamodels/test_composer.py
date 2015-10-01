@@ -26,65 +26,6 @@ from bdbcontrib.predictors import random_forest
 from bdbcontrib.predictors import keplers_law
 from bdbcontrib.predictors import multiple_regression
 
-def q(query):
-    df = bdb.execute(query)
-    return bdbcontrib.cursor_to_df(df)
-
-def s(query):
-    df = bdb.sql_execute(query)
-    return bdbcontrib.cursor_to_df(df)
-
-# bdbname = 'bdbs/{}.bdb'.format(str(time.time())[:10])
-bdbname = 'sat.bdb'
-bdb = bayeslite.bayesdb_open(bdbname)
-
-# bayeslite.bayesdb_read_csv_file(bdb, 'satellites', 'satellites.csv',
-#     header=True, create=True)
-# bdbcontrib.nullify(bdb, 'satellites', 'NaN')
-composer = Composer()
-bayeslite.bayesdb_register_metamodel(bdb, composer)
-# composer.register_foreign_predictor(random_forest.RandomForest)
-# composer.register_foreign_predictor(keplers_law.KeplersLaw)
-# composer.register_foreign_predictor(multiple_regression.MultipleRegression)
-
-# bdb.execute("""
-#     CREATE GENERATOR zaghloul FOR satellites USING composer(
-#         default (
-#             Country_of_Operator CATEGORICAL, Operator_Owner CATEGORICAL,
-#             Users CATEGORICAL, Purpose CATEGORICAL,
-#             Class_of_orbit CATEGORICAL, Perigee_km NUMERICAL,
-#             Apogee_km NUMERICAL, Eccentricity NUMERICAL,
-#             Launch_Mass_kg NUMERICAL, Dry_Mass_kg NUMERICAL,
-#             Power_watts NUMERICAL, Date_of_Launch NUMERICAL,
-#             Anticipated_Lifetime NUMERICAL, Contractor CATEGORICAL,
-#             Country_of_Contractor CATEGORICAL, Launch_Site CATEGORICAL,
-#             Launch_Vehicle CATEGORICAL, Source_Used_for_Orbital_Data CATEGORICAL,
-#             longitude_radians_of_geo NUMERICAL, Inclination_radians NUMERICAL,
-#         ),
-#         random_forest (
-#             Type_of_Orbit CATEGORICAL
-#                 GIVEN Apogee_km, Perigee_km,
-#                     Eccentricity, Period_minutes, Launch_Mass_kg, Power_watts,
-#                     Anticipated_Lifetime, Class_of_orbit
-#         ),
-#         keplers_law (
-#             Period_minutes NUMERICAL
-#                 GIVEN Perigee_km, Apogee_km
-#         ),
-#     );""")
-
-
-# bdb.execute("""
-#     INITIALIZE 1 MODELS FOR zaghloul;
-#     """)
-
-# bdb.execute("""
-#     ANALYZE zaghloul FOR 1 ITERATION WAIT;
-#     """)
-
-# q('''SIMULATE Period_minutes FROM zaghloul GIVEN Apogee_km=40000 LIMIT 5;''')
-
-
 satfile = '../../examples/satellites/data/satellites.csv'
 
 def test_register():
