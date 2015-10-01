@@ -633,7 +633,9 @@ def zmatrix(data_df, clustermap_kws=None, row_ordering=None,
         df = df.ix[:, col_ordering]
         df = df.ix[row_ordering, :]
         del clustermap_kws['pivot_kws']
-        return sns.heatmap(df, **clustermap_kws), row_ordering, col_ordering
+        fig, ax = plt.subplots()
+        return (sns.heatmap(df, ax=ax, **clustermap_kws),
+            row_ordering, col_ordering)
     else:
         return sns.clustermap(data_df, **clustermap_kws)
 
