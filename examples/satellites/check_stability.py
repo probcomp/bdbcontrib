@@ -125,7 +125,8 @@ def analyze_queries(bdb):
         model_ct = high - low
         with model_restriction(bdb, "satellites_cc", spec):
             log("querying models %d-%d" % (low, high-1))
-            for queryset in [country_purpose_queries]:
+            for queryset in [country_purpose_queries,
+                             unlikely_periods_queries]:
                 qres = [((model_ct, name), inc_singleton(qtype, res))
                         for (name, qtype, res) in queryset(bdb)]
                 incorporate(results, qres)
@@ -227,6 +228,39 @@ def country_purpose_queries(bdb):
     return [ ("USA-Communications count", "num", usa_ct),
              ("USA-Communications is top", "bool", usa_top),
              ("USA-Communications is top by 2x", "bool", by_much),
+         ]
+
+def unlikely_periods_queries(bdb):
+    bdb.execute('''
+        CREATE TEMP TABLE unlikely_periods AS
+        ESTIMATE name, class_of_orbit, period_minutes,
+        PREDICTIVE PROBABILITY OF period_minutes
+            AS "Relative Probability of Period"
+        FROM satellites_cc;
+    ''')
+    def prob_of(name):
+        query = '''
+            SELECT "Relative Probability of Period"
+            FROM unlikely_periods
+            WHERE name LIKE '%s'
+        '''
+        (ans,) = bdb.sql_execute(query % name).next()
+        return ans
+    top_ten = bdb.execute('''
+        SELECT name FROM unlikely_periods
+        WHERE class_of_orbit = 'GEO' AND period_minutes IS NOT NULL
+        ORDER BY "Relative Probability of Period" ASC LIMIT 10;
+    ''').fetchall()
+    def in_top_ten(name):
+        return any((n.startswith(name) for (n,) in top_ten))
+    return [ ("DSP 20 period prob",    'num', prob_of('DSP 20 (USA 149)%')),
+             ("SDS III-6 period prob", 'num', prob_of('SDS III-6%')),
+             ("SDS III-7 period prob", 'num', prob_of('SDS III-7%')),
+             ("Orion 6 period prob",   'num', prob_of('Advanced Orion 6%')),
+             ("DSP 20 in top 10",    'bool', in_top_ten('DSP 20 (USA 149)')),
+             ("SDS III-6 in top 10", 'bool', in_top_ten('SDS III-6')),
+             ("SDS III-7 in top 10", 'bool', in_top_ten('SDS III-7')),
+             ("Orion 6 in top 10",   'bool', in_top_ten('Advanced Orion 6')),
          ]
 
 ######################################################################
