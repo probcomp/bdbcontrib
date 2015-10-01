@@ -113,12 +113,13 @@ setup(
         'numpy',
         'numpydoc',
         'pandas',
-        'seaborn==0.5.1',
+        'seaborn>=0.6',
         'sphinx',
         'tornado>=4.0',
     ],
     tests_require=[
         'pytest',
+        'pillow'
     ],
     packages=[
         'bdbcontrib',

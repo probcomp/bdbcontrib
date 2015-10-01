@@ -227,14 +227,6 @@ MODEL_TO_TYPE_LOOKUP = {
     'symmetric_dirichlet_discrete': 'categorical',
 }
 
-# XXX: Working around a seaborn bug:
-class NonZeroDWIMSeriesWrapper(pd.Series):
-    def __nonzero__(self):
-        return not self.empty
-class NonZeroDWIMFrameWrapper(pd.DataFrame):
-    def __nonzero__(self):
-        return not self.empty
-
 
 def rotate_tick_labels(ax, axis='x', rotation=90):
     if axis.lower() == 'x':
@@ -242,7 +234,7 @@ def rotate_tick_labels(ax, axis='x', rotation=90):
     elif axis.lower() == 'y':
         _, labels = ax.get_yticks()
     else:
-        raise ValueError('axis must b x or y')
+        raise ValueError('axis must be x or y')
     plt.setp(labels, rotation=rotation)
 
 
@@ -352,22 +344,6 @@ def prep_plot_df(data_df, var_names):
 def drop_inf_and_nan(np_Series):
     return np_Series.replace([-np.inf, np.inf], np.nan).dropna()
 
-# XXX: Should not be computing this ourselves. Newer Seaborn is happier.
-def _safer_freedman_diaconis_bins(a):
-    """Calculate number of hist bins using Freedman-Diaconis rule."""
-    # From 0.6 https://github.com/mwaskom/seaborn/blob/master/seaborn/distributions.py
-    from seaborn.utils import iqr
-    a = np.asarray(a)
-    try:
-        h = 2 * iqr(a) / (len(a) ** (1 / 3))
-        # fall back to sqrt(a) bins if iqr is 0
-        if h == 0:
-            return np.sqrt(a.size)
-        else:
-            return np.ceil((a.max() - a.min()) / h)
-    except TypeError:  # Because there is no 75th percentile of this data type?
-        return np.sqrt(a.size)
-
 def do_hist(data_srs, **kwargs):
     ax = kwargs.get('ax', None)
     bdb = kwargs.get('bdb', None)
@@ -406,15 +382,13 @@ def do_hist(data_srs, **kwargs):
         ax.set_xticklabels(uvals)
     else:
         do_kde = True
-        bins = _safer_freedman_diaconis_bins(data_srs)
         if colors is not None:
             for val, color in colors.iteritems():
                 subdf = data_srs.loc[data_srs.ix[:, 1] == val]
-                sns.distplot(NonZeroDWIMFrameWrapper(drop_inf_and_nan(subdf.ix[:, 0])),
-                             kde=do_kde, ax=ax, color=color, bins=bins)
+                sns.distplot(drop_inf_and_nan(subdf.ix[:, 0]),
+                             kde=do_kde, ax=ax, color=color)
         else:
-            sns.distplot(NonZeroDWIMFrameWrapper(drop_inf_and_nan(data_srs)),
-                         kde=do_kde, ax=ax, bins=bins)
+            sns.distplot(drop_inf_and_nan(data_srs), kde=do_kde, ax=ax)
 
     return ax
 
@@ -466,40 +440,23 @@ def do_violinplot(plot_df, vartypes, **kwargs):
     unique_vals = np.sort(unique_vals)
     n_vals = len(plot_df[groupby].unique())
     if dummy:
-        order_key = dict((val, i) for i, val in enumerate(unique_vals))
-        base_width = 0.75/len(colors)
-        violin_width = base_width
-        for i, (val, color) in enumerate(colors.iteritems()):
-            subdf = plot_df.loc[plot_df.ix[:, 2] == val]
-            if subdf.empty:
-                continue
-
-            if vert:
-                vals = subdf.columns[1]
-            else:
-                vals = subdf.columns[0]
-
-            # Not every categorical value is guaranteed to appear in each subdf.
-            # Here we compensate.
-            sub_vals = np.sort(subdf[groupby].unique())
-            positions = []
-
-            for category in sub_vals:
-                positions.append(base_width * i + order_key[category] +
-                                 base_width / 2 - .75/2)
-
-            sns.violinplot(NonZeroDWIMSeriesWrapper(subdf[vals]),
-                           groupby=subdf[groupby], order=sub_vals,
-                names=sub_vals, vert=vert, ax=ax, positions=positions,
-                widths=violin_width, color=color)
+        sub_vals = np.sort(plot_df[groupby].unique())
+        axis = sns.violinplot(
+            x=plot_df.columns[0],
+            y=plot_df.columns[1],
+            data=plot_df,
+            order=sub_vals, hue=plot_df.columns[2],
+            names=sub_vals, ax=ax, orient=("v" if vert else "h"),
+            palette=colors, inner='quartile')
+        axis.legend_ = None
     else:
-        if vert:
-            vals = plot_df.columns[1]
-        else:
-            vals = plot_df.columns[0]
-        sns.violinplot(NonZeroDWIMSeriesWrapper(plot_df[vals]), groupby=plot_df[groupby],
-            order=unique_vals, names=unique_vals, vert=vert, ax=ax, positions=0,
-            color='SteelBlue')
+        sns.violinplot(
+            x=plot_df.columns[0],
+            y=plot_df.columns[1],
+            data=plot_df,
+            order=unique_vals, names=unique_vals, ax=ax,
+            orient=("v" if vert else "h"),
+            color='SteelBlue', inner='quartile')
 
     if vert:
         ax.set_xlim([-.5, n_vals-.5])
@@ -516,7 +473,7 @@ def do_violinplot(plot_df, vartypes, **kwargs):
 def do_kdeplot(plot_df, unused_vartypes, **kwargs):
     # XXX: kdeplot is not a good choice for small amounts of data because
     # it uses a kernel density estimator to crease a smooth heatmap. On the
-    # other hadnd, scatter plots are uniformative given lots of data---the
+    # other hand, scatter plots are uninformative given lots of data---the
     # points get jumbled up. We may just want to set a threshold (N=100)?
 
     ax = kwargs.get('ax', None)
@@ -566,7 +523,37 @@ def do_kdeplot(plot_df, unused_vartypes, **kwargs):
                         zorder=1)
 
     if show_contour:
-        sns.kdeplot(df.ix[:, :2].values, ax=ax)
+        try:
+            sns.kdeplot(df.ix[:, :2].values, ax=ax)
+        except ValueError:
+            # Displaying a plot without a requested contour is better
+            # than crashing.
+            pass
+
+            # This actually happens: with the 'skewed_numeric_5'
+            # distribution in tests/test_plot_utils.py, we get:
+            # seaborn/distributions.py:597: in kdeplot
+            #     ax, **kwargs)
+            # seaborn/distributions.py:380: in _bivariate_kdeplot
+            #     cset = contour_func(xx, yy, z, n_levels, **kwargs)
+            # matplotlib/axes/_axes.py:5333: in contour
+            #     return mcontour.QuadContourSet(self, *args, **kwargs)
+            # matplotlib/contour.py:1429: in __init__
+            #     ContourSet.__init__(self, ax, *args, **kwargs)
+            # matplotlib/contour.py:876: in __init__
+            #     self._process_levels()
+            # matplotlib/contour.py:1207: in _process_levels
+            #     self.vmin = np.amin(self.levels)
+            # numpy/core/fromnumeric.py:2224: in amin
+            #     out=out, keepdims=keepdims)
+            # _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+            # a = array([], dtype=float64),
+            # axis = None, out = None, keepdims = False
+            #
+            #     def _amin(a, axis=None, out=None, keepdims=False):
+            # >       return umr_minimum(a, axis, None, out, keepdims)
+            # E       ValueError: zero-size array to reduction operation
+            #                     minimum which has no identity
 
     return ax
 
@@ -647,10 +634,10 @@ def zmatrix(data_df, clustermap_kws=None, row_ordering=None,
         df = df.ix[row_ordering, :]
         del clustermap_kws['pivot_kws']
         fig, ax = plt.subplots()
-        return (sns.heatmap(NonZeroDWIMFrameWrapper(df), ax=ax,
-            **clustermap_kws), row_ordering, col_ordering)
+        return (sns.heatmap(df, ax=ax, **clustermap_kws),
+            row_ordering, col_ordering)
     else:
-        return sns.clustermap(NonZeroDWIMFrameWrapper(data_df), **clustermap_kws)
+        return sns.clustermap(data_df, **clustermap_kws)
 
 
 # TODO: bdb, and table_name should be optional arguments
@@ -741,7 +728,7 @@ def _pairplot(df, bdb=None, generator_name=None,
         do_hist(data_df, dtype=vartype, ax=ax, bdb=bdb,
             generator_name=generator_name, colors=colors)
         if vartype == 'categorical':
-            rotate_tick_labels(ax)
+            pass  # rotate_tick_labels(ax)
         return
 
     xmins = np.ones((n_vars, n_vars))*float('Inf')
