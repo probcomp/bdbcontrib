@@ -15,6 +15,7 @@
 #   limitations under the License.
 
 import contextlib
+import math
 import re
 import string
 import time
@@ -126,7 +127,8 @@ def analyze_queries(bdb):
         with model_restriction(bdb, "satellites_cc", spec):
             log("querying models %d-%d" % (low, high-1))
             for queryset in [country_purpose_queries,
-                             unlikely_periods_queries]:
+                             unlikely_periods_queries,
+                             orbit_type_imputation_queries]:
                 qres = [((model_ct, name), inc_singleton(qtype, res))
                         for (name, qtype, res) in queryset(bdb)]
                 incorporate(results, qres)
@@ -276,6 +278,38 @@ def unlikely_periods_queries(bdb):
              ("Orion 6 in top 5 unlikely periods",
               'bool', in_top_five('Advanced Orion 6')),
          ]
+
+def orbit_type_imputation_queries(bdb):
+    bdb.execute('''
+        CREATE TEMP TABLE inferred_orbit AS
+        INFER EXPLICIT
+        anticipated_lifetime, perigee_km, period_minutes, class_of_orbit,
+        PREDICT type_of_orbit
+            AS inferred_orbit_type
+            CONFIDENCE inferred_orbit_type_conf
+        FROM satellites_cc
+        WHERE type_of_orbit IS NULL;
+    ''')
+    query = '''
+        SELECT i.class_of_orbit, i.inferred_orbit_type,
+            COUNT(*) AS count, AVG(i.inferred_orbit_type_conf) AS mean,
+            AVG((i.inferred_orbit_type_conf - sub.answer) * (i.inferred_orbit_type_conf - sub.answer)) as variance
+        FROM inferred_orbit AS i,
+            (SELECT i.class_of_orbit, i.inferred_orbit_type,
+                AVG(i.inferred_orbit_type_conf) AS answer
+            FROM inferred_orbit as i
+            GROUP BY i.class_of_orbit, i.inferred_orbit_type) AS sub
+        WHERE i.class_of_orbit == sub.class_of_orbit
+            AND i.inferred_orbit_type == sub.inferred_orbit_type
+        GROUP BY i.class_of_orbit, i.inferred_orbit_type
+        ORDER BY i.class_of_orbit, i.inferred_orbit_type
+    '''
+    def query_gen():
+        for (cl, tp, _, avg, var) in bdb.execute(query).fetchall():
+            yield ("%s %s mean inference confidence" % (cl, tp), 'num', avg)
+            yield ("%s %s inference confidence stddev" % (cl, tp),
+                   'num', math.sqrt(var))
+    return list(query_gen())
 
 ######################################################################
 ## Driver                                                           ##
