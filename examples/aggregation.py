@@ -35,16 +35,19 @@ Two result types are currently supported:
 """
 
 import contextlib
+import random
 import time
 
 import bayeslite
+from bayeslite.metamodels.crosscat import CrosscatMetamodel
+from crosscat.LocalEngine import LocalEngine as CrosscatLocalEngine
 
 then = time.time()
 def log(msg):
     print "At %3.2fs" % (time.time() - then), msg
 
 def analyze_fileset(files, generator, probes, model_schedule=None,
-                    n_replications=None):
+                    n_replications=None, seed=0):
     """Aggregate all the probes over all the given bdb files.
 
     Do seed and model count variation within each file by varying
@@ -59,6 +62,9 @@ def analyze_fileset(files, generator, probes, model_schedule=None,
     `model_schedule` is a list of numbers of models to probe.
 
     `n_replications` is the number of replications to do.
+
+    `seed` is the initial entropy for any randomness embedded in
+    BayesDB queries performed by the probe functions.  Default: 0.
 
     Each saved bdb must have the named generator, and that generator
     must have at least as many models as `n_replications *
@@ -81,19 +87,24 @@ def analyze_fileset(files, generator, probes, model_schedule=None,
     # square root of the number of models in the first file
     model_skip = max(model_schedule)
     specs = model_specs(model_schedule, model_skip, n_replications)
-    return do_analyze_fileset(files, generator, probes, specs)
+    return do_analyze_fileset(files, generator, probes, specs, seed)
 
-def do_analyze_fileset(files, generator, probes, specs):
+def do_analyze_fileset(files, generator, probes, specs, seed):
     # Keys are (file_name, model_ct, name); values are aggregated results
     results = {}
+    prng = random.Random(seed)
     for fname in files:
         log("processing file %s" % fname)
-        with bayeslite.bayesdb_open(fname) as bdb:
+        with bayeslite.bayesdb_open(fname, builtin_metamodels=False) as bdb:
+            bayeslite.bayesdb_register_metamodel(bdb, new_cc_metamodel(prng))
             res = [((fname, model_ct, name), ress)
                    for ((model_ct, name), ress)
                    in analyze_probes(bdb, generator, probes, specs).iteritems()]
             incorporate(results, res)
     return results
+
+def new_cc_metamodel(prng):
+    return CrosscatMetamodel(CrosscatLocalEngine(seed=prng.randint(0, 2**31)))
 
 def analyze_probes(bdb, generator, probes, specs):
     results = {} # Keys are (model_ct, name); values are aggregated results
