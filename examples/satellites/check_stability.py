@@ -150,7 +150,7 @@ def num_replications(results):
     replication_count = next(iter(replication_counts))
     if len(replication_counts) > 1:
         msg = "Non-rectangular results found; replication counts range " \
-              "over %s, using %s", (replication_counts, replication_count)
+              "over %s, using %s" % (replication_counts, replication_count)
         warnings.warn(msg)
     return replication_count
 
