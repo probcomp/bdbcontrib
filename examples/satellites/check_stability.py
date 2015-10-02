@@ -16,95 +16,13 @@
 
 import matplotlib
 matplotlib.use("Agg")
-import matplotlib.pylab as plt
 
 import math
-import os
-import re
-import string
-import warnings
-
-import pandas as pd
-import seaborn as sns
 
 import sys
 sys.path.append("..")
 from aggregation import log, analyze_fileset
-
-######################################################################
-## Visualization                                                    ##
-######################################################################
-
-# results :: {(fname, model_ct, probe_name) : tagged aggregated value}
-
-plot_out_dir = "figures"
-
-def num_replications(results):
-    replication_counts = \
-        set((len(l) for (ptype, l) in results.values()
-             if ptype == 'num')).union(
-        set((t+f for (ptype, l) in results.values()
-             if ptype == 'bool'
-             for (t, f) in [l])))
-    replication_count = next(iter(replication_counts))
-    if len(replication_counts) > 1:
-        msg = "Non-rectangular results found; replication counts range " \
-              "over %s, using %s" % (replication_counts, replication_count)
-        warnings.warn(msg)
-    return replication_count
-
-def analysis_count_from_file_name(fname):
-    return int(re.match(r'.*-[0-9]*m-([0-9]*)i.bdb', fname).group(1))
-
-def plot_results_numerical(results, probe):
-    # results :: dict (file_name, model_ct, probe_name) : tagged result_set
-    data = ((analysis_count_from_file_name(fname), model_ct, value)
-        for ((fname, model_ct, pname), (ptype, values)) in results.iteritems()
-        if pname == probe and ptype == 'num'
-        for value in values)
-    cols = ["num iterations", "n_models", "value"]
-    df = pd.DataFrame.from_records(data, columns=cols) \
-                     .sort(["num iterations", "n_models"])
-    g = sns.FacetGrid(df, col="n_models", size=5, col_wrap=3)
-    g.map(sns.violinplot, "num iterations", "value")
-    return g
-
-def plot_results_boolean(results):
-    # results :: dict (file_name, model_ct, probe_name) : tagged result_set
-    data = ((analysis_count_from_file_name(fname), model_ct, pname, float(t)/(t+f))
-        for ((fname, model_ct, pname), (ptype, value)) in results.iteritems()
-        if ptype == 'bool'
-        for (t, f) in [value])
-    cols = ["num iterations", "n_models", "probe", "freq"]
-    df = pd.DataFrame.from_records(data, columns=cols) \
-                     .sort(["probe", "num iterations", "n_models"])
-    g = sns.FacetGrid(df, col="n_models", hue="probe", size=5, col_wrap=3)
-    g.map(plt.plot, "num iterations", "freq").add_legend()
-    return g
-
-def plot_results(results, ext=".png"):
-    if not os.path.exists(plot_out_dir):
-        os.makedirs(plot_out_dir)
-    replications = num_replications(results)
-    probes = sorted(set((pname, ptype)
-                        for ((_, _, pname), (ptype, _)) in results.iteritems()))
-    for probe, ptype in probes:
-        if not ptype == 'num': continue
-        grid = plot_results_numerical(results, probe)
-        grid.fig.suptitle(probe + ", %d replications" % replications)
-        # XXX Actually shell quote the probe name
-        figname = string.replace(probe, " ", "-").replace("/", "") + ext
-        savepath = os.path.join(plot_out_dir, figname)
-        grid.savefig(savepath)
-        plt.close(grid.fig)
-        log("Probe '%s' results saved to %s" % (probe, savepath))
-    grid = plot_results_boolean(results)
-    grid.fig.suptitle("Boolean probes, %d replications" % replications)
-    figname = "boolean-probes" + ext
-    savepath = os.path.join(plot_out_dir, figname)
-    grid.savefig(savepath)
-    plt.close(grid.fig)
-    log("Boolean probe results saved to %s" % (savepath,))
+from visualization import plot_results
 
 ######################################################################
 ## Probes                                                          ##
