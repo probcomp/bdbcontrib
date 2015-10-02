@@ -253,14 +253,28 @@ def unlikely_periods_queries(bdb):
     ''').fetchall()
     def in_top_ten(name):
         return any((n.startswith(name) for (n,) in top_ten))
+    def in_top_five(name):
+        return any((n.startswith(name) for (n,) in top_ten[0:5]))
     return [ ("DSP 20 period prob",    'num', prob_of('DSP 20 (USA 149)%')),
              ("SDS III-6 period prob", 'num', prob_of('SDS III-6%')),
              ("SDS III-7 period prob", 'num', prob_of('SDS III-7%')),
              ("Orion 6 period prob",   'num', prob_of('Advanced Orion 6%')),
-             ("DSP 20 in top 10",    'bool', in_top_ten('DSP 20 (USA 149)')),
-             ("SDS III-6 in top 10", 'bool', in_top_ten('SDS III-6')),
-             ("SDS III-7 in top 10", 'bool', in_top_ten('SDS III-7')),
-             ("Orion 6 in top 10",   'bool', in_top_ten('Advanced Orion 6')),
+             ("DSP 20 in top 10 unlikely periods",
+              'bool', in_top_ten('DSP 20 (USA 149)')),
+             ("SDS III-6 in top 10 unlikely periods",
+              'bool', in_top_ten('SDS III-6')),
+             ("SDS III-7 in top 10 unlikely periods",
+              'bool', in_top_ten('SDS III-7')),
+             ("Orion 6 in top 10 unlikely periods",
+              'bool', in_top_ten('Advanced Orion 6')),
+             ("DSP 20 in top 5 unlikely periods",
+              'bool', in_top_five('DSP 20 (USA 149)')),
+             ("SDS III-6 in top 5 unlikely periods",
+              'bool', in_top_five('SDS III-6')),
+             ("SDS III-7 in top 5 unlikely periods",
+              'bool', in_top_five('SDS III-7')),
+             ("Orion 6 in top 5 unlikely periods",
+              'bool', in_top_five('Advanced Orion 6')),
          ]
 
 ######################################################################
