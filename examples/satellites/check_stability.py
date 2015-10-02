@@ -16,6 +16,7 @@
 
 import contextlib
 import math
+import os
 import re
 import string
 import time
@@ -140,6 +141,8 @@ def analyze_queries(bdb):
 
 # results :: {(fname, model_ct, query_name) : tagged aggregated value}
 
+plot_out_dir = "figures"
+
 def num_replications(results):
     replication_counts = \
         set((len(l) for (qtype, l) in results.values()
@@ -183,7 +186,9 @@ def plot_results_boolean(results):
     g.map(plt.plot, "num iterations", "freq").add_legend()
     return g
 
-def plot_results(results, basename="fig", ext=".png"):
+def plot_results(results, ext=".png"):
+    if not os.path.exists(plot_out_dir):
+        os.makedirs(plot_out_dir)
     replications = num_replications(results)
     queries = sorted(set((qname, qtype)
                          for ((_, _, qname), (qtype, _)) in results.iteritems()))
@@ -192,14 +197,16 @@ def plot_results(results, basename="fig", ext=".png"):
         grid = plot_results_numerical(results, query)
         grid.fig.suptitle(query + ", %d replications" % replications)
         # XXX Actually shell quote the query name
-        figname = basename + "-" + string.replace(query, " ", "-").replace("/", "") + ext
-        grid.savefig(figname)
-        log("Query '%s' results saved to %s" % (query, figname))
+        figname = string.replace(query, " ", "-").replace("/", "") + ext
+        savepath = os.path.join(plot_out_dir, figname)
+        grid.savefig(savepath)
+        log("Query '%s' results saved to %s" % (query, savepath))
     grid = plot_results_boolean(results)
     grid.fig.suptitle("Boolean queries, %d replications" % replications)
-    figname = basename + "-boolean-queries" + ext
-    grid.savefig(figname)
-    log("Boolean query results saved to %s" % (figname,))
+    figname = "boolean-queries" + ext
+    savepath = os.path.join(plot_out_dir, figname)
+    grid.savefig(savepath)
+    log("Boolean query results saved to %s" % (savepath,))
 
 ######################################################################
 ## Queries                                                          ##
