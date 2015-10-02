@@ -305,11 +305,24 @@ def orbit_type_imputation_queries(bdb):
         GROUP BY i.class_of_orbit, i.inferred_orbit_type
         ORDER BY i.class_of_orbit, i.inferred_orbit_type
     '''
+    answers = dict(((cl, tp), (ct, avg, var))
+                   for (cl, tp, ct, avg, var)
+                   in bdb.execute(query).fetchall())
     def query_gen():
-        for (cl, tp, _, avg, var) in bdb.execute(query).fetchall():
-            yield ("%s %s mean inference confidence" % (cl, tp), 'num', avg)
-            yield ("%s %s inference confidence stddev" % (cl, tp),
-                   'num', math.sqrt(var))
+        for cl in ["Elliptical", "LEO"]:
+            for tp in ["Deep Highly Eccentric",
+                       "Intermediate",
+                       "Molniya",
+                       "Sun-Synchronous",
+                       "Cislunar",
+                       "N/A"]:
+                (ct, avg, var) = answers.get((cl, tp), (0,0,0))
+                yield ("%s %s ct imputed instances" % (cl, tp),
+                       'num', float(ct))
+                yield ("%s %s mean inference confidence" % (cl, tp),
+                       'num', avg)
+                yield ("%s %s inference confidence stddev" % (cl, tp),
+                       'num', math.sqrt(var))
     return list(query_gen())
 
 ######################################################################
