@@ -304,3 +304,5 @@ def get_column_descriptive_metadata(bdb, table_name, column_names, md_field):
         import pdb
         pdb.set_trace()
     return short_names
+
+
