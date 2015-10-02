@@ -39,6 +39,7 @@ import random
 import time
 
 import bayeslite
+from bayeslite.core import bayesdb_get_generator
 from bayeslite.metamodels.crosscat import CrosscatMetamodel
 from crosscat.LocalEngine import LocalEngine as CrosscatLocalEngine
 
@@ -108,16 +109,25 @@ def new_cc_metamodel(prng):
 
 def analyze_probes(bdb, generator, probes, specs):
     results = {} # Keys are (model_ct, name); values are aggregated results
+    ct = num_models_in_bdb(bdb, generator)
     for spec in specs:
         (low, high) = spec
         model_ct = high - low
-        with model_restriction(bdb, generator, spec):
+        with model_restriction(bdb, generator, spec, ct):
             log("probing models %d-%d" % (low, high-1))
             for probeset in probes:
                 pres = [((model_ct, name), inc_singleton(ptype, res))
                         for (name, ptype, res) in probeset(bdb)]
                 incorporate(results, pres)
     return results
+
+def num_models_in_bdb(bdb, generator):
+    generator_id = bayesdb_get_generator(bdb, generator)
+    q = '''SELECT COUNT(*), MAX(modelno)
+        FROM bayesdb_generator_model WHERE generator_id = ?'''
+    (ct, maximum) = bdb.execute(q, (generator_id,)).next()
+    assert ct == maximum+1, "Expected models to be numbered sequentially"
+    return ct
 
 def model_specs(model_schedule, model_skip, n_replications):
     def spec_at(location, size):
@@ -129,9 +139,9 @@ def model_specs(model_schedule, model_skip, n_replications):
             for size in model_schedule]
 
 @contextlib.contextmanager
-def model_restriction(bdb, gen_name, spec):
+def model_restriction(bdb, gen_name, spec, model_count):
     (low, high) = spec
-    model_count = 60 # TODO !
+    assert model_count >= high, "Not enough models in bdb"
     with bdb.savepoint_rollback():
         if low > 0:
             bdb.execute('''DROP MODELS 0-%d FROM %s''' % (low-1, gen_name))
