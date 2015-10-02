@@ -16,6 +16,7 @@
 
 import itertools
 import math
+import sqlite3
 
 import numpy as np
 
@@ -333,7 +334,7 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
                 predictor_binary = builder.serialize(predictor)
                 bdb.sql_execute(sql, {
                     'genid': genid,
-                    'predictor_binary': predictor_binary,
+                    'predictor_binary': sqlite3.Binary(predictor_binary),
                     'colno': fcol
                 })
 
