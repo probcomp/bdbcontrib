@@ -335,7 +335,8 @@ import glob
 
 def save_query_results(filename):
     files = glob.glob("output/*i.bdb")
-    # files = ["output/satellites-2015-09-30-axch-60m-4i.bdb"]
+    # files = ["output/satellites-2015-09-30-axch-60m-4i.bdb",
+    #          "output/satellites-2015-09-30-axch-60m-8i.bdb"]
     results = analyze_fileset(files)
 
     with open(filename, "w") as f:
