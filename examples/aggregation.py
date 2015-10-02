@@ -27,21 +27,31 @@ def log(msg):
 
 def analyze_fileset(files, generator, probes, model_schedule=None,
                     n_replications=None):
-    """Aggregate all the queries over all the given bdb files.
+    """Aggregate all the probes over all the given bdb files.
 
     Do seed and model count variation within each file by varying
-    model specs; assume the files represent analysis iteration
-    variation and report accordingly.
+    model specs.
 
-    Alternative: could just assume the file name describes the file
-    opaquely.
+    `files` is a list of filenames of saved BayesDBs to aggregate over.
+
+    `generator` is a string naming the generator the probes read.
+
+    `probes` is a list of probe functions.
+
+    `model_schedule` is a list of numbers of models to probe.
+
+    `n_replications` is the number of replications to do.
+
+    Each saved bdb must have the named generator, and that generator
+    must have at least as many models as `n_replications *
+    max(model_schedule)`.
 
     """
     # TODO Expect the number of models in the file to be at least
     # model_skip * n_replications; excess models are wasted.
     # TODO Default the model schedule and n_replications based on the
     # square root of the number of models in the first file
-    model_skip = model_schedule[-1]
+    model_skip = max(model_schedule)
     specs = model_specs(model_schedule, model_skip, n_replications)
     return do_analyze_fileset(files, generator, probes, specs)
 
