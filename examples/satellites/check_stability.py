@@ -170,7 +170,7 @@ def plot_results_numerical(results, query):
     cols = ["num iterations", "n_models", "value"]
     df = pd.DataFrame.from_records(data, columns=cols) \
                      .sort(["num iterations", "n_models"])
-    g = sns.FacetGrid(df, col="n_models")
+    g = sns.FacetGrid(df, col="n_models", size=5, col_wrap=3)
     g.map(sns.violinplot, "num iterations", "value")
     return g
 
@@ -183,7 +183,7 @@ def plot_results_boolean(results):
     cols = ["num iterations", "n_models", "query", "freq"]
     df = pd.DataFrame.from_records(data, columns=cols) \
                      .sort(["num iterations", "n_models"])
-    g = sns.FacetGrid(df, col="n_models", hue="query")
+    g = sns.FacetGrid(df, col="n_models", hue="query", size=5, col_wrap=3)
     g.map(plt.plot, "num iterations", "freq").add_legend()
     return g
 
