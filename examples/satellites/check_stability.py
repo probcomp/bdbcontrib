@@ -18,6 +18,7 @@ import matplotlib
 matplotlib.use("Agg")
 
 import math
+import re
 
 import sys
 sys.path.append("..")
@@ -172,10 +173,15 @@ def save_probe_results(filename):
         pickle.dump(results, f)
     log("Saved probe results to %s" % filename)
 
+def analysis_count_from_file_name(fname):
+    return int(re.match(r'.*-[0-9]*m-([0-9]*)i.bdb', fname).group(1))
+
 def plot_probe_results(filename):
     log("Loading probe results from %s" % filename)
     with open(filename, "r") as f:
         results = pickle.load(f)
+    results = [((probe, n_models, analysis_count_from_file_name(fname)), val)
+               for ((fname, n_models, probe), val) in results.iteritems()]
     plot_results(results, outdir="figures")
 
 save_probe_results("results.pkl")

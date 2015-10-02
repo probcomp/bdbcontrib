@@ -17,7 +17,6 @@
 """Visualize results of probing across iteration and model count."""
 
 import os
-import re
 import string
 import warnings
 
@@ -29,12 +28,13 @@ import sys
 sys.path.append(".")
 from aggregation import log
 
-# results :: {(fname, model_ct, probe_name) : tagged aggregated value}
+# results :: [((probe_name, model_ct, iters), tagged aggregated value)]
 
 def plot_results(results, outdir="figures", ext=".png"):
     """Plot the aggregate results of probing.
 
-    `results` is a dict mapping probe conditions to aggregated probe results.
+    `results` is a list of pairs giving probe conditions and
+    aggregated probe results.
 
     `outdir` is the name of a directory to which to write the visualizations.
     Default: "figures".
@@ -42,9 +42,9 @@ def plot_results(results, outdir="figures", ext=".png"):
     `ext` is the file extension for visualizations, which determines
     the image format used.  Default ".png".
 
-    Each probe condition is expected to be a 3-tuple: file name, model
-    count, probe name.  Each result is expected to be a tagged
-    aggregate (see aggregation.py).
+    Each probe condition is expected to be a 3-tuple: probe name,
+    model count, analysis iteration count.  Each result is expected to
+    be a tagged aggregate (see aggregation.py).
 
     Each numerical probe produces one plot, named after the probe.
     The plot facets over the model count, displays the iteration count
@@ -52,14 +52,15 @@ def plot_results(results, outdir="figures", ext=".png"):
 
     All boolean probes are aggregated into one plot named
     "boolean-probes", whose y axis is the frequency of a "True"
-    result.
+    result.  Each probe is a line giving the relationship of the
+    frequency to the number of analysis iterations.
 
     """
     if not os.path.exists(outdir):
         os.makedirs(outdir)
     replications = num_replications(results)
     probes = sorted(set((pname, ptype)
-                        for ((_, _, pname), (ptype, _)) in results.iteritems()))
+                        for ((pname, _, _), (ptype, _)) in results))
     for probe, ptype in probes:
         if not ptype == 'num': continue
         grid = plot_results_numerical(results, probe)
@@ -79,9 +80,9 @@ def plot_results(results, outdir="figures", ext=".png"):
     log("Boolean probe results saved to %s" % (savepath,))
 
 def plot_results_numerical(results, probe):
-    # results :: dict (file_name, model_ct, probe_name) : tagged result_set
-    data = ((analysis_count_from_file_name(fname), model_ct, value)
-        for ((fname, model_ct, pname), (ptype, values)) in results.iteritems()
+    # results :: [((probe_name, model_ct, iters), tagged result_set)]
+    data = ((iters, model_ct, value)
+            for ((pname, model_ct, iters), (ptype, values)) in results
         if pname == probe and ptype == 'num'
         for value in values)
     cols = ["num iterations", "n_models", "value"]
@@ -92,9 +93,9 @@ def plot_results_numerical(results, probe):
     return g
 
 def plot_results_boolean(results):
-    # results :: dict (file_name, model_ct, probe_name) : tagged result_set
-    data = ((analysis_count_from_file_name(fname), model_ct, pname, float(t)/(t+f))
-        for ((fname, model_ct, pname), (ptype, value)) in results.iteritems()
+    # results :: [((probe_name, model_ct, iters), tagged result_set)]
+    data = ((iters, model_ct, pname, float(t)/(t+f))
+            for ((pname, model_ct, iters), (ptype, value)) in results
         if ptype == 'bool'
         for (t, f) in [value])
     cols = ["num iterations", "n_models", "probe", "freq"]
@@ -106,9 +107,9 @@ def plot_results_boolean(results):
 
 def num_replications(results):
     replication_counts = \
-        set((len(l) for (ptype, l) in results.values()
+        set((len(l) for (_, (ptype, l)) in results
              if ptype == 'num')).union(
-        set((t+f for (ptype, l) in results.values()
+        set((t+f for (_, (ptype, l)) in results
              if ptype == 'bool'
              for (t, f) in [l])))
     replication_count = next(iter(replication_counts))
@@ -117,6 +118,3 @@ def num_replications(results):
               "over %s, using %s" % (replication_counts, replication_count)
         warnings.warn(msg)
     return replication_count
-
-def analysis_count_from_file_name(fname):
-    return int(re.match(r'.*-[0-9]*m-([0-9]*)i.bdb', fname).group(1))
