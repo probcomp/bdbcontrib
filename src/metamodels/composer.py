@@ -34,7 +34,7 @@ import bdbcontrib
 composer_schema_1 = [
 '''
 INSERT INTO bayesdb_metamodel
-    (name, version) VALUES ('composer', 0);
+    (name, version) VALUES ('composer', 1);
 ''','''
 CREATE TABLE bayesdb_composer_cc_id(
     generator_id INTEGER NOT NULL
