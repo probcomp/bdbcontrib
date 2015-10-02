@@ -368,7 +368,7 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
             })
 
     def column_dependence_probability(self, bdb, genid, modelno, colno0,
-                colno1):
+            colno1):
         # XXX Aggregator only.
         if modelno is None:
             n_model = 1
@@ -401,14 +401,14 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
                 self.cc_id(bdb, genid), modelno,
                 self.cc_colno(bdb, genid, colno0),
                 self.cc_colno(bdb, genid, colno1))
-        # (colno0, colno1) form a (target, given) pair.
+        # (colno0, colno1) form a (target, conditions) pair.
         # WE explicitly modeled them as dependent by assumption.
         # TODO: Strong assumption? What if FP determines it is not
         # dependent on one of its conditions? (ie 0 coeff in regression)
         if colno0 in self.pcols(bdb, genid, colno1) or \
                 colno1 in self.pcols(bdb, genid, colno0):
             return 1
-        # (colno0, colno1) form a local, foreign pair.
+        # (colno0, colno1) form a (local, foreign) pair.
         # IF [col0 FP target], [col1 CC], and [all conditions of col0 IND col1]
         #   then [col0 IND col1].
         # XXX Reverse is not true generally (counterxample), but we shall
