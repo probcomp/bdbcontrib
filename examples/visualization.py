@@ -29,8 +29,6 @@ from aggregation import log
 
 # results :: {(fname, model_ct, probe_name) : tagged aggregated value}
 
-plot_out_dir = "figures"
-
 def num_replications(results):
     replication_counts = \
         set((len(l) for (ptype, l) in results.values()
@@ -74,9 +72,9 @@ def plot_results_boolean(results):
     g.map(plt.plot, "num iterations", "freq").add_legend()
     return g
 
-def plot_results(results, ext=".png"):
-    if not os.path.exists(plot_out_dir):
-        os.makedirs(plot_out_dir)
+def plot_results(results, outdir="figures", ext=".png"):
+    if not os.path.exists(outdir):
+        os.makedirs(outdir)
     replications = num_replications(results)
     probes = sorted(set((pname, ptype)
                         for ((_, _, pname), (ptype, _)) in results.iteritems()))
@@ -86,14 +84,14 @@ def plot_results(results, ext=".png"):
         grid.fig.suptitle(probe + ", %d replications" % replications)
         # XXX Actually shell quote the probe name
         figname = string.replace(probe, " ", "-").replace("/", "") + ext
-        savepath = os.path.join(plot_out_dir, figname)
+        savepath = os.path.join(outdir, figname)
         grid.savefig(savepath)
         plt.close(grid.fig)
         log("Probe '%s' results saved to %s" % (probe, savepath))
     grid = plot_results_boolean(results)
     grid.fig.suptitle("Boolean probes, %d replications" % replications)
     figname = "boolean-probes" + ext
-    savepath = os.path.join(plot_out_dir, figname)
+    savepath = os.path.join(outdir, figname)
     grid.savefig(savepath)
     plt.close(grid.fig)
     log("Boolean probe results saved to %s" % (savepath,))

@@ -176,7 +176,7 @@ def plot_probe_results(filename):
     log("Loading probe results from %s" % filename)
     with open(filename, "r") as f:
         results = pickle.load(f)
-    plot_results(results)
+    plot_results(results, outdir="figures")
 
 save_probe_results("results.pkl")
 plot_probe_results("results.pkl")
