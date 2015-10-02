@@ -182,7 +182,7 @@ def plot_results_boolean(results):
         for (t, f) in [value])
     cols = ["num iterations", "n_models", "query", "freq"]
     df = pd.DataFrame.from_records(data, columns=cols) \
-                     .sort(["num iterations", "n_models"])
+                     .sort(["query", "num iterations", "n_models"])
     g = sns.FacetGrid(df, col="n_models", hue="query", size=5, col_wrap=3)
     g.map(plt.plot, "num iterations", "freq").add_legend()
     return g
