@@ -360,12 +360,13 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
             while bayesdb_generator_has_model(bdb, genid, n_model):
                 n_model += 1
             modelnos = range(n_model)
-        for modelno in modelnos:
-            bdb.sql_execute(sql, {
-                'generator_id': genid,
-                'modelno': modelno,
-                'iterations': iterations,
-            })
+        with bdb.savepoint():
+            for modelno in modelnos:
+                bdb.sql_execute(sql, {
+                    'generator_id': genid,
+                    'modelno': modelno,
+                    'iterations': iterations,
+                })
 
     def column_dependence_probability(self, bdb, genid, modelno, colno0,
             colno1):
