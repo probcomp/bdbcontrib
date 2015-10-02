@@ -242,9 +242,13 @@ def save_query_results(filename):
     # files = glob.glob("output/*i.bdb")
     files = ["output/satellites-2015-09-30-axch-60m-4i.bdb",
              "output/satellites-2015-09-30-axch-60m-8i.bdb"]
-    results = analyze_fileset(files, [country_purpose_queries,
-                                      unlikely_periods_queries,
-                                      orbit_type_imputation_queries])
+    results = analyze_fileset(
+        files,
+        [country_purpose_queries,
+         unlikely_periods_queries,
+         orbit_type_imputation_queries],
+        model_schedule = [1,3,6],
+        n_replications = 10)
 
     with open(filename, "w") as f:
         pickle.dump(results, f)

@@ -21,17 +21,12 @@ import time
 
 import bayeslite
 
-model_schedule = [1,3,6]
-model_skip = model_schedule[-1]
-n_replications = 10
-# TODO Expect the number of models in the file to be at least
-# model_skip * n_replications; excess models are wasted.
-
 then = time.time()
 def log(msg):
     print "At %3.2fs" % (time.time() - then), msg
 
-def analyze_fileset(files, probes):
+def analyze_fileset(files, probes, model_schedule=None,
+                    n_replications=None):
     """Aggregate all the queries over all the given bdb files.
 
     Do seed and model count variation within each file by varying
@@ -42,6 +37,15 @@ def analyze_fileset(files, probes):
     opaquely.
 
     """
+    # TODO Expect the number of models in the file to be at least
+    # model_skip * n_replications; excess models are wasted.
+    # TODO Default the model schedule and n_replications based on the
+    # square root of the number of models in the first file
+    model_skip = model_schedule[-1]
+    specs = model_specs(model_schedule, model_skip, n_replications)
+    return do_analyze_fileset(files, probes, specs)
+
+def do_analyze_fileset(files, probes, specs):
     # Keys are (file_name, model_ct, name); values are aggregated results
     results = {}
     for fname in files:
@@ -49,11 +53,11 @@ def analyze_fileset(files, probes):
         with bayeslite.bayesdb_open(fname) as bdb:
             res = [((fname, model_ct, name), ress)
                    for ((model_ct, name), ress)
-                   in analyze_queries(bdb, probes).iteritems()]
+                   in analyze_queries(bdb, probes, specs).iteritems()]
             incorporate(results, res)
     return results
 
-def model_specs():
+def model_specs(model_schedule, model_skip, n_replications):
     def spec_at(location, size):
         """Return a 0-indexed model range
         inclusive of lower bound and exclusive of upper bound."""
@@ -107,9 +111,9 @@ def merge_one(so_far, val):
     else:
         raise Exception("Type mismatch in merge into %s of %s" % (so_far, val))
 
-def analyze_queries(bdb, probes):
+def analyze_queries(bdb, probes, specs):
     results = {} # Keys are (model_ct, name); values are aggregated results
-    for spec in model_specs():
+    for spec in specs:
         (low, high) = spec
         model_ct = high - low
         with model_restriction(bdb, "satellites_cc", spec):
