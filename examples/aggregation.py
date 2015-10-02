@@ -95,6 +95,19 @@ def do_analyze_fileset(files, generator, probes, specs):
             incorporate(results, res)
     return results
 
+def analyze_probes(bdb, generator, probes, specs):
+    results = {} # Keys are (model_ct, name); values are aggregated results
+    for spec in specs:
+        (low, high) = spec
+        model_ct = high - low
+        with model_restriction(bdb, generator, spec):
+            log("probing models %d-%d" % (low, high-1))
+            for probeset in probes:
+                pres = [((model_ct, name), inc_singleton(ptype, res))
+                        for (name, ptype, res) in probeset(bdb)]
+                incorporate(results, pres)
+    return results
+
 def model_specs(model_schedule, model_skip, n_replications):
     def spec_at(location, size):
         """Return a 0-indexed model range
@@ -148,16 +161,3 @@ def merge_one(so_far, val):
         return ('bool', (t1+t2, f1+f2))
     else:
         raise Exception("Type mismatch in merge into %s of %s" % (so_far, val))
-
-def analyze_probes(bdb, generator, probes, specs):
-    results = {} # Keys are (model_ct, name); values are aggregated results
-    for spec in specs:
-        (low, high) = spec
-        model_ct = high - low
-        with model_restriction(bdb, generator, spec):
-            log("probing models %d-%d" % (low, high-1))
-            for probeset in probes:
-                pres = [((model_ct, name), inc_singleton(ptype, res))
-                        for (name, ptype, res) in probeset(bdb)]
-                incorporate(results, pres)
-    return results
