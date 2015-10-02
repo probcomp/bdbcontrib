@@ -191,7 +191,8 @@ def plot_results(results, basename="fig", ext=".png"):
         if not qtype == 'num': continue
         grid = plot_results_numerical(results, query)
         grid.fig.suptitle(query + ", %d replications" % replications)
-        figname = basename + "-" + string.replace(query, " ", "-") + ext
+        # XXX Actually shell quote the query name
+        figname = basename + "-" + string.replace(query, " ", "-").replace("/", "") + ext
         grid.savefig(figname)
         log("Query '%s' results saved to %s" % (query, figname))
     grid = plot_results_boolean(results)
