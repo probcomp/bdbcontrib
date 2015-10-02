@@ -243,7 +243,7 @@ def save_query_results(filename):
     files = ["output/satellites-2015-09-30-axch-60m-4i.bdb",
              "output/satellites-2015-09-30-axch-60m-8i.bdb"]
     results = analyze_fileset(
-        files,
+        files, "satellites_cc",
         [country_purpose_queries,
          unlikely_periods_queries,
          orbit_type_imputation_queries],

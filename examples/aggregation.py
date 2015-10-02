@@ -25,7 +25,7 @@ then = time.time()
 def log(msg):
     print "At %3.2fs" % (time.time() - then), msg
 
-def analyze_fileset(files, probes, model_schedule=None,
+def analyze_fileset(files, generator, probes, model_schedule=None,
                     n_replications=None):
     """Aggregate all the queries over all the given bdb files.
 
@@ -43,9 +43,9 @@ def analyze_fileset(files, probes, model_schedule=None,
     # square root of the number of models in the first file
     model_skip = model_schedule[-1]
     specs = model_specs(model_schedule, model_skip, n_replications)
-    return do_analyze_fileset(files, probes, specs)
+    return do_analyze_fileset(files, generator, probes, specs)
 
-def do_analyze_fileset(files, probes, specs):
+def do_analyze_fileset(files, generator, probes, specs):
     # Keys are (file_name, model_ct, name); values are aggregated results
     results = {}
     for fname in files:
@@ -53,7 +53,7 @@ def do_analyze_fileset(files, probes, specs):
         with bayeslite.bayesdb_open(fname) as bdb:
             res = [((fname, model_ct, name), ress)
                    for ((model_ct, name), ress)
-                   in analyze_queries(bdb, probes, specs).iteritems()]
+                   in analyze_queries(bdb, generator, probes, specs).iteritems()]
             incorporate(results, res)
     return results
 
@@ -111,12 +111,12 @@ def merge_one(so_far, val):
     else:
         raise Exception("Type mismatch in merge into %s of %s" % (so_far, val))
 
-def analyze_queries(bdb, probes, specs):
+def analyze_queries(bdb, generator, probes, specs):
     results = {} # Keys are (model_ct, name); values are aggregated results
     for spec in specs:
         (low, high) = spec
         model_ct = high - low
-        with model_restriction(bdb, "satellites_cc", spec):
+        with model_restriction(bdb, generator, spec):
             log("querying models %d-%d" % (low, high-1))
             for queryset in probes:
                 qres = [((model_ct, name), inc_singleton(qtype, res))
