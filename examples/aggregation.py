@@ -63,7 +63,7 @@ def do_analyze_fileset(files, generator, probes, specs):
         with bayeslite.bayesdb_open(fname) as bdb:
             res = [((fname, model_ct, name), ress)
                    for ((model_ct, name), ress)
-                   in analyze_queries(bdb, generator, probes, specs).iteritems()]
+                   in analyze_probes(bdb, generator, probes, specs).iteritems()]
             incorporate(results, res)
     return results
 
@@ -97,16 +97,16 @@ def incorporate(running, new):
 
 # Type-dependent aggregation of intermediate values (e.g., counting
 # yes and no for booleans vs accumulating lists of reals).
-def inc_singleton(qtype, val):
-    if qtype == 'num':
+def inc_singleton(ptype, val):
+    if ptype == 'num':
         return ('num', [val])
-    elif qtype == 'bool':
+    elif ptype == 'bool':
         if val:
             return ('bool', (1, 0))
         else:
             return ('bool', (0, 1))
     else:
-        raise Exception("Unknown singleton type %s for %s" % (qtype, val))
+        raise Exception("Unknown singleton type %s for %s" % (ptype, val))
 
 def merge_one(so_far, val):
     (tp1, item1) = so_far
@@ -121,15 +121,15 @@ def merge_one(so_far, val):
     else:
         raise Exception("Type mismatch in merge into %s of %s" % (so_far, val))
 
-def analyze_queries(bdb, generator, probes, specs):
+def analyze_probes(bdb, generator, probes, specs):
     results = {} # Keys are (model_ct, name); values are aggregated results
     for spec in specs:
         (low, high) = spec
         model_ct = high - low
         with model_restriction(bdb, generator, spec):
-            log("querying models %d-%d" % (low, high-1))
-            for queryset in probes:
-                qres = [((model_ct, name), inc_singleton(qtype, res))
-                        for (name, qtype, res) in queryset(bdb)]
-                incorporate(results, qres)
+            log("probing models %d-%d" % (low, high-1))
+            for probeset in probes:
+                pres = [((model_ct, name), inc_singleton(ptype, res))
+                        for (name, ptype, res) in probeset(bdb)]
+                incorporate(results, pres)
     return results
