@@ -35,16 +35,16 @@ from aggregation import log, analyze_fileset
 ## Visualization                                                    ##
 ######################################################################
 
-# results :: {(fname, model_ct, query_name) : tagged aggregated value}
+# results :: {(fname, model_ct, probe_name) : tagged aggregated value}
 
 plot_out_dir = "figures"
 
 def num_replications(results):
     replication_counts = \
-        set((len(l) for (qtype, l) in results.values()
-             if qtype == 'num')).union(
-        set((t+f for (qtype, l) in results.values()
-             if qtype == 'bool'
+        set((len(l) for (ptype, l) in results.values()
+             if ptype == 'num')).union(
+        set((t+f for (ptype, l) in results.values()
+             if ptype == 'bool'
              for (t, f) in [l])))
     replication_count = next(iter(replication_counts))
     if len(replication_counts) > 1:
@@ -56,11 +56,11 @@ def num_replications(results):
 def analysis_count_from_file_name(fname):
     return int(re.match(r'.*-[0-9]*m-([0-9]*)i.bdb', fname).group(1))
 
-def plot_results_numerical(results, query):
-    # results :: dict (file_name, model_ct, query_name) : tagged result_set
+def plot_results_numerical(results, probe):
+    # results :: dict (file_name, model_ct, probe_name) : tagged result_set
     data = ((analysis_count_from_file_name(fname), model_ct, value)
-        for ((fname, model_ct, qname), (qtype, values)) in results.iteritems()
-        if qname == query and qtype == 'num'
+        for ((fname, model_ct, pname), (ptype, values)) in results.iteritems()
+        if pname == probe and ptype == 'num'
         for value in values)
     cols = ["num iterations", "n_models", "value"]
     df = pd.DataFrame.from_records(data, columns=cols) \
@@ -70,15 +70,15 @@ def plot_results_numerical(results, query):
     return g
 
 def plot_results_boolean(results):
-    # results :: dict (file_name, model_ct, query_name) : tagged result_set
-    data = ((analysis_count_from_file_name(fname), model_ct, qname, float(t)/(t+f))
-        for ((fname, model_ct, qname), (qtype, value)) in results.iteritems()
-        if qtype == 'bool'
+    # results :: dict (file_name, model_ct, probe_name) : tagged result_set
+    data = ((analysis_count_from_file_name(fname), model_ct, pname, float(t)/(t+f))
+        for ((fname, model_ct, pname), (ptype, value)) in results.iteritems()
+        if ptype == 'bool'
         for (t, f) in [value])
-    cols = ["num iterations", "n_models", "query", "freq"]
+    cols = ["num iterations", "n_models", "probe", "freq"]
     df = pd.DataFrame.from_records(data, columns=cols) \
-                     .sort(["query", "num iterations", "n_models"])
-    g = sns.FacetGrid(df, col="n_models", hue="query", size=5, col_wrap=3)
+                     .sort(["probe", "num iterations", "n_models"])
+    g = sns.FacetGrid(df, col="n_models", hue="probe", size=5, col_wrap=3)
     g.map(plt.plot, "num iterations", "freq").add_legend()
     return g
 
@@ -86,31 +86,31 @@ def plot_results(results, ext=".png"):
     if not os.path.exists(plot_out_dir):
         os.makedirs(plot_out_dir)
     replications = num_replications(results)
-    queries = sorted(set((qname, qtype)
-                         for ((_, _, qname), (qtype, _)) in results.iteritems()))
-    for query, qtype in queries:
-        if not qtype == 'num': continue
-        grid = plot_results_numerical(results, query)
-        grid.fig.suptitle(query + ", %d replications" % replications)
-        # XXX Actually shell quote the query name
-        figname = string.replace(query, " ", "-").replace("/", "") + ext
+    probes = sorted(set((pname, ptype)
+                        for ((_, _, pname), (ptype, _)) in results.iteritems()))
+    for probe, ptype in probes:
+        if not ptype == 'num': continue
+        grid = plot_results_numerical(results, probe)
+        grid.fig.suptitle(probe + ", %d replications" % replications)
+        # XXX Actually shell quote the probe name
+        figname = string.replace(probe, " ", "-").replace("/", "") + ext
         savepath = os.path.join(plot_out_dir, figname)
         grid.savefig(savepath)
         plt.close(grid.fig)
-        log("Query '%s' results saved to %s" % (query, savepath))
+        log("Probe '%s' results saved to %s" % (probe, savepath))
     grid = plot_results_boolean(results)
-    grid.fig.suptitle("Boolean queries, %d replications" % replications)
-    figname = "boolean-queries" + ext
+    grid.fig.suptitle("Boolean probes, %d replications" % replications)
+    figname = "boolean-probes" + ext
     savepath = os.path.join(plot_out_dir, figname)
     grid.savefig(savepath)
     plt.close(grid.fig)
-    log("Boolean query results saved to %s" % (savepath,))
+    log("Boolean probe results saved to %s" % (savepath,))
 
 ######################################################################
-## Queries                                                          ##
+## Probes                                                          ##
 ######################################################################
 
-def country_purpose_queries(bdb):
+def country_purpose_probes(bdb):
     bdb.execute('''
         CREATE TEMP TABLE satellite_purpose AS
         SIMULATE country_of_operator, purpose FROM satellites_cc
@@ -138,7 +138,7 @@ def country_purpose_queries(bdb):
              ("USA-Communications is top by 2x", "bool", by_much),
          ]
 
-def unlikely_periods_queries(bdb):
+def unlikely_periods_probes(bdb):
     bdb.execute('''
         CREATE TEMP TABLE unlikely_periods AS
         ESTIMATE name, class_of_orbit, period_minutes,
@@ -185,7 +185,7 @@ def unlikely_periods_queries(bdb):
               'bool', in_top_five('Advanced Orion 6')),
          ]
 
-def orbit_type_imputation_queries(bdb):
+def orbit_type_imputation_probes(bdb):
     bdb.execute('''
         CREATE TEMP TABLE inferred_orbit AS
         INFER EXPLICIT
@@ -213,7 +213,7 @@ def orbit_type_imputation_queries(bdb):
     answers = dict(((cl, tp), (ct, avg, var))
                    for (cl, tp, ct, avg, var)
                    in bdb.execute(query).fetchall())
-    def query_gen():
+    def probe_gen():
         for cl in ["Elliptical", "LEO"]:
             for tp in ["Deep Highly Eccentric",
                        "Intermediate",
@@ -228,7 +228,7 @@ def orbit_type_imputation_queries(bdb):
                        'num', avg)
                 yield ("%s %s inference confidence stddev" % (cl, tp),
                        'num', math.sqrt(var))
-    return list(query_gen())
+    return list(probe_gen())
 
 ######################################################################
 ## Driver                                                           ##
@@ -238,27 +238,27 @@ import cPickle as pickle # json doesn't like tuple dict keys
 
 import glob
 
-def save_query_results(filename):
+def save_probe_results(filename):
     # files = glob.glob("output/*i.bdb")
     files = ["output/satellites-2015-09-30-axch-60m-4i.bdb",
              "output/satellites-2015-09-30-axch-60m-8i.bdb"]
     results = analyze_fileset(
         files, "satellites_cc",
-        [country_purpose_queries,
-         unlikely_periods_queries,
-         orbit_type_imputation_queries],
+        [country_purpose_probes,
+         unlikely_periods_probes,
+         orbit_type_imputation_probes],
         model_schedule = [1,3,6],
         n_replications = 10)
 
     with open(filename, "w") as f:
         pickle.dump(results, f)
-    log("Saved query results to %s" % filename)
+    log("Saved probe results to %s" % filename)
 
-def plot_query_results(filename):
-    log("Loading query results from %s" % filename)
+def plot_probe_results(filename):
+    log("Loading probe results from %s" % filename)
     with open(filename, "r") as f:
         results = pickle.load(f)
     plot_results(results)
 
-save_query_results("results.pkl")
-plot_query_results("results.pkl")
+save_probe_results("results.pkl")
+plot_probe_results("results.pkl")
