@@ -25,7 +25,7 @@ from scipy.stats import norm
 from sklearn.preprocessing import Imputer
 
 import bdbcontrib
-from bdbcontrib.foreign import predictor
+from bdbcontrib.predictors import predictor
 
 class KeplersLaw(predictor.IBayesDBForeignPredictor):
     """

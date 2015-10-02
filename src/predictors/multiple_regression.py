@@ -26,7 +26,7 @@ from sklearn.linear_model import LinearRegression
 from sklearn.preprocessing import Imputer
 
 import bdbcontrib
-from bdbcontrib.foreign import predictor
+from bdbcontrib.predictors import predictor
 
 class MultipleRegression(predictor.IBayesDBForeignPredictor):
     """
