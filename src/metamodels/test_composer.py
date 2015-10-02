@@ -378,15 +378,19 @@ def test_composer_integration():
         );''')
 
 
+    # ----------------------
     # TEST INITIALIZE MODELS
     # ----------------------
+
     bdb.execute('INITIALIZE 2 MODELS FOR t1')
     # Check number of models.
     curs = bdbcontrib.describe_generator_models(bdb, 't1')
     assert len(curs.fetchall()) == 2
 
+    # -------------------
     # TEST ANALYZE MODELS
     # -------------------
+
     bdb.execute('ANALYZE t1 FOR 2 ITERATIONS WAIT;')
     # Check number of iterations of composer.
     curs = bdbcontrib.describe_generator_models(bdb, 't1')
@@ -397,8 +401,10 @@ def test_composer_integration():
     for modelno, iterations in curs:
         assert iterations == 2
 
+    # ----------------------------------
     # TEST COLUMN DEPENDENCE PROBABILITY
     # ----------------------------------
+
     # Special 0/1 regimes.
     # Local with a INDEPENDENT local should be 0.
     curs = bdb.execute('''
@@ -454,7 +460,7 @@ def test_composer_integration():
         ESTIMATE DEPENDENCE PROBABILITY OF Period_minutes WITH
             Type_of_Orbit FROM t1 LIMIT 1
     ''')
-    assert curs.next()[0] == 0.
+    assert curs.next()[0] == 1.
     # Unknown [0,1] regimes.
     # Foreign with a local of unknown relation with parents.
     curs = bdb.execute('''
@@ -474,6 +480,60 @@ def test_composer_integration():
     ''')
     assert 0 <= curs.next()[0] <= 1.
 
+    # ----------------------------------
+    # TEST SIMULATE
+    # ----------------------------------
+
+    # Crash tests for various code path. Quality of simulations ignored.
+    # Joint local.
+    curs = bdb.execute('''
+        SIMULATE Power_watts, Launch_Mass_kg FROM t1 LIMIT 2;
+    ''')
+    assert len(curs.fetchall()) == 2
+    # Forward simulate foreign.
+    curs = bdb.execute('''
+        SIMULATE Period_minutes FROM t1 GIVEN Apogee_km = 1000, Perigee_km = 980
+            LIMIT 2;
+    ''')
+    assert len(curs.fetchall()) == 2
+    # Forward simulate foreign with missing parents.
+    curs = bdb.execute('''
+        SIMULATE Anticipated_Lifetime FROM t1 GIVEN Dry_Mass_kg = 2894,
+            Launch_Mass_kg = 1730 LIMIT 2;
+    ''')
+    assert len(curs.fetchall()) == 2
+    # Joint simulate foreign with parents, and missing parents.
+    curs = bdb.execute('''
+        SIMULATE Type_of_Orbit, Eccentricity FROM t1 GIVEN Dry_Mass_kg = 2894,
+            Launch_Mass_kg = 1730 LIMIT 2;
+    ''')
+    assert len(curs.fetchall()) == 2
+    # Joint simulate foreign with non-parents.
+    curs = bdb.execute('''
+        SIMULATE Period_minutes, Eccentricity FROM t1 GIVEN Apogee_km = 38000
+            LIMIT 2;
+    ''')
+    assert len(curs.fetchall()) == 2
+    # Simulate joint local conditioned on two foreigns.
+    curs = bdb.execute('''
+        SIMULATE Country_of_Operator, Inclination_radians FROM t1
+            GIVEN Period_minutes = 1432, Anticipated_Lifetime = 5 LIMIT 2;
+    ''')
+    assert len(curs.fetchall()) == 2
+    # Simulate joint foreign conditioned on third foreign.
+    curs = bdb.execute('''
+        SIMULATE Period_minutes, Anticipated_Lifetime FROM t1
+            GIVEN Type_of_Orbit = 'Deep Highly Eccentric' LIMIT 2
+    ''')
+    assert len(curs.fetchall()) == 2
+    # Simulate foreign conditioned on itself.
+    curs = bdb.execute('''
+        SIMULATE Period_minutes, Apogee_km FROM t1
+            GIVEN Period_minutes = 102 LIMIT 2
+    ''')
+    assert [s[0] for s in curs] == [102] * 2
+    print 'done'
+
 # def test_column_mutual_information(self):
 #     pass
 
@@ -481,9 +541,6 @@ def test_composer_integration():
 #     pass
 
 # def test_predict_confidence(self):
-#     pass
-
-# def test_simulate(self):
 #     pass
 
 # def test_row_column_predictive_probability(self):
