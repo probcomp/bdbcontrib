@@ -14,6 +14,8 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
+"""Visualize results of probing across iteration and model count."""
+
 import os
 import re
 import string
@@ -30,6 +32,29 @@ from aggregation import log
 # results :: {(fname, model_ct, probe_name) : tagged aggregated value}
 
 def plot_results(results, outdir="figures", ext=".png"):
+    """Plot the aggregate results of probing.
+
+    `results` is a dict mapping probe conditions to aggregated probe results.
+
+    `outdir` is the name of a directory to which to write the visualizations.
+    Default: "figures".
+
+    `ext` is the file extension for visualizations, which determines
+    the image format used.  Default ".png".
+
+    Each probe condition is expected to be a 3-tuple: file name, model
+    count, probe name.  Each result is expected to be a tagged
+    aggregate (see aggregation.py).
+
+    Each numerical probe produces one plot, named after the probe.
+    The plot facets over the model count, displays the iteration count
+    on the x-axis, and a violin plot of the results on the y axis.
+
+    All boolean probes are aggregated into one plot named
+    "boolean-probes", whose y axis is the frequency of a "True"
+    result.
+
+    """
     if not os.path.exists(outdir):
         os.makedirs(outdir)
     replications = num_replications(results)
