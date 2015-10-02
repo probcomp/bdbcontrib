@@ -494,7 +494,10 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
                 p.append(self._joint_logpdf(bdb, genid, n_model,
                     [(colno, value)], constraints))
                 n_model += 1
-            p = logmeanexp(p)
+            if all(e == float('-inf') for e in p):
+                p = float('-inf')
+            else:
+                p = logmeanexp(p)
         else:
             p = self._joint_logpdf(bdb, genid, modelno, [(colno, value)],
                 constraints)
@@ -505,20 +508,27 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
         # for a single model. The function is a likelihood weighted
         # integrator.
         if modelno is None:
-            raise ValueError('Invalid modelno argument for '
-                'internal _joint_logpdf. An integer modelno '
-                'is required, not None.')
+            raise ValueError('Invalid modelno None, integer requried.')
         if len(Q) == 0:
-            raise ValueError('Invalid query argument Q for '
-                'internal _joint_logpdf: len(Q) == 0.')
+            raise ValueError('Invalid query Q: len(Q) == 0.')
+        # Ensure consistency of any duplicates in Q and Y.
+        ignore = set()
+        for (cq, vq), (cy, vy) in itertools.product(Q, Y):
+            if cq == cy:
+                if vq == vy:
+                    ignore.add(cq)
+                else:
+                    return -float('inf')
+        Q = [q for q in Q if q not in ignore]
+        # XXX Determine.
         if n_samples is None:
             n_samples = 200
         # (Q,Y) marginal joint density.
         _, QY_weights = self._weighted_sample(bdb, genid, modelno, Q+Y,
             n_samples=n_samples)
         # Y marginal density.
-        _, Y_weights = self._weighted_sample(bdb, genid, modelno,
-            Y, n_samples=n_samples)
+        _, Y_weights = self._weighted_sample(bdb, genid, modelno, Y,
+            n_samples=n_samples)
         # XXX TODO Keep sampling until logpQY <= logpY
         logpQY = logmeanexp(QY_weights)
         logpY = logmeanexp(Y_weights)
@@ -736,7 +746,7 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
         lcols = self.lcols(bdb, genid)
         ignore = set()
         for (cq, vq), (cy, vy) in itertools.product(Q, Y):
-            if cq not in lcols and cy not in lcols:
+            if cq not in lcols or cy not in lcols:
                 raise ValueError('Foreign colno encountered in internal '
                     '_joint_logpdf_cc.')
             if cq == cy:
