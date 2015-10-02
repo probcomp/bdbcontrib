@@ -349,6 +349,23 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
         self.cc(bdb, genid).analyze_models(bdb, self.cc_id(bdb, genid),
             modelnos=modelnos, iterations=iterations, max_seconds=max_seconds,
             ckpt_iterations=ckpt_iterations, ckpt_seconds=ckpt_seconds)
+        # Accounting.
+        sql = '''
+            UPDATE bayesdb_generator_model
+                SET iterations = iterations + :iterations
+                WHERE generator_id = :generator_id AND modelno = :modelno
+        '''
+        if modelnos is None:
+            n_model = 0
+            while bayesdb_generator_has_model(bdb, genid, n_model):
+                n_model += 1
+            modelnos = range(n_model)
+        for modelno in modelnos:
+            bdb.sql_execute(sql, {
+                'generator_id': genid,
+                'modelno': modelno,
+                'iterations': iterations,
+            })
 
     def column_dependence_probability(self, bdb, genid, modelno, colno0,
                 colno1):
