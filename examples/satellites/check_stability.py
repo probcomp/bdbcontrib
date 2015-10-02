@@ -14,6 +14,10 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
+import matplotlib
+matplotlib.use("Agg")
+import matplotlib.pylab as plt
+
 import contextlib
 import math
 import os
@@ -24,9 +28,6 @@ import warnings
 
 import pandas as pd
 import seaborn as sns
-import matplotlib
-matplotlib.use("Agg")
-import matplotlib.pylab as plt
 
 import bayeslite
 
