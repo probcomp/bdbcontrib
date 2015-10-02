@@ -272,7 +272,10 @@ import cPickle as pickle # json doesn't like tuple dict keys
 import glob
 
 def save_query_results(filename):
-    results = analyze_fileset(glob.glob("output/*i.bdb"))
+    files = glob.glob("output/*i.bdb")
+    # files = ["output/satellites-2015-09-30-axch-60m-4i.bdb"]
+    results = analyze_fileset(files)
+
     with open(filename, "w") as f:
         pickle.dump(results, f)
     log("Saved query results to %s" % filename)
