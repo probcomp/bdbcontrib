@@ -14,7 +14,25 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
-"""Aggregation of probe results over bdb files and model numbers."""
+"""Aggregation of probe results over bdb files and model numbers.
+
+A single probe is a typed result of some computation over a BayesDB,
+whose variation with model count, analysis iteration, or other setup
+one is interested in studying.
+
+A probe function is a function that accepts a bdb and computes a list
+of probe results (more than one so that they can share intermediate
+computations).
+
+A probe result is represented as a 3-tuple: the name of the probe, the
+type of the result (as a string), and the value of the result.
+
+Two result types are currently supported:
+- 'num' results are aggregated by maintaining a list of all of them.
+- 'bool' results are aggregated by maintaining the count of True and
+  False results seen.
+
+"""
 
 import contextlib
 import time
@@ -45,6 +63,16 @@ def analyze_fileset(files, generator, probes, model_schedule=None,
     Each saved bdb must have the named generator, and that generator
     must have at least as many models as `n_replications *
     max(model_schedule)`.
+
+    Probe functions are expected to utilize all available models to
+    compute their results; application to different sets of models is
+    accomplished by temporarily dropping unwanted models.
+
+    Returns a dict mapping conditions to aggregated probe results.
+    Each condition is a 3-tuple: Name of bdb file, number of models
+    probed, name of probe.  The results are aggregated over
+    replications: different sets of the desired number of models
+    within each file.
 
     """
     # TODO Expect the number of models in the file to be at least
