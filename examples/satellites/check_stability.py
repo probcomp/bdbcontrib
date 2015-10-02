@@ -201,12 +201,14 @@ def plot_results(results, ext=".png"):
         figname = string.replace(query, " ", "-").replace("/", "") + ext
         savepath = os.path.join(plot_out_dir, figname)
         grid.savefig(savepath)
+        plt.close(grid.fig)
         log("Query '%s' results saved to %s" % (query, savepath))
     grid = plot_results_boolean(results)
     grid.fig.suptitle("Boolean queries, %d replications" % replications)
     figname = "boolean-queries" + ext
     savepath = os.path.join(plot_out_dir, figname)
     grid.savefig(savepath)
+    plt.close(grid.fig)
     log("Boolean query results saved to %s" % (savepath,))
 
 ######################################################################
