@@ -532,16 +532,75 @@ def test_composer_integration():
             GIVEN Period_minutes = 102 LIMIT 2
     ''')
     assert [s[0] for s in curs] == [102] * 2
-    print 'done'
 
-# def test_column_mutual_information(self):
-#     pass
+    # -----------------------------
+    # TEST COLUMN VALUE PROBABILITY
+    # -----------------------------
+    # Crash tests for various code path. Quality of logpdf ignored.
+    # Conditional local.
+    curs = bdb.execute('''
+        ESTIMATE PROBABILITY OF Power_watts = 800 GIVEN (Perigee_km = 980,
+            Launch_Mass_kg = 890) FROM t1 LIMIT 1;
+    ''')
+    assert curs.next()[0] >= 0.
+    # Unconditional foreign
+    curs = bdb.execute('''
+        ESTIMATE PROBABILITY OF Period_minutes = 1020 FROM t1 LIMIT 1;
+    ''')
+    assert curs.next()[0] >= 0.
+    # Conditional foreign on parent and non-parents.
+    curs = bdb.execute('''
+        ESTIMATE PROBABILITY OF Period_minutes = 1020 GIVEN
+            (Apogee_km = 38000, Eccentricity = 0.03) FROM t1 LIMIT 1;
+    ''')
+    assert curs.next()[0] >= 0.
+    # Conditional foriegn on foreign.
+    curs = bdb.execute('''
+        ESTIMATE PROBABILITY OF Anticipated_Lifetime = 4.09 GIVEN
+            (Class_of_Orbit = 'LEO', Purpose='Astrophysics',
+                Period_minutes = 1436) FROM t1 LIMIT 1;
+    ''')
+    assert curs.next()[0] >= 0.
+    # Categorical foreign should be less than 1.
+    curs = bdb.execute('''
+        ESTIMATE PROBABILITY OF Type_of_Orbit = 'Polar' FROM t1 LIMIT 1;
+    ''')
+    assert curs.next()[0] <= 1.
+    # Query inconsistent with evidence should be 0.
+    curs = bdb.execute('''
+        ESTIMATE PROBABILITY OF "Type_of_Orbit" = 'Polar'
+            GIVEN ("Type_of_Orbit" = 'Deep Highly Eccentric') FROM t1 LIMIT 1;
+    ''')
+    assert curs.next()[0] == 0.
+    # In theory, query consistent with evidence should be 1, but this is very
+    # hard to ensure due to stochastic sampling giving different estimates of
+    # P(Y), once in joint and once in marginal Monte Carlo estimation.
 
-# def test_column_value_probability(self):
-#     pass
+    # -----------------------
+    # TEST MUTUAL INFORMATION
+    # -----------------------
 
-# def test_predict_confidence(self):
-#     pass
+    # Two local columns.
+    curs = bdb.execute('''
+        ESTIMATE MUTUAL INFORMATION OF Country_of_Contractor WITH
+            longitude_radians_of_geo FROM t1 LIMIT 1;
+    ''')
+    assert curs.next()[0] >= 0.
+    # One local and one foreign column.
+    curs = bdb.execute('''
+        ESTIMATE MUTUAL INFORMATION OF Period_minutes WITH
+            longitude_radians_of_geo FROM t1 LIMIT 1;
+    ''')
+    assert curs.next()[0] >= 0.
+    # Two foreign columns.
+    curs = bdb.execute('''
+        ESTIMATE MUTUAL INFORMATION OF Period_minutes WITH
+            Anticipated_Lifetime FROM t1 LIMIT 1;
+    ''')
+    assert curs.next()[0] >= 0.
 
-# def test_row_column_predictive_probability(self):
-#     pass
+
+    # def test_predict_confidence(self):
+
+    # def test_row_column_predictive_probability(self):
+    #     pass
