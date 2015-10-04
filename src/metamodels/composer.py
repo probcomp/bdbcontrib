@@ -522,7 +522,7 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
         Q = [q for q in Q if q not in ignore]
         # XXX Determine.
         if n_samples is None:
-            n_samples = 200
+            n_samples = 100
         # (Q,Y) marginal joint density.
         _, QY_weights = self._weighted_sample(bdb, genid, modelno, Q+Y,
             n_samples=n_samples)
@@ -539,7 +539,7 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
         # Predicts a value for the cell [rowid, colno] with a confidence metric.
         # XXX Prefer accuracy over speed for imputation.
         if numsamples is None:
-            numsamples = 50
+            numsamples = 100
         # Obtain all values for all other columns.
         colnos = bayesdb_generator_column_numbers(bdb, genid)
         colnames = bayesdb_generator_column_names(bdb, genid)
