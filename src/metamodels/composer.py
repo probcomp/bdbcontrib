@@ -467,10 +467,10 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
         # Simple Monte Carlo
         mi = logpz = logpxwz = logpxz = logpwz = 0
         for s in XWZ_samples:
-            Qz = zip(Z, [s[z] for z in Z])
-            Qx = zip(X, [s[x] for x in X])
-            Qw = zip(W, [s[w] for w in W])
-            if Qz:
+            Qx = zip(X, s[:len(X)])
+            Qw = zip(Z, s[len(X):-len(Z)])
+            Qz = zip(W, s[-len(Z):])
+            if Z:
                 logpz = self._joint_logpdf(bdb, genid, modelno, Qz, Y)
             else:
                 logpz = 0
