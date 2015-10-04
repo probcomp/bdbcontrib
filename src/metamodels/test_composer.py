@@ -133,7 +133,7 @@ def test_create_generator_schema():
                     Apogee_km NUMERICAL, Operator_Owner
                 )
             );''')
-    # Missing conditions in randomf forest conditions should crash.
+    # Missing conditions in random forest conditions should crash.
     with pytest.raises(ValueError):
         bdb.execute('''
             CREATE GENERATOR t7 FOR satellites USING composer(
@@ -321,7 +321,6 @@ def test_register_foreign_predictor():
 
 
 def test_composer_integration():
-    # XXX Not really an integration test, all functions tested seperately.
     # But currently difficult to seperate these tests into smaller tests because
     # of their sequential nature. We will still test all internal functions
     # with different regimes of operation.
@@ -333,6 +332,7 @@ def test_composer_integration():
     bdb = bayeslite.bayesdb_open(str(time.time()).split('.')[0])
     bayeslite.bayesdb_read_csv_file(bdb, 'satellites', satfile, header=True,
         create=True)
+    bdbcontrib.nullify(bdb, 'satellites', 'NaN')
     # Composer.
     composer = Composer()
     composer.register_foreign_predictor(
@@ -536,31 +536,32 @@ def test_composer_integration():
     # -----------------------------
     # TEST COLUMN VALUE PROBABILITY
     # -----------------------------
+
     # Crash tests for various code path. Quality of logpdf ignored.
     # Conditional local.
     curs = bdb.execute('''
         ESTIMATE PROBABILITY OF Power_watts = 800 GIVEN (Perigee_km = 980,
             Launch_Mass_kg = 890) FROM t1 LIMIT 1;
     ''')
-    assert curs.next()[0] >= 0.
+    assert 0. <= curs.next()[0]
     # Unconditional foreign
     curs = bdb.execute('''
         ESTIMATE PROBABILITY OF Period_minutes = 1020 FROM t1 LIMIT 1;
     ''')
-    assert curs.next()[0] >= 0.
+    assert 0. <= curs.next()[0]
     # Conditional foreign on parent and non-parents.
     curs = bdb.execute('''
         ESTIMATE PROBABILITY OF Period_minutes = 1020 GIVEN
             (Apogee_km = 38000, Eccentricity = 0.03) FROM t1 LIMIT 1;
     ''')
-    assert curs.next()[0] >= 0.
+    assert 0 <= curs.next()[0]
     # Conditional foriegn on foreign.
     curs = bdb.execute('''
         ESTIMATE PROBABILITY OF Anticipated_Lifetime = 4.09 GIVEN
             (Class_of_Orbit = 'LEO', Purpose='Astrophysics',
                 Period_minutes = 1436) FROM t1 LIMIT 1;
     ''')
-    assert curs.next()[0] >= 0.
+    assert 0. <= curs.next()[0]
     # Categorical foreign should be less than 1.
     curs = bdb.execute('''
         ESTIMATE PROBABILITY OF Type_of_Orbit = 'Polar' FROM t1 LIMIT 1;
@@ -583,24 +584,42 @@ def test_composer_integration():
     # Two local columns.
     curs = bdb.execute('''
         ESTIMATE MUTUAL INFORMATION OF Country_of_Contractor WITH
-            longitude_radians_of_geo FROM t1 LIMIT 1;
+            longitude_radians_of_geo USING 5 SAMPLES FROM t1 LIMIT 1;
     ''')
-    assert curs.next()[0] >= 0.
+    assert 0. <= curs.next()[0]
     # One local and one foreign column.
     curs = bdb.execute('''
         ESTIMATE MUTUAL INFORMATION OF Period_minutes WITH
-            longitude_radians_of_geo FROM t1 LIMIT 1;
+            longitude_radians_of_geo USING 5 SAMPLES FROM t1 LIMIT 1;
     ''')
-    assert curs.next()[0] >= 0.
+    assert 0. <= curs.next()[0]
     # Two foreign columns.
     curs = bdb.execute('''
         ESTIMATE MUTUAL INFORMATION OF Period_minutes WITH
-            Anticipated_Lifetime FROM t1 LIMIT 1;
+            Anticipated_Lifetime USING 5 SAMPLES FROM t1 LIMIT 1;
     ''')
-    assert curs.next()[0] >= 0.
+    assert 0. <= curs.next()[0]
+    # -----------------------
+    # TEST PREDICT CONFIDENCE
+    # -----------------------
 
-
-    # def test_predict_confidence(self):
-
-    # def test_row_column_predictive_probability(self):
-    #     pass
+    # Continuous local column.
+    curs = bdb.execute('''
+        INFER EXPLICIT PREDICT Dry_Mass_kg CONFIDENCE c FROM t1 LIMIT 1;
+    ''')
+    assert curs.next()[1] >= 0.
+    # Discrete local column.
+    curs = bdb.execute('''
+        INFER EXPLICIT PREDICT Purpose CONFIDENCE c FROM t1 LIMIT 1;
+    ''')
+    assert 0 <= curs.next()[1] <= 1
+    # Continuous foreign columns.
+    curs = bdb.execute('''
+        INFER EXPLICIT PREDICT Period_minutes CONFIDENCE c FROM t1 LIMIT 1;
+    ''')
+    assert curs.next()[1] >= 0.
+    # Discrete foreign column.
+    curs = bdb.execute('''
+        INFER EXPLICIT PREDICT Type_of_Orbit CONFIDENCE c FROM t1 LIMIT 1;
+    ''')
+    assert 0 <= curs.next()[1] <= 1
