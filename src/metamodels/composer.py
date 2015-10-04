@@ -625,7 +625,7 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
         return imp_val, imp_conf * parent_conf
 
     def simulate(self, bdb, genid, modelno, constraints, colnos,
-            numpredictions=1):
+            numpredictions=100):
         # Delegate to crosscat if colnos+constraints all lcols.
         all_cols = [c for c,v in constraints] + colnos
         if all(f not in all_cols for f in self.fcols(bdb, genid)):
@@ -651,8 +651,8 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
             colnos):
         # XXX Delegate to CrossCat always.
         cc_colnos = self.cc_colnos(bdb, genid, colnos)
-        return self.cc(bdb, genid).row_similarity(bdb,
-            self.cc_id(bdb, genid), modelno, rowid, target_rowid, cc_colnos)
+        return self.cc(bdb, genid).row_similarity(bdb, self.cc_id(bdb, genid),
+            modelno, rowid, target_rowid, cc_colnos)
 
     def row_column_predictive_probability(self, bdb, genid, modelno, rowid,
             colno):
@@ -712,11 +712,9 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
         if Y_cc:
             w0 += self._joint_logpdf_cc(bdb, genid, modelno, Y_cc, [])
         # Simulate latent ccs.
-        Q_cc = [c for c in self.lcols(bdb, genid) if c not in
-                samples[0]]
-        V_cc = self.cc(bdb, genid).simulate(bdb,
-                self.cc_id(bdb, genid), modelno, Y_cc, Q_cc,
-                numpredictions=n_samples)
+        Q_cc = [c for c in self.lcols(bdb, genid) if c not in samples[0]]
+        V_cc = self.cc(bdb, genid).simulate(bdb, self.cc_id(bdb, genid),
+            modelno, Y_cc, Q_cc, numpredictions=n_samples)
         for k in xrange(n_samples):
             w = w0
             # Add simulated Q_cc.
