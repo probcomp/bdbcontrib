@@ -614,7 +614,7 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
             if colno in self.fcols(bdb, genid):
                 imp_conf = math.exp(predictor.logpdf(imp_val, conditions))
             else:
-                imp_conf = (np.array(samples)==imp_val) / len(samples)
+                imp_conf = sum(np.array(samples)==imp_val) / len(samples)
         elif stattype == 'numerical':
             # XXX The definition of confidence is P[k=1] where
             # k=1 is the number of mixture componets (we need a distribution
