@@ -612,6 +612,7 @@ def test_composer_integration():
             Anticipated_Lifetime USING 5 SAMPLES FROM t1 LIMIT 1;
     ''')
     assert 0. <= curs.next()[0]
+
     # -----------------------
     # TEST PREDICT CONFIDENCE
     # -----------------------
