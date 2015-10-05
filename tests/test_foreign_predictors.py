@@ -17,9 +17,9 @@
 import numpy as np
 import pandas as pd
 
-from bdbcontrib.foreign.random_forest import RandomForest
-from bdbcontrib.foreign.keplers_law import KeplersLaw
-from bdbcontrib.foreign.multiple_regression import MultipleRegression
+from bdbcontrib.predictors.random_forest import RandomForest
+from bdbcontrib.predictors.keplers_law import KeplersLaw
+from bdbcontrib.predictors.multiple_regression import MultipleRegression
 
 # TODO: More robust tests exploring more interesting cases. The main use
 # right now is crash testing. Moreover common patterns can be automated.
