@@ -319,7 +319,6 @@ def test_register_foreign_predictor():
     with pytest.raises(AssertionError):
         composer.register_foreign_predictor('bans')
 
-
 def test_composer_integration():
     # But currently difficult to seperate these tests into smaller tests because
     # of their sequential nature. We will still test all internal functions
@@ -461,6 +460,13 @@ def test_composer_integration():
             Type_of_Orbit FROM t1 LIMIT 1
     ''')
     assert curs.next()[0] == 1.
+    # Column with itself should be 1.
+    curs = bdb.execute('''
+        ESTIMATE DEPENDENCE PROBABILITY OF Anticipated_Lifetime WITH
+            Anticipated_Lifetime FROM t1 LIMIT 1
+    ''')
+    assert curs.next()[0] == 1.
+
     # Unknown [0,1] regimes.
     # Foreign with a local of unknown relation with parents.
     curs = bdb.execute('''
