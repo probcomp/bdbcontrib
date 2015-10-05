@@ -218,7 +218,7 @@ def test_create_generator_schema():
                 default (
                     Country_of_Operator CATEGORICAL, Operator_Owner CATEGORICAL,
                     Users CATEGORICAL, Purpose CATEGORICAL,
-                    Class_of_orbit CATEGORICAL, Perigee_km NUMERICAL,
+                    Class_of_orbit CATEGORICAL,
                     Apogee_km NUMERICAL
                 ),
                 random_forest (
@@ -263,7 +263,7 @@ def test_create_generator_schema():
                     GIVEN Dry_Mass_kg, Power_watts, Launch_Mass_kg, Contractor
             ),
             DEPENDENT(Apogee_km, Perigee_km, Eccentricity),
-            INDEPENDENT(Country_of_Operator, )
+            INDEPENDENT(Country_of_Operator, longitude_radians_of_geo)
         );''')
     bdb.close()
 
