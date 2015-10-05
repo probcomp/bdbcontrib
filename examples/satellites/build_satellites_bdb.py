@@ -14,6 +14,53 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
+"""Analyze and save .bdb files for Satellites.
+
+This script simultaneously serves two purposes:
+- To prepare an analyzed .bdb file for distribution to clients of the
+  Satellites demo
+- To prepare a series of .bdb files for consumption by the stability
+  assessment script check_stability.py.
+
+For those purposes, the script is configured by editing the five
+variables immediately following this docstring.
+
+Each produced file is named with a 'satellites' prefix.  The file name
+additionally captures
+- a date stamp,
+- the running user,
+- the number of models [analysis snapshots only], and
+- the number of analysis iterations [analysis snapshots only].
+
+For each foo.bdb, this program saves a foo-meta.txt containing the
+following information:
+- name and sha256sum of the file described;
+- # models; # iterations; time taken; initial entropy; parallelism
+  level; date stamp; user stamp;
+- crosscat version; bayeslite version; bdbcontrib version
+  (including a full copy of this driver script); and
+- logscore history plot [distributable .bdb only].
+
+"""
+
+# Directory where to put the results.
+out_dir = 'output'
+
+# Number of models to run
+num_models = 60
+
+# Number of analysis iterations to run them for
+num_iters = 24
+
+# Checkpoint after this many iterations
+checkpoint_freq = 4
+
+# Set the initial random see
+seed = 0
+
+# Speed rule of thumb: last big run was 64 models and 1500 iterations,
+# which took ~30 minutes on probcomp
+
 import datetime
 import matplotlib
 matplotlib.use('Agg')
@@ -28,19 +75,12 @@ import bdbcontrib
 
 then = time.time()
 
-out_dir = 'output'
-
 timestamp = datetime.datetime.fromtimestamp(then).strftime('%Y-%m-%d')
 user = subprocess.check_output(["whoami"]).strip()
 host = subprocess.check_output(["hostname"]).strip()
 filestamp = '-' + timestamp + '-' + user
 def out_file_name(base, ext):
     return out_dir + '/' + base + filestamp + ext
-
-num_models = 60
-num_iters = 24 # Expect this to run for ~30 minutes on probcomp
-checkpoint_freq = 4
-seed = 0
 
 csv_file = 'satellites.csv'
 bdb_file = out_file_name('satellites', '.bdb')
