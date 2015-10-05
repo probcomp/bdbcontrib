@@ -17,6 +17,8 @@
 import numpy as np
 import pandas as pd
 
+from crosscat.tests import synthetic_data_generator as sdg
+
 from bdbcontrib.predictors.random_forest import RandomForest
 from bdbcontrib.predictors.keplers_law import KeplersLaw
 from bdbcontrib.predictors.multiple_regression import MultipleRegression
@@ -24,75 +26,120 @@ from bdbcontrib.predictors.multiple_regression import MultipleRegression
 # TODO: More robust tests exploring more interesting cases. The main use
 # right now is crash testing. Moreover common patterns can be automated.
 
-satfile = '../examples/satellites/data/satellites.csv'
-df = pd.read_csv(satfile)
+# ------------------------------------------------------------------------------
+# Helper
+
+def get_synthetic_data(n_sample, seed=438):
+    cols_to_views = [
+        0, 0, 0, 0, 0,
+        1, 1, 1, 1,
+        2, 2, 2,
+        3,
+        4
+    ]
+    colnames = [
+        'm1', 'c1', 'm2', 'c2', 'm3',
+        'm4', 'c3', 'c4', 'm5',
+        'c5', 'c6', 'c7',
+        'c8',
+        'c9'
+    ]
+    cctypes = [
+        'multinomial', 'continuous', 'multinomial', 'continuous', 'multinomial',
+        'multinomial', 'continuous', 'continuous', 'multinomial',
+        'continuous', 'continuous', 'continuous',
+        'continuous',
+        'continuous'
+    ]
+    distargs = [
+        dict(K=9), None, dict(K=9), None, dict(K=7),
+        dict(K=4), None, None, dict(K=9),
+        None, None, None,
+        None,
+        None
+    ]
+    component_weights = [
+        [.2, .3, .5],
+        [.9, .1],
+        [.4, .4, .2],
+        [.8, .2],
+        [.4, .5, .1]
+    ]
+    separation = [0.8, 0.9, 0.65, 0.7, 0.75]
+    synthetic_data = sdg.gen_data(cctypes, n_sample, cols_to_views,
+        component_weights, separation, seed, distargs=distargs)
+    data = pd.DataFrame(synthetic_data[0])
+    data.columns = colnames
+    return data
+
+# ------------------------------------------------------------------------------
+# Tests
 
 def test_random_forest():
-    # Create RandomForest.
-    conditions_numerical = ['Perigee_km', 'Apogee_km', 'Eccentricity',
-        'Period_minutes', 'Launch_Mass_kg', 'Power_watts',
-        'Anticipated_Lifetime']
-    conditions_categorical = ['Class_of_Orbit', 'Purpose', 'Users']
-    conditions = [(c, 'NUMERICAL') for c in conditions_numerical] + \
-        [(c, 'CATEGORICAL') for c in conditions_categorical]
-    target = [('Type_of_Orbit', 'CATEGORICAL')]
+    # Train foreign predictor.
+    df = get_synthetic_data(150)
+    conditions = [(c, 'NUMERICAL') for c in ['c1','c2','c4','c8']] + \
+        [(c, 'CATEGORICAL') for c in ['m1', 'm3']]
+    target = [('m5', 'CATEGORICAL')]
     srf_predictor = RandomForest()
     srf_predictor.train(df, target, conditions)
-    # Dummy realization of conditions.
-    dummy_conditions = {'Perigee_km':535, 'Apogee_km':551,
-        'Eccentricity':0.00116, 'Period_minutes':95.5, 'Launch_Mass_kg':293,
-        'Power_watts':414, 'Anticipated_Lifetime':3, 'Class_of_Orbit':'LEO',
-        'Purpose':'Astrophysics', 'Users':'Government/Civil'}
+
+    # Dummy realization of conditions. Include extra conditions.
+    parents = {'c1':1.3, 'c2':-2.1, 'c4':0.2, 'c8':0.2, 'm1':1, 'm3':7, 'm5':5}
+
     # Crash tests.
-    srf_predictor.simulate(10, dummy_conditions)
-    pdf_val = srf_predictor.logpdf('Intermediate', dummy_conditions)
-    assert srf_predictor.logpdf(1, dummy_conditions) == float('-inf')
+    srf_predictor.simulate(10, parents)
+    pdf_val = srf_predictor.logpdf(7, parents)
+    assert srf_predictor.logpdf(-1, parents) == float('-inf')
+
     # Serialization tests.
     srf_binary = RandomForest.serialize(srf_predictor)
     srf_predictor2 = RandomForest.deserialize(srf_binary)
-    srf_predictor2.simulate(10, dummy_conditions)
-    pdf_val2 = srf_predictor2.logpdf('Intermediate', dummy_conditions)
+    srf_predictor2.simulate(10, parents)
+    pdf_val2 = srf_predictor2.logpdf(7, parents)
     assert np.allclose(pdf_val, pdf_val2)
 
 def test_keplers_law():
-    # Create RandomForest.
-    conditions = [('Apogee_km','NUMERICAL'), ('Perigee_km', 'NUMERICAL')]
-    target = [('Period_minutes', 'NUMERICAL')]
+    # Train foreign predictor.
+    df = get_synthetic_data(150)
+    conditions = [('c1','NUMERICAL'), ('c3', 'NUMERICAL')]
+    target = [('c4', 'NUMERICAL')]
     kl_predictor = KeplersLaw()
     kl_predictor.train(df, target, conditions)
+
     # Dummy realization of conditions.
-    dummy_conditions = {'Apogee_km':1000, 'Perigee_km':1000}
+    inputs = {'c1':2.1, 'c3':1.7}
+
     # Crash tests.
-    kl_predictor.simulate(10, dummy_conditions)
-    pdf_val = kl_predictor.logpdf(1440, dummy_conditions)
+    kl_predictor.simulate(10, inputs)
+    pdf_val = kl_predictor.logpdf(1.2, inputs)
+
     # Serialization tests.
     kl_binary = KeplersLaw.serialize(kl_predictor)
     kl_predictor2 = KeplersLaw.deserialize(kl_binary)
-    kl_predictor2.simulate(10, dummy_conditions)
-    pdf_val2 = kl_predictor2.logpdf(1440, dummy_conditions)
+    kl_predictor2.simulate(10, inputs)
+    pdf_val2 = kl_predictor2.logpdf(1.2, inputs)
     assert np.allclose(pdf_val, pdf_val2)
 
 def test_multiple_regression():
-    # Create MultipleRegression.
-    conditions_numerical = ['Perigee_km', 'Apogee_km', 'Eccentricity',
-        'Period_minutes', 'Launch_Mass_kg', 'Power_watts']
-    conditions_categorical = ['Class_of_Orbit', 'Purpose', 'Users']
-    conditions = [(c, 'NUMERICAL') for c in conditions_numerical] + \
-        [(c, 'CATEGORICAL') for c in conditions_categorical]
-    target = [('Anticipated_Lifetime', 'NUMERICAL')]
+    # Train foreign predictor.
+    df = get_synthetic_data(150)
+    conditions = [(c, 'NUMERICAL') for c in ['c1','c2','c4','c8']] + \
+        [(c, 'CATEGORICAL') for c in ['m1', 'm3']]
+    target = [('c7', 'NUMERICAL')]
     mr_predictor = MultipleRegression()
     mr_predictor.train(df, target, conditions)
-    # Dummy realization of conditions.
-    dummy_conditions = {'Perigee_km':535, 'Apogee_km':551,
-        'Eccentricity':0.00116, 'Period_minutes':95.5, 'Launch_Mass_kg':293,
-        'Power_watts':414, 'Class_of_Orbit':'LEO', 'Purpose':'Astrophysics',
-        'Users':'Government/Civil'}
+
+    # Dummy realization of conditions. Include extra conditions.
+    inputs = {'c1':1.3, 'c2':-2.1, 'c4':0.2, 'c8':0.2, 'm1':1, 'm3':7, 'm5':5}
+
     # Crash tests.
-    mr_predictor.simulate(10, dummy_conditions)
-    pdf_val = mr_predictor.logpdf(4.9, dummy_conditions)
+    mr_predictor.simulate(10, inputs)
+    pdf_val = mr_predictor.logpdf(-0.4, inputs)
+
     # Serialization tests.
     mr_binary = MultipleRegression.serialize(mr_predictor)
     mr_predictor2 = MultipleRegression.deserialize(mr_binary)
-    mr_predictor2.simulate(10, dummy_conditions)
-    pdf_val2 = mr_predictor2.logpdf(4.9, dummy_conditions)
+    mr_predictor2.simulate(10, inputs)
+    pdf_val2 = mr_predictor2.logpdf(-0.4, inputs)
     assert np.allclose(pdf_val, pdf_val2)
