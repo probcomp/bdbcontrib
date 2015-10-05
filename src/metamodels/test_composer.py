@@ -14,8 +14,9 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
-import time
+import os
 import pytest
+import time
 
 import bayeslite
 from bayeslite.sqlite3_util import sqlite3_quote_name as quote
@@ -28,9 +29,8 @@ from bdbcontrib.predictors import multiple_regression
 
 
 # Use satellites for all tests.
-import os
 fullpath = os.path.dirname(os.path.realpath(__file__)).split('/')
-satfile = ''
+satfile = os.path.sep
 for directory in fullpath:
     satfile = os.path.join(satfile, directory)
     if directory == 'bdbcontrib':
