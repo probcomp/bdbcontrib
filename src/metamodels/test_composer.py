@@ -28,7 +28,14 @@ from bdbcontrib.predictors import multiple_regression
 
 
 # Use satellites for all tests.
-satfile = '../../examples/satellites/data/satellites.csv'
+import os
+fullpath = os.path.dirname(os.path.realpath(__file__)).split('/')
+satfile = ''
+for directory in fullpath:
+    satfile = os.path.join(satfile, directory)
+    if directory == 'bdbcontrib':
+        break
+satfile = os.path.join(satfile, 'examples','satellites','data','satellites.csv')
 
 # ------------------------------------------------------------------------------
 # The following live outside the TestComposer class since we do not need to
