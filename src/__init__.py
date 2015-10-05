@@ -22,25 +22,52 @@ features that are not yet ready for integreation to the bayeslite repository.
 
 from bql_utils import cardinality
 from bql_utils import cursor_to_df
-from bql_utils import describe_table
 from bql_utils import describe_generator
 from bql_utils import describe_generator_columns
 from bql_utils import describe_generator_models
+from bql_utils import describe_table
 from bql_utils import nullify
-
-from crosscat_utils import draw_crosscat
-from crosscat_utils import plot_crosscat_chain_diagnostics
 
 from diagnostic_utils import estimate_kl_divergence
 from diagnostic_utils import estimate_log_likelihood
 
-from facade import do_query
+from version import __version__
 
-from plot_utils import barplot
-from plot_utils import heatmap
-from plot_utils import histogram
-from plot_utils import mi_hist
-from plot_utils import pairplot
+def draw_crosscat(*args, **kwargs):
+    import crosscat_utils
+    draw_crosscat = crosscat_utils.draw_crosscat
+    return draw_crosscat(*args, **kwargs)
+
+def plot_crosscat_chain_diagnostics(*args, **kwargs):
+    import crosscat_utils
+    plot_crosscat_chain_diagnostics = \
+        crosscat_utils.plot_crosscat_chain_diagnostics
+    return plot_crosscat_chain_diagnostics(*args, **kwargs)
+
+def barplot(*args, **kwargs):
+    import plot_utils
+    barplot = plot_utils.barplot
+    return barplot(*args, **kwargs)
+
+def heatmap(*args, **kwargs):
+    import plot_utils
+    heatmap = plot_utils.heatmap
+    return heatmap(*args, **kwargs)
+
+def histogram(*args, **kwargs):
+    import plot_utils
+    histogram = plot_utils.histogram
+    return histogram(*args, **kwargs)
+
+def mi_hist(*args, **kwargs):
+    import plot_utils
+    mi_hist = plot_utils.mi_hist
+    return mi_hist(*args, **kwargs)
+
+def pairplot(*args, **kwargs):
+    import plot_utils
+    pairplot = plot_utils.pairplot
+    return pairplot(*args, **kwargs)
 
 __all__ = [
     # bql_utils
@@ -49,6 +76,7 @@ __all__ = [
         'describe_generator',
         'describe_generator_columns',
         'describe_generator_models',
+        'describe_table',
         'nullify',
     # crosscat_utils
         'draw_crosscat',
@@ -56,12 +84,12 @@ __all__ = [
     # diagnostic_utils
         'estimate_kl_divergence',
         'estimate_log_likelihood',
-    # facade
-        'do_query',
     # plot_utils
         'barplot',
         'heatmap',
         'histogram',
         'mi_hist',
         'pairplot',
+    # version
+        '__version__',
 ]

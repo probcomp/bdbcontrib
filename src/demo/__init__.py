@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-#   Copyright (c) 2015, MIT Probabilistic Computing Project
+#   Copyright (c) 2010-2014, MIT Probabilistic Computing Project
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -14,17 +14,8 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
-"""Sphinx configuration file."""
+from bdbcontrib.demo.main import main
 
-extensions = [
-    'sphinx.ext.autodoc',
-    'numpydoc',
+__all__ = [
+    'main',
 ]
-
-copyright = '2015, MIT Probabilistic Computing Project'
-master_doc = 'index'
-project = 'bdbcontrib'
-release = '0.1.dev'
-version = '0.1'
-
-nitpicky = True

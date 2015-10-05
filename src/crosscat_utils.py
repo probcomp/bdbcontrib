@@ -20,13 +20,13 @@ import numpy as np
 import matplotlib
 from matplotlib import pyplot as plt
 from matplotlib.patches import Rectangle
+import seaborn as sns
 
 import bayeslite.core
 from crosscat.utils import sample_utils as su
 
 import bql_utils as bu
 import plot_utils as pu
-from facade import do_query
 
 
 ###############################################################################
@@ -61,7 +61,7 @@ def draw_crosscat(bdb, generator, modelno, row_label_col=None):
             (generator, metamodel))
 
     figure, axes = plt.subplots(tight_layout=False)
-    crosscat_utils.draw_state(bdb, table_name, generator,
+    draw_state(bdb, table_name, generator,
         modelno, ax=axes, row_label_col=row_label_col)
 
     return figure
@@ -100,7 +100,7 @@ def plot_crosscat_chain_diagnostics(bdb, diagnostic, generator):
         SELECT modelno, COUNT(modelno) FROM bayesdb_crosscat_diagnostics
             WHERE generator_id = ? GROUP BY modelno
     '''
-    df = do_query(bdb, bql, (generator_id,)).as_df()
+    df = bu.cursor_to_df(bdb.execute(bql, (generator_id,)))
     models = df['modelno'].astype(int).values
 
     figure, ax = plt.subplots(tight_layout=True, figsize=(10, 5))
@@ -111,7 +111,7 @@ def plot_crosscat_chain_diagnostics(bdb, diagnostic, generator):
                 WHERE modelno = ? AND generator_id = ?
                 ORDER BY iterations ASC
         '''.format(diagnostic)
-        df = do_query(bdb, bql, (modelno, generator_id,)).as_df()
+        df = bu.cursor_to_df(bdb.execute(bql, (modelno, generator_id)))
         ax.plot(df['iterations'].values, df[diagnostic].values,
                  c=colors[modelno], alpha=.7, lw=2)
 

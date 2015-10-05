@@ -1,0 +1,8 @@
+include LICENSE.txt
+include VERSION
+include check.sh
+include pythenv.sh
+include tests/crosscat_utils.py
+include tests/plot_utils.py
+include tests/test_crosscat_utils.py
+include tests/test_utils.py

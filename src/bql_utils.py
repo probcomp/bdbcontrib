@@ -17,7 +17,7 @@
 import pandas as pd
 
 import bayeslite.core
-from bayeslite.sqlite3_util import sqlite3_quote_name as quote
+from bayeslite import bql_quote_name as quote
 
 
 ###############################################################################
@@ -69,6 +69,7 @@ def nullify(bdb, table, value):
         The name of the table on which to act
     value : stringable
         The value to replace with ``NULL``
+
     Examples
     --------
     >>> import bayeslite
@@ -94,28 +95,33 @@ def nullify(bdb, table, value):
 
 def cursor_to_df(cursor):
     """Converts SQLite3 cursor to a pandas DataFrame."""
-    df = pd.DataFrame.from_records(list(cursor), coerce_float=True)
-    df.columns = [desc[0] for desc in cursor.description]
-    for col in df.columns:
-        try:
-            df[col] = df[col].astype(float)
-        except ValueError:
-            pass
+    # Do this in a savepoint to enable caching from row to row in BQL
+    # queries.
+    with cursor.connection.savepoint():
+        df = pd.DataFrame.from_records(cursor, coerce_float=True)
+    if not df.empty:
+        df.columns = [desc[0] for desc in cursor.description]
+        for col in df.columns:
+            try:
+                df[col] = df[col].astype(float)
+            except ValueError:
+                pass
 
     return df
 
 
 def describe_table(bdb, table_name):
     """Returns a SQLite3 cursor containg description of `table_name`.
+
     Examples
     --------
-    >> bdbcontrib.describe_table(bdb, 'employees')
-        tabname   | colno |    name
-        ----------+-------+--------
-        employees |     0 |    name
-        employees |     1 |     age
-        employees |     2 |  weight
-        employees |     3 |  height
+    >>> bdbcontrib.describe_table(bdb, 'employees')
+    tabname   | colno |    name
+    ----------+-------+--------
+    employees |     0 |    name
+    employees |     1 |     age
+    employees |     2 |  weight
+    employees |     3 |  height
     """
     if not bayeslite.core.bayesdb_has_table(bdb, table_name):
             raise NameError('No such table {}'.format(table_name))
@@ -130,12 +136,14 @@ def describe_table(bdb, table_name):
 
 def describe_generator(bdb, generator_name):
     """Returns a SQLite3 cursor containg description of `generator_name`.
+
     Examples
     --------
-    >> bdbcontrib.describe_generator(bdb, 'employees_gen')
-        id |          name |   tabname | metamodel
-        ---+---------------+-----------+----------
-         3 | employees_gen | employees |  crosscat
+
+    >>> bdbcontrib.describe_generator(bdb, 'employees_gen')
+    id |          name |   tabname | metamodel
+    ---+---------------+-----------+----------
+    3  | employees_gen | employees |  crosscat
     """
     if not bayeslite.core.bayesdb_has_generator_default(bdb, generator_name):
             raise NameError('No such generator {}'.format(generator_name))
@@ -150,15 +158,17 @@ def describe_generator(bdb, generator_name):
 def describe_generator_columns(bdb, generator_name):
     """Returns a SQLite3 cursor containg description of the columns
     modeled by `generator_name`.
+
     Examples
     --------
-    >> bdbcontrib.describe_generator_columns(bdb, 'employees_gen')
-        colno |    name |     stattype
-        ------+---------+-------------
-            0 |    name |  categorical
-            1 |     age |    numerical
-            2 |  weight |    numerical
-            3 |  height |    numerical
+
+    >>> bdbcontrib.describe_generator_columns(bdb, 'employees_gen')
+    colno |    name |     stattype
+    ------+---------+-------------
+        0 |    name |  categorical
+        1 |     age |    numerical
+        2 |  weight |    numerical
+        3 |  height |    numerical
     """
     if not bayeslite.core.bayesdb_has_generator_default(bdb, generator_name):
             raise NameError('No such generator {}'.format(generator_name))
@@ -181,13 +191,14 @@ def describe_generator_columns(bdb, generator_name):
 def describe_generator_models(bdb, generator_name):
     """Returns a SQLite3 cursor containg description of the models
     in `generator_name`.
+
     Examples
     --------
-    >> bdbcontrib.describe_generator_models(bdb, 'employees_gen')
-        modelno | iterations
-        --------+-----------
-              0 | 100
 
+    >>> bdbcontrib.describe_generator_models(bdb, 'employees_gen')
+    modelno | iterations
+    --------+-----------
+          0 | 100
     """
     if not bayeslite.core.bayesdb_has_generator_default(bdb, generator_name):
             raise NameError('No such generator {}'.format(generator_name))
@@ -217,7 +228,7 @@ def get_column_info(bdb, generator_name):
                 AND c.tabname = g.tabname
             ORDER BY c.colno
     '''
-    return list(bdb.sql_execute(sql, (generator_id,)))
+    return bdb.sql_execute(sql, (generator_id,)).fetchall()
 
 
 def get_column_stattype(bdb, generator_name, column_name):
@@ -274,7 +285,7 @@ def get_column_descriptive_metadata(bdb, table_name, column_names, md_field):
     bql = '''
         SELECT colno, name, {} FROM bayesdb_column WHERE tabname = ?
     '''.format(md_field)
-    records = list(bdb.sql_execute(bql, (table_name,)))
+    records = bdb.sql_execute(bql, (table_name,)).fetchall()
 
     # hack for case sensitivity problems
     column_names = [c.upper().lower() for c in column_names]

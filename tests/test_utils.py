@@ -14,6 +14,12 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
+# Because this test may indirectly import pylab, which would peg the
+# matplotlib backend, which might prevent a later test from drawing
+# pictures headless.  &#&*%(@#^&!@.
+import matplotlib
+matplotlib.use("Agg")
+
 import pytest
 import tempfile
 
@@ -108,6 +114,13 @@ def test_nullify_no_missing(data, value, num_nulls_expected):
         c = bdb.execute('SELECT COUNT(*) FROM t WHERE four IS NULL;')
         assert c.next()[0] == num_nulls_expected[3]
     temp.close()
+
+
+def test_cursor_to_df():
+    with bayeslite.bayesdb_open() as bdb:
+        bql_utils.cursor_to_df(bdb.execute('select * from sqlite_master'))
+        bql_utils.cursor_to_df(bdb.execute('select * from sqlite_master'
+                ' where 0 = 1'))
 
 
 def test_is_plotting_command():
