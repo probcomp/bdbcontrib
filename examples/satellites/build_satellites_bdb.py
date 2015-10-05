@@ -126,7 +126,7 @@ bdbcontrib.nullify(bdb, 'satellites', 'NaN')
 import crosscat
 import crosscat.MultiprocessingEngine as ccme
 import bayeslite.metamodels.crosscat
-cc = ccme.MultiprocessingEngine(seed=seed, cpu_count=num_models)
+cc = ccme.MultiprocessingEngine(seed=seed)
 ccmm = bayeslite.metamodels.crosscat.CrosscatMetamodel(cc)
 bayeslite.bayesdb_register_metamodel(bdb, ccmm)
 
