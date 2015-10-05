@@ -124,7 +124,7 @@ setup(
     packages=[
         'bdbcontrib',
         'bdbcontrib.predictors',
-        'bdbcontrib.metamodels'
+        'bdbcontrib.metamodels',
         'bdbcontrib.demo',
         'bdbcontrib.demo.ed25519',
     ],
