@@ -614,9 +614,14 @@ def test_composer_integration():
         INFER EXPLICIT PREDICT Dry_Mass_kg CONFIDENCE c FROM t1 LIMIT 1;
     ''')
     assert curs.next()[1] >= 0.
-    # Discrete local column.
+    # Discrete local column with no children.
     curs = bdb.execute('''
         INFER EXPLICIT PREDICT Purpose CONFIDENCE c FROM t1 LIMIT 1;
+    ''')
+    assert 0 <= curs.next()[1] <= 1
+    # Discrete local column with children.
+    curs = bdb.execute('''
+        INFER EXPLICIT PREDICT Contractor CONFIDENCE c FROM t1 LIMIT 1;
     ''')
     assert 0 <= curs.next()[1] <= 1
     # Continuous foreign columns.
