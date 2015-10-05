@@ -77,6 +77,8 @@ separate are:
 - Con: The probes may take a long time to run too (either b/c of
   loading the files or b/c of compute cost per probe)
   - Offset: can still parallelize and distribute probing if needed
+- Pro: The analysis-checkpointing program can be refactored relatively
+  easily to fuse probing into it and avoid saving all the .bdbs.
 
 Implementation on Satellites
 ============================
