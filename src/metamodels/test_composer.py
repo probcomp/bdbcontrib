@@ -35,7 +35,7 @@ for directory in fullpath:
     satfile = os.path.join(satfile, directory)
     if directory == 'bdbcontrib':
         break
-satfile = os.path.join(satfile, 'examples','satellites','data','satellites.csv')
+satfile = os.path.join(satfile, 'examples','satellites','satellites.csv')
 
 # ------------------------------------------------------------------------------
 # The following live outside the TestComposer class since we do not need to
@@ -325,6 +325,77 @@ def test_register_foreign_predictor():
         composer.register_foreign_predictor(None)
     with pytest.raises(AssertionError):
         composer.register_foreign_predictor('bans')
+
+
+def test_drop_generator():
+    bdb = bayeslite.bayesdb_open()
+    # Initialize the database
+    bayeslite.bayesdb_read_csv_file(bdb, 'satellites', satfile, header=True,
+        create=True)
+    composer = Composer()
+    bayeslite.bayesdb_register_metamodel(bdb, composer)
+    composer.register_foreign_predictor(random_forest.RandomForest)
+    composer.register_foreign_predictor(multiple_regression.MultipleRegression)
+    composer.register_foreign_predictor(keplers_law.KeplersLaw)
+    bdb.execute('''
+        CREATE GENERATOR t1 FOR satellites USING composer(
+            default (
+                Country_of_Operator CATEGORICAL, Operator_Owner CATEGORICAL,
+                Users CATEGORICAL, Purpose CATEGORICAL,
+                Class_of_orbit CATEGORICAL, Perigee_km NUMERICAL,
+                Apogee_km NUMERICAL, Eccentricity NUMERICAL,
+                Launch_Mass_kg NUMERICAL, Dry_Mass_kg NUMERICAL,
+                Power_watts NUMERICAL, Date_of_Launch NUMERICAL,
+                Contractor CATEGORICAL,
+                Country_of_Contractor CATEGORICAL, Launch_Site CATEGORICAL,
+                Launch_Vehicle CATEGORICAL,
+                Source_Used_for_Orbital_Data CATEGORICAL,
+                longitude_radians_of_geo NUMERICAL,
+                Inclination_radians NUMERICAL,
+            ),
+            random_forest (
+                Type_of_Orbit CATEGORICAL
+                    GIVEN Apogee_km, Perigee_km,
+                        Eccentricity, Period_minutes, Launch_Mass_kg,
+                        Power_watts, Anticipated_Lifetime, Class_of_orbit
+            ),
+            keplers_law (
+                Period_minutes NUMERICAL
+                    GIVEN Perigee_km, Apogee_km
+            ),
+            multiple_regression (
+                Anticipated_Lifetime NUMERICAL
+                    GIVEN Dry_Mass_kg, Power_watts, Launch_Mass_kg,
+                    Contractor
+            ),
+            DEPENDENT(Apogee_km, Perigee_km, Eccentricity),
+            DEPENDENT(Contractor, Country_of_Contractor),
+            INDEPENDENT(Country_of_Operator, Date_of_Launch)
+        );''')
+    generator_id = bayeslite.core.bayesdb_get_generator(bdb, 't1')
+    bdb.execute('INITIALIZE 2 MODELS FOR t1')
+    schema = [
+        ('table', 'bayesdb_composer_cc_id'),
+        ('table', 'bayesdb_composer_column_owner'),
+        ('table', 'bayesdb_composer_column_toposort'),
+        ('table', 'bayesdb_composer_column_parents'),
+        ('table', 'bayesdb_composer_column_foreign_predictor'),
+    ]
+    # Iterate through tables before dropping.
+    for _, name in schema:
+        bdb.sql_execute('''
+            SELECT * FROM {} WHERE generator_id=?
+        '''.format(quote(name)), (generator_id,)).next()
+    # Drop generator and ensure table lookups with generator_id throw error.
+    bdb.execute('DROP GENERATOR t1')
+    for _, name in schema:
+        with pytest.raises(StopIteration):
+            bdb.sql_execute('''
+                SELECT * FROM {} WHERE generator_id=?
+            '''.format(quote(name)), (generator_id,)).next()
+    assert not bayeslite.core.bayesdb_has_generator(bdb, 't1')
+    assert not bayeslite.core.bayesdb_has_generator(bdb, 't1_cc')
+    bdb.close()
 
 def test_composer_integration():
     # But currently difficult to seperate these tests into smaller tests because
@@ -642,6 +713,8 @@ def test_composer_integration():
         INFER EXPLICIT PREDICT Type_of_Orbit CONFIDENCE c FROM t1 LIMIT 1;
     ''')
     assert 0 <= curs.next()[1] <= 1
+
+    bdb.close()
 
 def test_topological_sort():
     # Acyclic graph should return a correct topo sort.

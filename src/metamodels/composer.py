@@ -276,7 +276,7 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
             for k in keys:
                 del self.predictor_cache[k]
             # Obtain before losing references.
-            cc, cc_id = self.cc(bdb, genid), self.cc_id(bdb, genid)
+            cc_name = bayesdb_generator_name(bdb, self.cc_id(bdb, genid))
             # Delete tables reverse order of insertion.
             bdb.sql_execute('''
                 DELETE FROM bayesdb_composer_column_foreign_predictor
@@ -299,7 +299,9 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
                     WHERE generator_id = ?
             ''', (genid,))
             # Drop internal crosscat.
-            cc.drop_generator(bdb, cc_id)
+            bdb.execute('''
+                DROP GENERATOR {}
+            '''.format(cc_name))
 
     def initialize_models(self, bdb, genid, modelnos, model_config):
         # Initialize internal crosscat. If k models of composer are instantiated
