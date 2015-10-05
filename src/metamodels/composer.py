@@ -430,7 +430,9 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
                 for pcol1 in self.pcols(bdb, genid, colno1))
 
     def column_mutual_information(self, bdb, genid, modelno, colno0, colno1,
-            numsamples=100):
+            numsamples=None):
+        if numsamples is None:
+            numsamples = 100
         # XXX Aggregator only.
         X = [colno0]
         W = [colno1]
@@ -442,19 +444,21 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
                 mi.append(self.conditional_mutual_information(bdb, genid,
                     n_model, X, W, Z, Y))
                 n_model += 1
-            mi = mi/n_model
+            mi = sum(mi)/n_model
         else:
             mi = self.conditional_mutual_information(bdb, genid, modelno, X, W,
                 Z, Y)
         return mi
 
     def conditional_mutual_information(self, bdb, genid, modelno, X, W, Z, Y,
-            numsamples=100):
+            numsamples=None):
         # WARNING: SUPER EXPERIMENTAL.
         # Computes the conditional mutual information I(X:W|Z,Y=y), defined
         # defined as the expectation E_z~Z{X:W|Z=z,Y=y}.
         # X, W, and Z must each be a list [colno, ..].
         # Y is an evidence list [(colno,val), ..].
+        if numsamples is None:
+            numsamples = 100
         # All sets must be disjoint.
         all_cols = X + W + Z + [y[0] for y in Y]
         if len(all_cols) != len(set(all_cols)):
@@ -507,6 +511,10 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
         # XXX Computes the joint probability of query Q given evidence Y
         # for a single model. The function is a likelihood weighted
         # integrator.
+        # XXX Determine.
+        if n_samples is None:
+            n_samples = 100
+        # Validate inputs.
         if modelno is None:
             raise ValueError('Invalid modelno None, integer requried.')
         if len(Q) == 0:
@@ -520,9 +528,6 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
                 else:
                     return -float('inf')
         Q = [q for q in Q if q not in ignore]
-        # XXX Determine.
-        if n_samples is None:
-            n_samples = 100
         # (Q,Y) marginal joint density.
         _, QY_weights = self._weighted_sample(bdb, genid, modelno, Q+Y,
             n_samples=n_samples)
@@ -625,7 +630,7 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
         return imp_val, imp_conf * parent_conf
 
     def simulate(self, bdb, genid, modelno, constraints, colnos,
-            numpredictions=100):
+            numpredictions=1):
         # Delegate to crosscat if colnos+constraints all lcols.
         all_cols = [c for c,v in constraints] + colnos
         if all(f not in all_cols for f in self.fcols(bdb, genid)):
