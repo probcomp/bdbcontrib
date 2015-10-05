@@ -623,3 +623,16 @@ def test_composer_integration():
         INFER EXPLICIT PREDICT Type_of_Orbit CONFIDENCE c FROM t1 LIMIT 1;
     ''')
     assert 0 <= curs.next()[1] <= 1
+
+def test_topological_sort():
+    # Acyclic graph should return a correct topo sort.
+    graph = {1:[], 2:[1], 3:[2,6], 4:[2], 5:[4], 6:[4,1]}
+    topo = Composer.topological_sort(graph)
+    for i in xrange(len(topo)):
+        node, parents = topo[i]
+        for n in topo[i+1:]:
+            assert n not in parents
+    # Cyclic graph should throw an error.
+    graph = {1:[], 2:[1], 3:[2,4,6], 4:[2], 5:[3,4], 6:[4,5,1]}
+    with pytest.raises(ValueError):
+        topo = Composer.topological_sort(graph)

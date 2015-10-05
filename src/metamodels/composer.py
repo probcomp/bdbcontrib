@@ -1068,6 +1068,6 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
                     del graph[node]
                     graph_sorted.append((node, edges))
             if not acyclic:
-                raise RuntimeError('A cyclic dependency occurred in '
+                raise ValueError('A cyclic dependency occurred in '
                     'topological_sort.')
         return graph_sorted
