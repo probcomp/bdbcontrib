@@ -45,7 +45,7 @@ def test_create_generator_schema():
     bdb = bayeslite.bayesdb_open()
     bayeslite.bayesdb_read_csv_file(bdb, 'satellites', satfile, header=True,
         create=True)
-    composer = Composer()
+    composer = Composer(n_samples=5)
     bayeslite.bayesdb_register_metamodel(bdb, composer)
     # Using crosscat and default to specify models should work.
     bdb.execute('''
@@ -276,7 +276,7 @@ def test_create_generator_schema():
 
 def test_register():
     bdb = bayeslite.bayesdb_open()
-    composer = Composer()
+    composer = Composer(n_samples=5)
     bayeslite.bayesdb_register_metamodel(bdb, composer)
     # Check if globally registered.
     try:
@@ -306,7 +306,7 @@ def test_register():
 
 def test_register_foreign_predictor():
     bdb = bayeslite.bayesdb_open()
-    composer = Composer()
+    composer = Composer(n_samples=5)
     bayeslite.bayesdb_register_metamodel(bdb, composer)
     # Register valid predictors.
     composer.register_foreign_predictor(random_forest.RandomForest)
@@ -332,7 +332,7 @@ def test_drop_generator():
     # Initialize the database
     bayeslite.bayesdb_read_csv_file(bdb, 'satellites', satfile, header=True,
         create=True)
-    composer = Composer()
+    composer = Composer(n_samples=5)
     bayeslite.bayesdb_register_metamodel(bdb, composer)
     composer.register_foreign_predictor(random_forest.RandomForest)
     composer.register_foreign_predictor(multiple_regression.MultipleRegression)
@@ -411,7 +411,7 @@ def test_composer_integration():
         create=True)
     bdbcontrib.nullify(bdb, 'satellites', 'NaN')
     # Composer.
-    composer = Composer()
+    composer = Composer(n_samples=5)
     composer.register_foreign_predictor(
         multiple_regression.MultipleRegression)
     composer.register_foreign_predictor(keplers_law.KeplersLaw)
