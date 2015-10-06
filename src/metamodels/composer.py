@@ -127,10 +127,16 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
     """A metamodel which composes foreign predictors with CrossCat.
     """
 
-    def __init__(self):
+    def __init__(self, n_samples=None):
         # In-memory map of registered foreign predictor builders.
         self.predictor_builder = {}
         self.predictor_cache = {}
+        # Default number of samples.
+        if n_samples is None:
+            self.n_samples = 100
+        else:
+            assert 0 < n_samples
+            self.n_samples = n_samples
 
     def register_foreign_predictor(self, builder):
         """Register an object which builds a foreign predictor. The `builder`
@@ -434,7 +440,7 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
     def column_mutual_information(self, bdb, genid, modelno, colno0, colno1,
             numsamples=None):
         if numsamples is None:
-            numsamples = 100
+            numsamples = self.n_samples
         # XXX Aggregator only.
         X = [colno0]
         W = [colno1]
@@ -460,7 +466,7 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
         # X, W, and Z must each be a list [colno, ..].
         # Y is an evidence list [(colno,val), ..].
         if numsamples is None:
-            numsamples = 100
+            numsamples = self.n_samples
         # All sets must be disjoint.
         all_cols = X + W + Z + [y[0] for y in Y]
         if len(all_cols) != len(set(all_cols)):
@@ -515,7 +521,7 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
         # integrator.
         # XXX Determine.
         if n_samples is None:
-            n_samples = 100
+            n_samples = self.n_samples
         # Validate inputs.
         if modelno is None:
             raise ValueError('Invalid modelno None, integer requried.')
@@ -546,7 +552,7 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
         # Predicts a value for the cell [rowid, colno] with a confidence metric.
         # XXX Prefer accuracy over speed for imputation.
         if numsamples is None:
-            numsamples = 100
+            numsamples = self.n_samples
         # Obtain all values for all other columns.
         colnos = bayesdb_generator_column_numbers(bdb, genid)
         colnames = bayesdb_generator_column_names(bdb, genid)
@@ -709,7 +715,7 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
         # constrained values at the evidence nodes.
         # `weight` is the likelihood of the evidence Y under s\Y.
         if n_samples is None:
-            n_samples = 100
+            n_samples = self.n_samples
         # Create n_samples dicts, each entry is weighted sample from joint.
         samples = [{c:v for (c,v) in Y} for _ in xrange(n_samples)]
         weights = []
