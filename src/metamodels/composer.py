@@ -513,7 +513,7 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
         else:
             p = self._joint_logpdf(bdb, genid, modelno, [(colno, value)],
                 constraints)
-        return math.exp(p)
+        return np.exp(p)
 
     def _joint_logpdf(self, bdb, genid, modelno, Q, Y, n_samples=None):
         # XXX Computes the joint probability of query Q given evidence Y
@@ -620,7 +620,7 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
             imp_val =  max(((val, samples.count(val)) for val in set(samples)),
                 key=lambda v: v[1])[0]
             if colno in self.fcols(bdb, genid):
-                imp_conf = math.exp(predictor.logpdf(imp_val, conditions))
+                imp_conf = np.exp(predictor.logpdf(imp_val, conditions))
             else:
                 imp_conf = sum(np.array(samples)==imp_val) / len(samples)
         elif stattype == 'numerical':
