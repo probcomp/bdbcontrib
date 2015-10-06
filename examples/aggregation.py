@@ -51,7 +51,7 @@ def analyze_fileset(files, generator, probes, model_schedule=None,
                     n_replications=None, seed=0):
     """Aggregate all the probes over all the given bdb files.
 
-    Do seed and model count variation within each file by varying
+    Measure seed and model count variation within each file by varying
     model sets to which probes are applied.
 
     `files` is a list of filenames of saved BayesDBs to aggregate over.
