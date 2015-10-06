@@ -84,8 +84,9 @@ def analyze_fileset(files, generator, probes, model_schedule=None,
     """
     # TODO Expect the number of models in the file to be at least
     # model_skip * n_replications; excess models are wasted.
-    # TODO Default the model schedule and n_replications based on the
-    # square root of the number of models in the first file
+    # TODO Default the model schedule and n_replications based on some
+    # heuristic like the square root of the number of models in the
+    # first file.
     model_skip = max(model_schedule)
     specs = model_specs(model_schedule, model_skip, n_replications)
     return do_analyze_fileset(files, generator, probes, specs, seed)
