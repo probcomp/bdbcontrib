@@ -43,9 +43,9 @@ from bayeslite.core import bayesdb_get_generator
 from bayeslite.metamodels.crosscat import CrosscatMetamodel
 from crosscat.LocalEngine import LocalEngine as CrosscatLocalEngine
 
-then = time.time()
+start_time = time.time()
 def log(msg):
-    print "At %3.2fs" % (time.time() - then), msg
+    print "At %3.2fs" % (time.time() - start_time), msg
 
 def analyze_fileset(files, generator, probes, model_schedule=None,
                     n_replications=None, seed=0):
