@@ -158,16 +158,16 @@ import cPickle as pickle # json doesn't like tuple dict keys
 import glob
 
 def save_probe_results(filename):
-    # files = glob.glob("output/*i.bdb")
-    files = ["output/satellites-2015-09-30-axch-60m-4i.bdb",
-             "output/satellites-2015-09-30-axch-60m-8i.bdb"]
+    files = glob.glob("3200m-30i/*i.bdb")
+    # files = ["output/satellites-2015-09-30-axch-60m-4i.bdb",
+    #          "output/satellites-2015-09-30-axch-60m-8i.bdb"]
     results = analyze_fileset(
         files, "satellites_cc",
         [country_purpose_probes,
          unlikely_periods_probes,
          orbit_type_imputation_probes],
-        model_schedule = [1,3,6],
-        n_replications = 10)
+        model_schedule = [1,100,200,300,400],
+        n_replications = 8)
 
     with open(filename, "w") as f:
         pickle.dump(results, f)
@@ -182,7 +182,7 @@ def plot_probe_results(filename):
         results = pickle.load(f)
     results = [((probe, n_models, analysis_count_from_file_name(fname)), val)
                for ((fname, n_models, probe), val) in results.iteritems()]
-    plot_results(results, outdir="figures")
+    plot_results(results, outdir="figures-3200m-30i")
 
-save_probe_results("results.pkl")
-plot_probe_results("results.pkl")
+save_probe_results("results-3200m-30i.pkl")
+plot_probe_results("results-3200m-30i.pkl")

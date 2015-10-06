@@ -43,15 +43,15 @@ from bayeslite.core import bayesdb_get_generator
 from bayeslite.metamodels.crosscat import CrosscatMetamodel
 from crosscat.LocalEngine import LocalEngine as CrosscatLocalEngine
 
-then = time.time()
+start_time = time.time()
 def log(msg):
-    print "At %3.2fs" % (time.time() - then), msg
+    print "At %3.2fs" % (time.time() - start_time), msg
 
 def analyze_fileset(files, generator, probes, model_schedule=None,
                     n_replications=None, seed=0):
     """Aggregate all the probes over all the given bdb files.
 
-    Do seed and model count variation within each file by varying
+    Measure seed and model count variation within each file by varying
     model sets to which probes are applied.
 
     `files` is a list of filenames of saved BayesDBs to aggregate over.
@@ -84,8 +84,9 @@ def analyze_fileset(files, generator, probes, model_schedule=None,
     """
     # TODO Expect the number of models in the file to be at least
     # model_skip * n_replications; excess models are wasted.
-    # TODO Default the model schedule and n_replications based on the
-    # square root of the number of models in the first file
+    # TODO Default the model schedule and n_replications based on some
+    # heuristic like the square root of the number of models in the
+    # first file.
     model_skip = max(model_schedule)
     specs = model_specs(model_schedule, model_skip, n_replications)
     return do_analyze_fileset(files, generator, probes, specs, seed)

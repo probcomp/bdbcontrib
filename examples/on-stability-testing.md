@@ -73,7 +73,7 @@ separate are:
   makes 360MB per 30-point analysis series makes 36GB for 100 per-seed
   replications of a 30-point series.
   - Offset: sqlite's vacuum command helps, around 4x
-  - Offset: zlib seems to compress unvacuumed losers around 10x
+  - Offset: zlib seems to compress vacuumed bdbs around 5x
 - Con: The probes may take a long time to run too (either b/c of
   loading the files or b/c of compute cost per probe)
   - Offset: can still parallelize and distribute probing if needed

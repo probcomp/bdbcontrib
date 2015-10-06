@@ -47,19 +47,21 @@ following information:
 out_dir = 'output'
 
 # Number of models to run
-num_models = 60
+num_models = 64 * 50
 
 # Number of analysis iterations to run them for
-num_iters = 24
+num_iters = 30
 
 # Checkpoint after this many iterations
-checkpoint_freq = 4
+checkpoint_freq = 5
 
-# Set the initial random see
+# Set the initial random seed
 seed = 0
 
-# Speed rule of thumb: last big run was 64 models and 1500 iterations,
-# which took ~30 minutes on probcomp
+# Speed rules of thumb:
+# - 64 models and 1500 iterations took ~30 minutes on probcomp in late September
+# - 64 * 5 models and 300 iterations took ~18 minutes on probcomp 10/5/15
+# - 64 * 50 models and 30 iterations took ~36 minutes on probcomp 10/5/15
 
 import datetime
 import matplotlib
