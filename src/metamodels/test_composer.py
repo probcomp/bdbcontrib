@@ -373,7 +373,6 @@ def test_drop_generator():
             INDEPENDENT(Country_of_Operator, Date_of_Launch)
         );''')
     generator_id = bayeslite.core.bayesdb_get_generator(bdb, 't1')
-    bdb.execute('INITIALIZE 2 MODELS FOR t1')
     schema = [
         ('table', 'bayesdb_composer_cc_id'),
         ('table', 'bayesdb_composer_column_owner'),
@@ -397,7 +396,7 @@ def test_drop_generator():
     assert not bayeslite.core.bayesdb_has_generator(bdb, 't1_cc')
     bdb.close()
 
-def test_composer_integration():
+def test_composer_integration_slow():
     # But currently difficult to seperate these tests into smaller tests because
     # of their sequential nature. We will still test all internal functions
     # with different regimes of operation.
