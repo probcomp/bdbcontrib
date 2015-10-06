@@ -16,7 +16,6 @@
 
 import os
 import pytest
-import time
 
 import bayeslite
 from bayeslite.sqlite3_util import sqlite3_quote_name as quote
@@ -404,8 +403,7 @@ def test_composer_integration_slow():
     # SETUP
     # -----
     # Dataset.
-    import time
-    bdb = bayeslite.bayesdb_open(str(time.time()).split('.')[0])
+    bdb = bayeslite.bayesdb_open()
     bayeslite.bayesdb_read_csv_file(bdb, 'satellites', satfile, header=True,
         create=True)
     bdbcontrib.nullify(bdb, 'satellites', 'NaN')
