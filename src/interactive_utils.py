@@ -28,6 +28,7 @@ class TimeoutWarningTracer(bayeslite.IBayesDBTracer):
     def start(self, qid, query, bindings):
         timer = threading.Timer(self.delay, self._warn, query, bindings)
         self.pending[qid] = timer
+        timer.start()
 
     def error(self, qid, _e): self._abort(qid)
     def finished(self, qid): self._abort(qid)
