@@ -47,7 +47,7 @@ class TimeoutWarningTracer(bayeslite.IBayesDBTracer):
 is taking a while (> %s seconds).  Would you like to send us your
 session with TODO so we can figure out why it's so slow?  Aborting it
 with Ctrl-C or IPython's Kernel->Interrupt is safe.'''
-            sys.stdout.write(msg % (query, self.delay))
+            print msg % (query, self.delay)
             sys.stdout.flush()
         else:
             self.warning(query, bindings)
