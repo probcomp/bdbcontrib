@@ -171,3 +171,22 @@ def test_is_dot_command():
     assert not shell_utils.is_dot_command('-- .show SELECT a, b FROM t;')
     assert not shell_utils.is_dot_command('SELECT ".show" FROM t;')
     assert shell_utils.is_dot_command('.show SELECT a, b FROM t;')
+
+
+def test_timeout_tracer():
+    from bayeslite.metamodels.troll_rng import TrollMetamodel
+    import time
+    from bdbcontrib.interactive_utils import TimeoutWarningTracer
+    class SleepyTroll(TrollMetamodel):
+        def name(self): return "sleepy"
+        def create_generator(self, *_args, **_kwargs):
+            time.sleep(5)
+    with bayeslite.bayesdb_open() as bdb:
+        bayeslite.bayesdb_register_metamodel(bdb, SleepyTroll())
+        bdb.sql_execute('create table foo (column numeric)')
+        fired_count = [0]
+        def fired(_query, _bindings):
+            fired_count[0] += 1
+        bdb.trace(TimeoutWarningTracer(delay=1, warning=fired))
+        bdb.execute('create generator foo_s for foo using sleepy()')
+        assert fired_count[0] == 1

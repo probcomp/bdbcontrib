@@ -20,9 +20,10 @@ import threading
 import bayeslite
 
 class TimeoutWarningTracer(bayeslite.IBayesDBTracer):
-    def __init__(self, delay=30):
+    def __init__(self, delay=30, warning=None):
         self.delay = delay
         self.pending = {}
+        self.warning = warning
 
     def start(self, qid, query, bindings):
         timer = threading.Timer(self.delay, self._warn, query, bindings)
@@ -38,11 +39,14 @@ class TimeoutWarningTracer(bayeslite.IBayesDBTracer):
             self.pending[qid].cancel()
             del self.pending[qid]
 
-    def _warn(self, query, _bindings):
-        msg = '''It looks like your query
+    def _warn(self, query, bindings):
+        if self.warning is None:
+            msg = '''It looks like your query
 %s
 is taking a while (> %s seconds).  Would you like to send us your
 session with TODO so we can figure out why it's so slow?  Aborting it
 with Ctrl-C or IPython's Kernel->Interrupt is safe.'''
-        sys.stdout.write(msg % (query, self.delay))
-        sys.stdout.flush()
+            sys.stdout.write(msg % (query, self.delay))
+            sys.stdout.flush()
+        else:
+            self.warning(query, bindings)
