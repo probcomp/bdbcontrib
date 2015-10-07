@@ -184,9 +184,11 @@ def test_timeout_tracer():
     with bayeslite.bayesdb_open() as bdb:
         bayeslite.bayesdb_register_metamodel(bdb, SleepyTroll())
         bdb.sql_execute('create table foo (column numeric)')
-        fired_count = [0]
+        fired_time = [None]
+        start_time = time.time()
         def fired(_query, _bindings):
-            fired_count[0] += 1
+            fired_time[0] = time.time()
         bdb.trace(TimeoutWarningTracer(delay=1, warning=fired))
         bdb.execute('create generator foo_s for foo using sleepy()')
-        assert fired_count[0] == 1
+        assert fired_time[0] is not None
+        assert start_time < fired_time[0] and fired_time[0] < start_time + 1.3
