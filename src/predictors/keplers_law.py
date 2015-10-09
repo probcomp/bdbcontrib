@@ -17,12 +17,8 @@
 # TODO: Update the interface for multivariate targets.
 
 import pickle
-
 import numpy as np
-import pandas as pd
-
 from scipy.stats import norm
-from sklearn.preprocessing import Imputer
 
 import bdbcontrib
 from bdbcontrib.predictors import predictor
