@@ -47,6 +47,11 @@ build/satellites-probes-3200m-30i.pkl: build/satellites-bdbs-3200m-30i/*i.bdb
 	 --n_models 1 100 200 300 400 --n_replications 8 \
 	 build/satellites-bdbs-3200m-30i/*i.bdb
 
+build/satellites-probes-320m-300i.pkl: build/satellites-bdbs-320m-300i/*i.bdb
+	satellites/probe.py --outfile $@ \
+	 --n_models 1 10 20 30 40 --n_replications 8 \
+	 build/satellites-bdbs-320m-300i/*i.bdb
+
 malawi: .PHONY
 malawi: build/malawi/malawi.html
 
