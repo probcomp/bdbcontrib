@@ -72,7 +72,7 @@ def doit(out_dir, num_models, num_iters, checkpoint_freq, seed):
     def out_file_name(base, ext):
         return out_dir + '/' + base + filestamp + ext
 
-    csv_file = 'satellites.csv'
+    csv_file = os.path.join(os.path.dirname(__file__), 'satellites.csv')
     bdb_file = out_file_name('satellites', '.bdb')
 
     # so we can build bdb models
