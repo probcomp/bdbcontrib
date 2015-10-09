@@ -74,10 +74,10 @@ class KeplersLaw(predictor.IBayesDBForeignPredictor):
     def train(self, df, targets, conditions):
         # Obtain the targets column.
         if len(targets) != 1:
-            raise ValueError('OrbitalMechanics can only targets one '
-                'columns. Received {}'.format(targets))
+            raise ValueError('OrbitalMechanics can only target one '
+                'column. Received {}'.format(targets))
         if targets[0][1].lower() != 'numerical':
-            raise ValueError('OrbitalMechanics can only targets a NUMERICAL '
+            raise ValueError('OrbitalMechanics can only target a NUMERICAL '
                 'column. Received {}'.format(targets))
         self.targets = [targets[0][0]]
 
