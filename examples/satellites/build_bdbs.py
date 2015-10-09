@@ -214,6 +214,7 @@ def doit(out_dir, num_models, num_iters, checkpoint_freq, seed):
 
     log('closing bdb %s' % bdb_file)
     bdb.close()
+    os.system("cd %s && ln -s satellites%s.bdb satellites.bdb" % (out_dir, filestamp))
 
 parser = argparse.ArgumentParser(
     description="Analyze and save .bdb files for Satellites.")
