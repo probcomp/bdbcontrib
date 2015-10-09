@@ -40,25 +40,41 @@ build/satellites.bdb: satellites/satellites.csv build/stamp
 	| BAYESDB_WIZARD_MODE=1 PYTHONPATH=../:$$PYTHONPATH \
 	  bayeslite -j0 --seed 0 $@.tmp && mv -f $@.tmp $@
 
-# TODO How to teach Make to rebuild all the bdbs if they're not there?
-# Do I even want to, for such a big build?
-build/satellites-probes-3200m-30i.pkl: build/satellites-bdbs-3200m-30i/*i.bdb
+# The "fat" satellites stability build
+
+# On probcomp, this step took around 36 minutes 10/5/15
+build/satellites-bdbs-3200m-30i/satellites.bdb:
+	satellites/build_bdbs.py --outdir build/satellites-bdbs-3200m-30i/ \
+	 --models 3200 --iters 30 --checkpoint_freq 5 --seed 0
+
+# On my laptop, this step took around an hour 10/5/15
+build/satellites-probes-3200m-30i.pkl: build/satellites-bdbs-3200m-30i/satellites.bdb
 	satellites/probe.py --outfile $@ \
 	 --n_models 1 100 200 300 400 --n_replications 8 \
 	 build/satellites-bdbs-3200m-30i/*i.bdb
 
-# Make the figures with
-# visualize.py --infile build/satellites-probes-3200m-30i.pkl \
-#   --outdir build/satellites-figures-3200m-30i
+build/satellites-fat-figures: .PHONY
+build/satellites-fat-figures: build/satellites-probes-3200m-30i.pkl
+	visualize.py --infile build/satellites-probes-3200m-30i.pkl \
+	 --outdir build/satellites-figures-3200m-30i
 
-build/satellites-probes-320m-300i.pkl: build/satellites-bdbs-320m-300i/*i.bdb
+# The "long" satellites stability build
+
+# On probcomp, this step took around 18 minutes 10/5/15
+build/satellites-bdbs-320m-300i/satellites.bdb:
+	satellites/build_bdbs.py --outdir build/satellites-bdbs-320m-300i/ \
+	 --models 320 --iters 300 --checkpoint_freq 30 --seed 0
+
+# On my laptop, this step took around 20 minutes 10/5/15
+build/satellites-probes-320m-300i.pkl: build/satellites-bdbs-320m-300i/satellites.bdb
 	satellites/probe.py --outfile $@ \
 	 --n_models 1 10 20 30 40 --n_replications 8 \
 	 build/satellites-bdbs-320m-300i/*i.bdb
 
-# Make the figures with
-# visualize.py --infile build/satellites-probes-320m-300i.pkl \
-#   --outdir build/satellites-figures-320m-300i
+build/satellites-long-figures: .PHONY
+build/satellites-long-figures: build/satellites-probes-320m-300i.pkl
+	visualize.py --infile build/satellites-probes-320m-300i.pkl \
+	 --outdir build/satellites-figures-320m-300i
 
 malawi: .PHONY
 malawi: build/malawi/malawi.html
