@@ -20,7 +20,7 @@ This script simultaneously serves two purposes:
 - To prepare an analyzed .bdb file for distribution to clients of the
   Satellites demo
 - To prepare a series of .bdb files for consumption by the stability
-  assessment script check_stability.py.
+  probing script probe.py.
 
 For those purposes, the script is configured by editing the five
 variables immediately following this docstring.

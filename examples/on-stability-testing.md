@@ -92,7 +92,7 @@ The analysis phase is carried out by the program
   source code.
 
 The probing phase is carried out by the program
-`examples/satellites/check_stability.py`
+`examples/satellites/probe.py`
 - The probe set and configuration is defined in the source of the
   program.
 
