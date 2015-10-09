@@ -28,14 +28,16 @@ import bdbcontrib
 from bdbcontrib.predictors import predictor
 
 class KeplersLaw(predictor.IBayesDBForeignPredictor):
-    """
-    A foreign predictor which models Kepler's Third Law for a single `targets`
-    (period in minutes) and `conditions` (apogee in km, perigee in km). All
-    stattypes are expected to be numerical.
+    """A foreign predictor which models Kepler's Third Law.
+
+    There must be exactly one `targets` column (period in minutes) and
+    exactly two `conditions` columns (apogee in km, perigee in
+    km). All stattypes are expected to be numerical.
 
     Attributes
     ----------
     Please do not mess around with any (exploring is ok).
+
     """
     @classmethod
     def create(cls, bdb, table, targets, conditions):
