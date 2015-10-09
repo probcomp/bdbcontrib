@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
 #   Copyright (c) 2010-2014, MIT Probabilistic Computing Project
@@ -17,6 +18,7 @@
 import matplotlib
 matplotlib.use("Agg")
 
+import argparse
 import cPickle as pickle # json doesn't like tuple dict keys
 import re
 import time
@@ -30,12 +32,24 @@ def log(msg):
 def analysis_count_from_file_name(fname):
     return int(re.match(r'.*-[0-9]*m-([0-9]*)i.bdb', fname).group(1))
 
-def plot_probe_results(filename):
+def plot_probe_results(filename, outdir):
     log("Loading probe results from %s" % filename)
     with open(filename, "r") as f:
         results = pickle.load(f)
     results = [((probe, n_models, analysis_count_from_file_name(fname)), val)
                for ((fname, n_models, probe), val) in results.iteritems()]
-    plot_results(results, outdir="figures-3200m-30i")
+    plot_results(results, outdir=outdir)
 
-plot_probe_results("results-3200m-30i.pkl")
+parser = argparse.ArgumentParser(
+    description='Process a collection of saved probe results')
+parser.add_argument('-i', '--infile',
+                    help="Read probe results from the given file.")
+parser.add_argument('-o', '--outdir',
+                    help="Write polts to the given output directory.")
+
+def main():
+    args = parser.parse_args()
+    plot_probe_results(args.infile, args.outdir)
+
+if __name__ == '__main__':
+    main()
