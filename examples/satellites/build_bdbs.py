@@ -23,9 +23,6 @@ This script simultaneously serves two purposes:
 - To prepare a series of .bdb files for consumption by the stability
   probing script probe.py.
 
-For those purposes, the script is configured by editing the five
-variables immediately following this docstring.
-
 Each produced file is named with a 'satellites' prefix.  The file name
 additionally captures
 - a date stamp,
@@ -44,26 +41,12 @@ following information:
 
 """
 
-# Directory where to put the results.
-out_dir = 'output'
-
-# Number of models to run
-num_models = 64 * 50
-
-# Number of analysis iterations to run them for
-num_iters = 30
-
-# Checkpoint after this many iterations
-checkpoint_freq = 5
-
-# Set the initial random seed
-seed = 0
-
 # Speed rules of thumb:
 # - 64 models and 1500 iterations took ~30 minutes on probcomp in late September
 # - 64 * 5 models and 300 iterations took ~18 minutes on probcomp 10/5/15
 # - 64 * 50 models and 30 iterations took ~36 minutes on probcomp 10/5/15
 
+import argparse
 import datetime
 import matplotlib
 matplotlib.use('Agg')
@@ -79,7 +62,7 @@ import bdbcontrib
 import crosscat
 import crosscat.MultiprocessingEngine as ccme
 
-def doit():
+def doit(out_dir, num_models, num_iters, checkpoint_freq, seed):
     then = time.time()
 
     timestamp = datetime.datetime.fromtimestamp(then).strftime('%Y-%m-%d')
@@ -232,4 +215,27 @@ def doit():
     log('closing bdb %s' % bdb_file)
     bdb.close()
 
-doit()
+parser = argparse.ArgumentParser(
+    description="Analyze and save .bdb files for Satellites.")
+parser.add_argument(
+    '-o', '--outdir', default="output",
+    help="Directory to save generated .bdb files [default: \"output\"]")
+parser.add_argument(
+    '-m', '--models', type=int,
+    help="Number of models to analyze")
+parser.add_argument(
+    '-i', '--iters', type=int,
+    help="Number of iterations of analysis to run")
+parser.add_argument(
+    '-c', '--checkpoint_freq', type=int,
+    help="Frequency of checkpoints to take [default: no checkpoints]")
+parser.add_argument(
+    '-s', '--seed', type=int, default=0,
+    help="Initial entropy [default: 0]")
+
+def main():
+    args = parser.parse_args()
+    doit(args.outdir, args.models, args.iters, args.checkpoint_freq, args.seed)
+
+if __name__ == '__main__':
+    main()
