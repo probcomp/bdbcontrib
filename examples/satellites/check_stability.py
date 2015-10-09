@@ -20,7 +20,7 @@ matplotlib.use("Agg")
 import math
 import re
 
-from bdbcontrib.experiments.probe import log, analyze_fileset
+from bdbcontrib.experiments.probe import log, probe_fileset
 from bdbcontrib.experiments.visualization import plot_results
 
 ######################################################################
@@ -159,7 +159,7 @@ def save_probe_results(filename):
     files = glob.glob("3200m-30i/*i.bdb")
     # files = ["output/satellites-2015-09-30-axch-60m-4i.bdb",
     #          "output/satellites-2015-09-30-axch-60m-8i.bdb"]
-    results = analyze_fileset(
+    results = probe_fileset(
         files, "satellites_cc",
         [country_purpose_probes,
          unlikely_periods_probes,
@@ -182,5 +182,5 @@ def plot_probe_results(filename):
                for ((fname, n_models, probe), val) in results.iteritems()]
     plot_results(results, outdir="figures-3200m-30i")
 
-# save_probe_results("results-3200m-30i.pkl")
+save_probe_results("results-3200m-30i.pkl")
 plot_probe_results("results-3200m-30i.pkl")
