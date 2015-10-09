@@ -20,10 +20,8 @@ matplotlib.use("Agg")
 import math
 import re
 
-import sys
-sys.path.append("..")
-from aggregation import log, analyze_fileset
-from visualization import plot_results
+from bdbcontrib.experiments.probe import log, analyze_fileset
+from bdbcontrib.experiments.visualization import plot_results
 
 ######################################################################
 ## Probes                                                          ##
@@ -184,5 +182,5 @@ def plot_probe_results(filename):
                for ((fname, n_models, probe), val) in results.iteritems()]
     plot_results(results, outdir="figures-3200m-30i")
 
-save_probe_results("results-3200m-30i.pkl")
+# save_probe_results("results-3200m-30i.pkl")
 plot_probe_results("results-3200m-30i.pkl")

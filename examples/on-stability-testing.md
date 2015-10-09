@@ -99,7 +99,8 @@ The probing and visualization phases are carried out by the program
 - Visualization is determined entirely by the probe results.
 
 Generic probing and visualization machinery is available in the
-modules `examples/aggregation.py` and `examples/visualization.py`.
+modules `bdbcontrib.experiments.probe.py` and
+`bdbcontrib.experiments.visualization.py`.
 
 Possible Extensions
 ===================
