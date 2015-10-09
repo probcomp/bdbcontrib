@@ -84,7 +84,7 @@ Implementation on Satellites
 ============================
 
 The analysis phase is carried out by the program
-`examples/satellites/build_satellites_bdb.py`
+`examples/satellites/build_bdbs.py`
 - This constructs a directory with a bunch of bdb files.
 - The files are named according to a predictable pattern, and
 - Metadata about them is saved in the directory as well.
