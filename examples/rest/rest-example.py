@@ -6,13 +6,17 @@ from flask import request
 import json
 import jsonschema
 import logging
+import os
 
 import bayeslite
-import bql_utils as ut
+import bdbcontrib as bdb
 
-app = flask.Flask(__name__)
+# TODO: How to pass instance path as an arg?
+app = flask.Flask(__name__, instance_path=os.getcwd())
 bdb = None
 
+print "Do we have a static folder?", app.has_static_folder
+print "Static folder location", app.static_folder
 
 @app.route('/')
 def root():
@@ -33,7 +37,7 @@ def favicon():
         return flask.make_response("No favicon", 404)
 
 def cursor_to_response(cursor):
-    j = ut.cursor_to_df(cursor).to_json()
+    j = bdb.cursor_to_df(cursor).to_json()
     r = flask.make_response(j, 200)
     r.mimetype = 'text/json'
     return r
@@ -48,7 +52,7 @@ def sql():
 
 @app.route('/describe')
 def describe():
-    return cursor_to_response(ut.describe_table(bdb, request.values['table']))
+    return cursor_to_response(bdb.describe_table(bdb, request.values['table']))
 
 
 
@@ -73,4 +77,4 @@ if __name__ == '__main__':
     app.logger.setLevel(args.loglevel)
     app.logger.info("Opening database %s" % (args.bdbpath,))
     bdb = bayeslite.bayesdb_open(args.bdbpath)
-    app.run(host=args.host, port=args.port)
+    app.run(host=args.host, port=args.port, debug=True)
