@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" ng-app="bdbRestExampleApp">
   <head>
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
@@ -9,13 +9,21 @@
     <meta name="author" content="">
     <link rel="icon" href="/favicon.ico">
 
-    <title>Starter Template for Bootstrap</title>
+    <title>BDB Rest Example</title>
 
     <!-- Bootstrap core CSS -->
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css">
 
     <!-- Optional theme -->
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap-theme.min.css">
+
+    <!-- Angular is what we use for dom manipulation and ajax -->
+    <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.4.7/angular.js"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.4.7/angular-resource.js">
+    </script>
+    <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.4.7/angular-route.js">
+    </script>
+
 
     <!-- Custom styles for this template -->
    <link href="/static/rest-example.css" rel="stylesheet">
@@ -54,27 +62,34 @@
     <div class="container">
 
       <div class="jumbotron">
-          WARNING: This REST server is not secure and not suitable for for running on
-          the public internet or with multiple people using it at the
-          same time. it should only be used for UI prototyping and
+          <h2>BayesDB Rest Example</h2>
+
+          <p class="bg-warning">WARNING: This REST server is not
+          secure and not suitable for for running on the public
+          internet or with multiple people using it at the same
+          time. it should only be used for UI prototyping and
           demonstrations. Anyone with access to the basic server can
           modify or destroy data in your databases, and probably gain
-          prividged access to the machine running the server.
-          <h1>BayesDB Rest Example</h1>
-          This has a list of tables, a scatterplot, and that's about it.
+          prividged access to the machine running the server.</p>
+          <p>This has a list of tables, a scatterplot, and that's
+          about it.</p>
 
 
-          <h1 id="tables">Tables</h1>
-          Tables go here. links should do something.
-          <a id="tables-refresh" href="#tables">refresh</a>
-          <div id="tables-list"">
+          <div ng-controller="TablesListCtrl">
+              <h2 id="tables">Tables</h2>
+              Tables go here.
+              <ul class="tables">
+                  <li ng-repeat="table in tables">
+                      <span>{{table.name}}</span>
+                  </li>
+              </ul>
           </div>
 
-          <h1>Scatterplot</h1>
+          <h2>Scatterplot</h2>
           Scatterplot goes here.
 
 
-          <h1>Documentation</h1>
+          <h2>Documentation</h2>
           Documentation about how this works.
       </div>
 

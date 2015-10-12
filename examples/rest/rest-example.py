@@ -13,10 +13,14 @@ import bdbcontrib as bdb
 
 # TODO: How to pass instance path as an arg?
 app = flask.Flask(__name__, instance_path=os.getcwd())
-bdb = None
+args = None
 
-print "Do we have a static folder?", app.has_static_folder
-print "Static folder location", app.static_folder
+# TODO: This is in a function because flask was opening it in another
+# thread. Maybe do some kind of thread local cache or otherwise figure
+# out how to not leak these.
+def getbdb():
+    app.logger.info("Opening database %s" % (args.bdbpath,))
+    return bayeslite.bayesdb_open(args.bdbpath)
 
 @app.route('/')
 def root():
@@ -37,24 +41,33 @@ def favicon():
         return flask.make_response("No favicon", 404)
 
 def cursor_to_response(cursor):
-    j = bdb.cursor_to_df(cursor).to_json()
+    j = bdb.cursor_to_df(cursor).to_json(orient="records")
     r = flask.make_response(j, 200)
     r.mimetype = 'text/json'
     return r
 
-@app.route('/bql')
+@app.route('/api/v1/bql')
 def bql():
-    return cursor_to_response(bdb.execute(request.values['q'].encode('ascii', 'ignore')))
+    with getbdb() as bdb:
+        return cursor_to_response(bdb.execute(request.values['q'].encode('ascii', 'ignore')))
 
-@app.route('/sql')
+@app.route('/api/v1/sql')
 def sql():
-    return cursor_to_response(bdb.sql_execute(request.values['q'].encode('ascii', 'ignore')))
+    with getbdb() as bdb:
+        return cursor_to_response(bdb.sql_execute(request.values['q'].encode('ascii', 'ignore')))
 
-@app.route('/describe')
-def describe():
-    return cursor_to_response(bdb.describe_table(bdb, request.values['table']))
-
-
+@app.route('/api/v1/table', defaults={'tablename': None})
+@app.route('/api/v1/table/<tablename>')
+def table(tablename):
+    with getbdb() as bdb:
+        if tablename is None:
+            return cursor_to_response(bdb.sql_execute("""
+                  select * from sqlite_master
+                  where type = 'table'
+                  and tbl_name not like 'bayesdb_%'
+                  and tbl_name not like 'sqlite_%'"""))
+        else:
+            return cursor_to_response(bdb.describe_table(bdb, request.values['table']))
 
 def parse_args(argv):
     parser = argparse.ArgumentParser()
@@ -75,6 +88,4 @@ if __name__ == '__main__':
     args = parse_args(sys.argv[1:])
     app.logger.addHandler(logging.StreamHandler())
     app.logger.setLevel(args.loglevel)
-    app.logger.info("Opening database %s" % (args.bdbpath,))
-    bdb = bayeslite.bayesdb_open(args.bdbpath)
     app.run(host=args.host, port=args.port, debug=True)
