@@ -709,8 +709,8 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
         return self.column_value_probability(bdb, genid, modelno, Q[0], Q[1], Y)
 
     def _weighted_sample(self, bdb, genid, modelno, Y, n_samples=None):
-        # Returns a list of [(sample, weight), ...]
-        # Each `sample` is the a vector s=(X1,...,Xn) of values for all nodes in
+        # Returns a pairs of parallel lists ([sample ...], [weight ...])
+        # Each `sample` is a vector s=(X1,...,Xn) of values for all nodes in
         # the network. Y specifies evidence nodes: all returned samples have
         # constrained values at the evidence nodes.
         # `weight` is the likelihood of the evidence Y under s\Y.
