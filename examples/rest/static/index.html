@@ -85,9 +85,19 @@
               </ul>
           </div>
 
-          <h2>Scatterplot</h2>
-          Scatterplot goes here.
+          <div ng-controller="SimulateCtrl">
+          <h2>Simulate Plot</h2>
+          Query: {{query}}
 
+          <bdb-scatter val="data" set="setAP"></bdb-scatter>
+          <p>
+          Apogee: {{apogee}} Perigee: {{perigee}}
+          </p>
+          <ul>
+              <li ng-repeat="s in sim">
+                  {{s.Country_of_Operator}}
+              </li>
+          </div>
 
           <h2>Documentation</h2>
           Documentation about how this works.
@@ -101,6 +111,7 @@
     <!-- Placed at the end of the document so the pages load faster -->
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script>
     <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/js/bootstrap.min.js"></script>
+    <script src="http://d3js.org/d3.v2.js"></script>
     <script src="/static/rest-example.js"></script>
   </body>
 </html>

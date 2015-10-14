@@ -46,15 +46,17 @@ def cursor_to_response(cursor):
     r.mimetype = 'text/json'
     return r
 
-@app.route('/api/v1/bql')
-def bql():
+@app.route('/api/v1/bql/<query>')
+def bql(query):
+    query = query.encode('ascii', 'ignore')
     with getbdb() as bdb:
-        return cursor_to_response(bdb.execute(request.values['q'].encode('ascii', 'ignore')))
+        return cursor_to_response(bdb.execute(query))
 
-@app.route('/api/v1/sql')
-def sql():
+@app.route('/api/v1/sql/<query>')
+def sql(query):
+    query = query.encode('ascii', 'ignore')
     with getbdb() as bdb:
-        return cursor_to_response(bdb.sql_execute(request.values['q'].encode('ascii', 'ignore')))
+        return cursor_to_response(bdb.sql_execute(query))
 
 @app.route('/api/v1/table', defaults={'tablename': None})
 @app.route('/api/v1/table/<tablename>')
