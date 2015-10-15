@@ -565,7 +565,7 @@ def test_composer_integration_slow():
     # TEST SIMULATE
     # ----------------------------------
 
-    # Crash tests for various code path. Quality of simulations ignored.
+    # Crash tests for various code paths. Quality of simulations ignored.
     # Joint local.
     curs = bdb.execute('''
         SIMULATE Power_watts, Launch_Mass_kg FROM t1 LIMIT 2;
