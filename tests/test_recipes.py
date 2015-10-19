@@ -54,24 +54,24 @@ def ensure_timeout(delay, target):
     # proc.join()
 
 
-class MyTestLogger(object):
-    def __init__(self, debug=pytest.config.option.verbose):
+class MyTestLogger(recipes.BqlLogger):
+    def __init__(self, verbose=pytest.config.option.verbose):
         self.calls = []
-        self.debug = debug
+        self.verbose = verbose
     def info(self, msg_format, *values):
-        if self.debug:
+        if self.verbose:
             print('INFO: '+msg_format, *values)
         self.calls.append(('info', msg_format, values))
     def warn(self, msg_format, *values):
-        if self.debug:
+        if self.verbose:
             print('WARN: '+msg_format, *values)
         self.calls.append(('warn', msg_format, values))
     def plot(self, suggested_name, figure):
-        if self.debug:
+        if self.verbose:
             plt.show()
         self.calls.append(('plot', suggested_name, figure))
     def result(self, msg_format, *values):
-        if self.debug:
+        if self.verbose:
             print('RSLT: '+msg_format, *values)
         self.calls.append(('result', msg_format, values))
 
@@ -83,26 +83,27 @@ def prepare():
     if testvars['dataset'] is None:
         (df, csv_data) = test_plot_utils.dataset(40)
         name = ''.join(random.choice(ascii_lowercase) for _ in range(32))
-        tempf = tempfile.NamedTemporaryFile(delete=False, suffix=".csv")
-        tempf.write(csv_data.getvalue())
-        tempf.close()
-        dts = recipes.quickstart(name=name, csv=tempf.name,
+        tempd = tempfile.mkdtemp()
+        csv_path = os.path.join(tempd, "data.csv")
+        with open(csv_path, "w") as csv_f:
+            csv_f.write(csv_data.getvalue())
+        bdb_path = os.path.join(tempd, "data.bdb")
+        dts = recipes.quickstart(name=name,
+                                 csv_path=csv_path, bdb_path=bdb_path,
                                  logger=MyTestLogger())
-        os.remove(tempf.name)
-        os.environ['BAYESDB_WIZARD_MODE'] = '1'
         ensure_timeout(10, lambda: dts.analyze(models=10, iterations=20))
-        os.environ['BAYESDB_WIZARD_MODE'] = ''
         testvars['dataset'] = dts
         testvars['input_df'] = df
     yield testvars['dataset'], testvars['input_df']
 
-def test_analyze_and_analysis_status():
+def test_analyze_and_analysis_status_and_reset():
     with prepare() as (dts, _df):
         resultdf = dts.analysis_status()
         assert 'iterations' == resultdf.index.name, repr(resultdf)
         assert 'count of models' == resultdf.columns[0], repr(resultdf)
         assert 1 == len(resultdf), repr(resultdf)
         assert 10 == resultdf.ix[20, 0], repr(resultdf)
+
         resultdf = dts.analyze(models=11, iterations=1)
         assert 'iterations' == resultdf.index.name, repr(resultdf)
         assert 'count of models' == resultdf.columns[0], repr(resultdf)
@@ -110,6 +111,18 @@ def test_analyze_and_analysis_status():
         assert 2 == len(resultdf), repr(resultdf)
         assert 10 == resultdf.ix[21, 0], repr(resultdf)
         assert 1 == resultdf.ix[1, 0], repr(resultdf)
+
+        dts.reset()
+        resultdf = dts.analysis_status()
+        assert 'iterations' == resultdf.index.name, repr(resultdf)
+        assert 'count of models' == resultdf.columns[0], repr(resultdf)
+        assert 0 == len(resultdf), repr(resultdf)
+        ensure_timeout(10, lambda: dts.analyze(models=10, iterations=20))
+        resultdf = dts.analysis_status()
+        assert 'iterations' == resultdf.index.name, repr(resultdf)
+        assert 'count of models' == resultdf.columns[0], repr(resultdf)
+        assert 1 == len(resultdf), repr(resultdf)
+        assert 10 == resultdf.ix[20, 0], repr(resultdf)
 
 def test_q():
     with prepare() as (dts, df):
@@ -143,23 +156,118 @@ def test_quick_describe_columns_and_column_type():
             assert re.match(expected_type, stattype), column
             assert re.match(expected_type, dts.column_type(column))
 
-def test_reset():
-    pass  # XXX TODO
-
 def test_heatmap():
-    pass  # XXX TODO
+    with prepare() as (dts, _df):
+        dts.logger.calls = []
+        deps = dts.q('ESTIMATE DEPENDENCE PROBABILITY'
+                     ' FROM PAIRWISE COLUMNS OF %g')
+        dts.heatmap(deps)
+        plots = [c for c in dts.logger.calls if c[0] == 'plot']
+        assert 1 == len(plots)
+        thecall = plots[0]
+        assert ('plot', 'heatmap') == thecall[:2]
+
+        dts.logger.calls = []
+        dts.heatmap(deps, plotfile='foobar.png')
+        plots = [c for c in dts.logger.calls if c[0] == 'plot']
+        assert 1 == len(plots)
+        thecall = plots[0]
+        assert ('plot', 'foobar.png') == thecall[:2]
+
+        dts.logger.calls = []
+        dts.heatmap(deps, plotfile='foobar.png',
+                    selectors=
+                    {lambda x: bool(re.search(r'^[a-eA-E]', x[0])): 'A-E',
+                     lambda x: bool(re.search(r'^[f-wF-W]', x[0])): 'F-W',
+                     lambda x: bool(re.search(r'^[x-zX-Z]', x[0])): 'X-Z'})
+        # NOTE: columns are: 'floats_1', 'categorical_1', 'categorical_2',
+        #     'few_ints_3', 'floats_3', 'many_ints_4', 'skewed_numeric_5',
+        # So there are 2 in A-E, 5 in F-W, and 0 in X-Z.
+        # So we should produce 3 plots: AE vs. AE, AE vs. FW, and FW vs. FW.
+        plots = [c for c in dts.logger.calls if c[0] == 'plot']
+        assert 4 == len(plots)
+        names = [p[1] for p in plots]
+        assert 'A-E.A-E.foobar.png' in names
+        assert 'A-E.F-W.foobar.png' in names
+        assert 'F-W.A-E.foobar.png' in names
+        assert 'F-W.F-W.foobar.png' in names
 
 def test_most_dependent():
-    pass  # XXX TODO
+    with prepare() as (dts, _df):
+        dts.logger.calls = []
+        dts.most_dependent()
+        call_types = pd.DataFrame([call[0] for call in dts.logger.calls])
+        call_counts = call_types.iloc[:,0].value_counts()
+        assert call_counts['result'] > 0
+        assert call_counts['plot'] > 0
+        assert 'warn' not in call_counts
 
 def test_explore_cols():
-    pass  # XXX TODO
+    with prepare() as (dts, _df):
+        dts.logger.calls = []
+        try:
+            dts.quick_explore_cols([])
+            assert False, "Should raise a ValueError because empty columns."
+        except ValueError:
+            pass
+        try:
+            dts.quick_explore_cols(['float_1'])
+            assert False, "Should raise a ValueError because only one column."
+        except ValueError:
+            pass
 
-def test_sql_tracing():
-    pass  # XXX TODO
+        dts.quick_explore_cols(['floats_1', 'categorical_1'])
+        call_types = pd.DataFrame([call[0] for call in dts.logger.calls])
+        call_counts = call_types.iloc[:,0].value_counts()
+        assert call_counts['result'] > 0
+        assert call_counts['plot'] > 0
+        assert 'warn' not in call_counts
 
 def test_similar_rows():
-    pass  # XXX TODO
+    with prepare() as (dts, _df):
+        dts.logger.calls = []
+        the_real_q = dts.q
+        count = [0]
+        q_calls = []
+        results = [pd.DataFrame([[0]]),  # Count of matching rows.
+                   pd.DataFrame([[2]]),  # Count of matching rows.
+                   pd.DataFrame([[1]]),  # Count of matching rows.
+                   None,                 # Call with temp table creation.
+                   'similar rows',       # Similarity result.
+                   ]
+        def my_test_q(fmt_str, *args):
+            q_calls.append((fmt_str, args))
+            count[0] += 1
+            return results[count[0] - 1]
+        try:
+            dts.q = my_test_q
+            try:
+                dts.quick_similar_rows(identify_row_by={})
+                assert False, "Expected death due to no rows."
+            except NotImplementedError:
+                pass
+            assert 'SELECT COUNT(*)' == q_calls[-1][0][:15]
+            try:
+                dts.quick_similar_rows(identify_row_by={})
+                assert False, "Expected death due to two many rows."
+            except NotImplementedError:
+                pass
+            assert 'SELECT COUNT(*)' == q_calls[-1][0][:15]
+            assert 'similar rows' == dts.quick_similar_rows(identify_row_by={
+                'a':'b', 'c': 'd'})
+            assert 'SELECT COUNT(*)' == q_calls[-3][0][:15]
+            assert 'CREATE TEMP TABLE' == q_calls[-2][0][:17]
+            assert re.search(r'''"a" = 'b'\s+and\s+"c" = 'd' ''',
+                             q_calls[-2][0])
+            assert 'SELECT * FROM' == q_calls[-1][0][:13]
+        finally:
+            dts.q = the_real_q
 
-def test_loggers():
-    pass  # XXX TODO
+
+        call_types = pd.DataFrame([call[0] for call in dts.logger.calls])
+        call_counts = call_types.iloc[:,0].value_counts()
+        assert 'warn' not in call_counts
+
+def teardown_module(_module):
+    with prepare() as (dts, _df):
+        os.remove(os.path.dirname(dts.csv_path))

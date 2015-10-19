@@ -28,59 +28,88 @@ import matplotlib.pyplot as plt
 import re
 import pandas as pd
 import sys
+import traceback
 
 class BqlLogger(object):
-  @staticmethod
-  def info(msg_format, *values):
+  '''A logger object for BQL.
+
+     The idea of having a custom one is to make it easy to adapt to other
+     loggers, like python's builtin one (see LoggingLogger below) or the one
+     for iPython notebooks (see IpyLogger below), or for testing, or to set
+     preferences (see DebugLogger, QuietLogger, SilentLogger below).
+
+     Loggers should implement functions with the signatures of this base class.
+     They are welcome to inherit from it.  Do not depend on return values from
+     any of these methods.
+  '''
+  def info(self, msg_format, *values):
+    '''For progress and other informative messages.'''
     print(msg_format % values)
-  @staticmethod
-  def warn(msg_format, *values):
+  def warn(self, msg_format, *values):
+    '''For warnings or non-fatal errors.'''
     print(msg_format % values, file=sys.stderr)
-  @staticmethod
-  def plot(_suggested_name, _figure):
+  def plot(self, _suggested_name, _figure):
+    '''For plotting. Name is a string, figure a matplotlib object.'''
     plt.show()
-  @staticmethod
-  def result(msg_format, *values):
+  def result(self, msg_format, *values):
+    '''For formatted text results. In unix, this would be stdout.'''
     print(msg_format % values)
+  def debug(self, _msg_format, *_values):
+    '''For debugging information.'''
+    pass
+  def exception(self, msg_format, *values):
+    '''For fatal or fatal-if-uncaught errors.'''
+    self.warn('ERROR: ' + msg_format % values)
+    exc_type, exc_value, exc_traceback = sys.exc_info()
+    if exc_type:
+      lines = traceback.format_exception(exc_type, exc_value, exc_traceback)
+      self.warn('\n'.join(lines))
+
+class DebugLogger(BqlLogger):
+  def debug(self, msg_format, *values):
+    self.warn('DEBUG: ' + msg_format % values)
+    exc_type, exc_value, exc_traceback = sys.exc_info()
+    if exc_type:
+      lines = traceback.format_exception(exc_type, exc_value, exc_traceback)
+      self.warn('\n'.join(lines))
 
 class QuietLogger(BqlLogger):
-  @staticmethod
-  def info(_msg_format, *_values):
+  def info(self, _msg_format, *_values):
     pass
-  @staticmethod
-  def warn(_msg_format, *_values):
+  def warn(self, _msg_format, *_values):
     pass
 
 class SilentLogger(QuietLogger):
-  @staticmethod
-  def plot(_suggested_name, _figure):
+  def plot(self, _suggested_name, _figure):
     pass
-  @staticmethod
-  def result(_msg, *_values):
+  def result(self, _msg, *_values):
+    pass
+  def debug(self, _msg, *_values):
+    pass
+  def exception(self, _msg, *_values):
     pass
 
 class LoggingLogger(BqlLogger):
-  @staticmethod
-  def info(msg_format, *values):
+  def info(self, msg_format, *values):
     logging.info(msg_format, *values)
-  @staticmethod
-  def warn(msg_format, *values):
+  def warn(self, msg_format, *values):
     logging.warning(msg_format, *values, file=sys.stderr)
-  @staticmethod
-  def plot(suggested_name, _figure):
+  def plot(self, suggested_name, _figure):
     plt.savefig(suggested_name + ".png")
+  def debug(self, *args, **kwargs):
+    logging.debug(*args, **kwargs)
+  def exception(self, *args, **kwargs):
+    logging.exception(*args, **kwargs)
 
 class IpyLogger(BqlLogger):
-  @staticmethod
-  def info(msg_format, *values):
+  def info(self, msg_format, *values):
     IPython.utils.warn.info(msg_format % values)
-  @staticmethod
-  def warn(msg_format, *values):
+  def warn(self, msg_format, *values):
     IPython.utils.warn.warn(msg_format % values)
 
 
 class BqlRecipes(object):
-  def __init__(self, name, csv, logger=None):
+  def __init__(self, name, csv_path, bdb_path=None, logger=None):
     """A set of shortcuts for common ways to use BayesDB.
 
     name : str
@@ -91,14 +120,14 @@ class BqlRecipes(object):
         Something on which we can call .info or .warn, by default BqlLogger,
         but could be QuietLogger (only results), SilentLogger (nothing),
         IpyLogger or LoggingLogger to use those modules, or anything else
-        that implements .warn(msg_format, *values), .info(msg_format, *values),
-        .plot(suggested_name_as_str), and .result(msg_format, *values)
+        that implements the BqlLogger interface.
     """
     assert re.match(r'\w+', name)
     self.name = name
     self.generator_name = name + '_cc'
-    self.csv = csv
-    self.logger = BqlLogger if logger is None else logger
+    self.csv = csv_path
+    self.bdb_path = bdb_path if bdb_path else (self.name + ".bdb")
+    self.logger = BqlLogger() if logger is None else logger
     self.bdb = None
     self.status = None
     self.initialize()
@@ -106,7 +135,7 @@ class BqlRecipes(object):
   def initialize(self):
     if self.bdb:
       return
-    self.bdb = bayeslite.bayesdb_open(self.name + ".bdb")
+    self.bdb = bayeslite.bayesdb_open(self.bdb_path)
     if not bayeslite.core.bayesdb_has_table(self.bdb, self.name):
       bayeslite.bayesdb_read_csv_file(
           self.bdb, self.name, self.csv,
@@ -128,6 +157,7 @@ class BqlRecipes(object):
     self.check_representation()
     self.q('drop generator if exists %s' % self.generator_name)
     self.q('drop table if exists %s' % self.name)
+    self.bdb = None
     self.initialize()
 
   def quick_describe_columns(self):
@@ -149,10 +179,18 @@ class BqlRecipes(object):
                                  query_string))
     self.logger.info("BQL [%s] [%r]" % (query_string, args))
     with self.bdb.savepoint():
-      res = self.bdb.execute(query_string, args)
-      if res is not None and res.description is not None:
-        return bdbcontrib.cursor_to_df(res)
-
+      try:
+        res = self.bdb.execute(query_string, args)
+        if res is not None and res.description is not None:
+          self.logger.debug("BQL [%s] [%r] has returned a cursor." %
+                            (query_string, args))
+          df = bdbcontrib.cursor_to_df(res)
+          self.logger.debug("BQL [%s] [%r] has created a dataframe." %
+                            (query_string, args))
+          return df
+      except:
+        self.logger.exception('FROM BQL [%s] [%r]' % (query_string, args))
+        raise
   def analyze(self, models=100, minutes=0, iterations=0):
     '''Run analysis.
 
@@ -211,21 +249,25 @@ class BqlRecipes(object):
 
   def analysis_status(self):
     itrs = self.per_model_analysis_status()
-    if itrs is None:
-      return
+    if itrs is None or len(itrs) == 0:
+      emt = pd.DataFrame(columns=['count of models'])
+      emt.index.name = 'iterations'
+      return emt
     vcs = pd.DataFrame(itrs['iterations'].value_counts())
     vcs.index.name = 'iterations'
     vcs.columns = ['count of models']
     self.status = vcs
     return vcs
 
-  def heatmap(self, deps, selectors=None, plotfile=None, **kwargs):
+  def heatmap(self, deps, selectors=None, plotfile='heatmap', **kwargs):
     '''Show heatmaps for the given dependencies
 
     Parameters
     ----------
-    bdb : bayeslite.BayesDB
-        Active BayesDB instance.
+    deps : pandas.DataFrame(columns=['generator_id', 'name0', 'name1', 'value'])
+        The result of a .q('ESTIMATE ... PAIRWISE ...')
+        E.g., DEPENDENCE PROBABILITY, MUTUAL INFORMATION, COVARIANCE, etc.
+
     selectors : {[lambda name --> bool]: str}
         Rather than plot the full NxN matrix all together, make separate plots
         for each combination of these selectors, plotting them in sequence.
@@ -236,9 +278,11 @@ class BqlRecipes(object):
           {lambda x: bool(re.search(r'^[a-eA-E]', x[0])): 'A-E',
            lambda x: bool(re.search(r'^[f-oF-O]', x[0])): 'F-O',
            lambda x: bool(re.search(r'^[p-zP-Z]', x[0])): 'P-Z'}
+
     plotfile : str
         If a plotfile is specified, savefig to that file. If selectors are also
-        specified, savefig to name1.name2.plotfile
+        specified, savefig to name1.name2.plotfile.
+
     **kwargs : dict
         Passed to zmatrix: vmin, vmax, row_ordering, col_ordering
     '''
@@ -248,13 +292,13 @@ class BqlRecipes(object):
       plt.close('all')
     else:
       selfns = selectors.keys()
-      with bdbcontrib.plot_utils.selected_heatmaps(
-          self.bdb, df=deps, selectors=selfns, **kwargs) as (hmap, sel1, sel2):
+      for (hmap, sel1, sel2) in bdbcontrib.plot_utils.selected_heatmaps(
+          self.bdb, df=deps, selectors=selfns, **kwargs):
         self.logger.plot("%s.%s.%s" % (selectors[sel1], selectors[sel2],
                                        plotfile), hmap)
         plt.close('all')
 
-  def most_dependent(self, topn=50):
+  def most_dependent(self, topn=50, plotfile='most_dependent'):
     deps = self.q('''ESTIMATE DEPENDENCE PROBABILITY
              FROM PAIRWISE COLUMNS OF %s''' % self.generator_name)
     descending = [row[1] for row in deps.sort(
@@ -272,23 +316,25 @@ class BqlRecipes(object):
                   (str(cola), str(colb), str(self.name)))
       self.logger.info("BQL: [%s] for %s vs. %s=%f" %
                        (query, cola, colb, probdep))
-      bdbcontrib.pairplot(self.bdb, query)
+      self.logger.plot(plotfile, bdbcontrib.pairplot(self.bdb, query))
+      plt.close('all')
       remaining_to_show -= 1
 
-  def quick_explore_cols(self, cols, nsimilar=20, plotfile=None):
+  def quick_explore_cols(self, cols, nsimilar=20, plotfile='explore_cols'):
+    if len(cols) < 2:
+      raise ValueError('Need to explore at least two columns.')
     query_columns = '''"%s"''' % '''", "'''.join(cols)
-    bdbcontrib.pairplot(self.bdb, '''SELECT %s FROM %s''' %
-                        (query_columns, self.name),
-                        generator_name=self.generator_name)
-    if plotfile is None:
-      plt.show()
-    else:
-      plt.savefig(plotfile)
+    self.logger.plot(plotfile,
+                     bdbcontrib.pairplot(self.bdb, '''SELECT %s FROM %s''' %
+                                         (query_columns, self.name),
+                                         generator_name=self.generator_name))
     plt.close('all')
     deps = self.q('''ESTIMATE DEPENDENCE PROBABILITY
                      FROM PAIRWISE COLUMNS OF %s
                      FOR %s;''' % (self.generator_name, query_columns))
+    deps.columns = ['genid', 'name0', 'name1', 'value']
     self.heatmap(deps, plotfile=plotfile)
+    deps.columns = ['genid', 'name0', 'name1', 'value']
     triangle = deps[deps['name0'] < deps['name1']]
     triangle = triangle.sort(ascending=False, columns=['value'])
     self.logger.result("Pairwise dependence probability for: %s\n%s\n\n",
@@ -306,6 +352,7 @@ class BqlRecipes(object):
       deps = self.q('''ESTIMATE DEPENDENCE PROBABILITY
                FROM PAIRWISE COLUMNS OF %s
                FOR %s;''' % (self.generator_name, neighbor_columns))
+      deps.columns = ['genid', 'name0', 'name1', 'value']
       self.heatmap(deps, plotfile=(plotfile + "-" + col))
       self.logger.result("Pairwise dependence probability of %s with its " +
                          "strongest dependents:\n%s\n\n", col, neighborhood)
