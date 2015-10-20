@@ -53,7 +53,7 @@ def cardinality(bdb, table, cols=None):
             SELECT COUNT (DISTINCT %s) FROM %s
         ''' % (quote(col), quote(table))
         res = bdb.sql_execute(sql)
-        counts.append((col, res.next()[0]))
+        counts.append((col, res.fetchvalue()))
 
     return counts
 
