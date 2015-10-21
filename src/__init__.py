@@ -27,6 +27,7 @@ from bql_utils import describe_generator_columns
 from bql_utils import describe_generator_models
 from bql_utils import describe_table
 from bql_utils import nullify
+from bql_utils import query
 
 from diagnostic_utils import estimate_kl_divergence
 from diagnostic_utils import estimate_log_likelihood
@@ -78,6 +79,7 @@ __all__ = [
         'describe_generator_models',
         'describe_table',
         'nullify',
+        'query',
     # crosscat_utils
         'draw_crosscat',
         'plot_crosscat_chain_diagnostics',
