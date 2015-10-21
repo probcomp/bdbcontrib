@@ -120,7 +120,8 @@ def estimate_log_likelihood(bdb, table, generator, targets=None, givens=None,
 
     # Obtain number of rows in the dataset and samples to use.
     n_samples = n_samples
-    n_rows = bdb.execute('''SELECT COUNT(*) FROM {}'''.format(table)).next()[0]
+    n_rows = bdb.execute('''
+        SELECT COUNT(*) FROM {}'''.format(table)).fetchvalue()
     if n_samples is None or n_rows < n_samples:
         n_samples = n_rows
 
@@ -146,7 +147,7 @@ def estimate_log_likelihood(bdb, table, generator, targets=None, givens=None,
                     ESTIMATE PROBABILITY OF {}=? FROM {} LIMIT 1
                 '''.format(col, bql_quote_name(generator))
 
-            ll += math.log(bdb.execute(bql, (val,)).next()[0])
+            ll += math.log(bdb.execute(bql, (val,)).fetchvalue())
 
     return ll
 
@@ -237,13 +238,13 @@ def estimate_kl_divergence(bdb, generatorA, generatorB, targets=None,
                 ESTIMATE PROBABILITY OF {}=? FROM {} LIMIT 1
             '''.format(col, bql_quote_name(generatorA))
             crs = bdb.execute(bql, (val,))
-            p_a = crs.next()[0]
+            p_a = crs.fetchvalue()
 
             bql = '''
                 ESTIMATE PROBABILITY OF {}=? FROM {} LIMIT 1
             '''.format(col, bql_quote_name(generatorB))
             crs = bdb.execute(bql, (val,))
-            p_b = crs.next()[0]
+            p_b = crs.fetchvalue()
 
             # XXX Heuristic to detect when genA is not absolutely
             # continuous wrt genB
