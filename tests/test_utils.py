@@ -94,27 +94,25 @@ id,one,two,three,four
      [csv_data_empty, '', (3, 3, 4, 3,)],
      [csv_data_nan, '999', (0, 0, 0, 0,)]])
 def test_nullify_no_missing(data, value, num_nulls_expected):
-    temp = tempfile.NamedTemporaryFile()
-    temp.write(data)
-    temp.seek(0)
-    with bayeslite.bayesdb_open() as bdb:
-        bayeslite.bayesdb_read_csv_file(bdb, 't', temp.name, header=True,
-                                        create=True)
-        bql_utils.nullify(bdb, 't', value)
+    with tempfile.NamedTemporaryFile() as temp:
+        temp.write(data)
+        temp.seek(0)
+        with bayeslite.bayesdb_open() as bdb:
+            bayeslite.bayesdb_read_csv_file(bdb, 't', temp.name, header=True,
+                                            create=True)
+            bql_utils.nullify(bdb, 't', value)
 
-        c = bdb.execute('SELECT COUNT(*) FROM t WHERE one IS NULL;')
-        assert c.fetchvalue() == num_nulls_expected[0]
+            c = bdb.execute('SELECT COUNT(*) FROM t WHERE one IS NULL;')
+            assert c.fetchvalue() == num_nulls_expected[0]
 
-        c = bdb.execute('SELECT COUNT(*) FROM t WHERE two IS NULL;')
-        assert c.fetchvalue() == num_nulls_expected[1]
+            c = bdb.execute('SELECT COUNT(*) FROM t WHERE two IS NULL;')
+            assert c.fetchvalue() == num_nulls_expected[1]
 
-        c = bdb.execute('SELECT COUNT(*) FROM t WHERE three IS NULL;')
-        assert c.fetchvalue() == num_nulls_expected[2]
+            c = bdb.execute('SELECT COUNT(*) FROM t WHERE three IS NULL;')
+            assert c.fetchvalue() == num_nulls_expected[2]
 
-        c = bdb.execute('SELECT COUNT(*) FROM t WHERE four IS NULL;')
-        assert c.fetchvalue() == num_nulls_expected[3]
-    temp.close()
-
+            c = bdb.execute('SELECT COUNT(*) FROM t WHERE four IS NULL;')
+            assert c.fetchvalue() == num_nulls_expected[3]
 
 def test_cursor_to_df():
     with bayeslite.bayesdb_open() as bdb:
@@ -182,14 +180,14 @@ def test_is_dot_command():
      [csv_data, ['two', 'id'], [5, 10]],
      ])
 def test_cardinality(data, cols, cardinalities_expected):
-    temp = tempfile.NamedTemporaryFile()
-    temp.write(data)
-    temp.seek(0)
-    with bayeslite.bayesdb_open() as bdb:
-        bayeslite.bayesdb_read_csv_file(bdb, 't', temp.name, header=True,
-                                        create=True)
-        cards = bql_utils.cardinality(bdb, 't', cols)
-        for c in cards:
-            assert 2 == len(c)
-            assert c[0] in ('id', 'one', 'two', 'three', 'four')
-        assert cardinalities_expected == [c[1] for c in cards]
+    with tempfile.NamedTemporaryFile() as temp:
+        temp.write(data)
+        temp.seek(0)
+        with bayeslite.bayesdb_open() as bdb:
+            bayeslite.bayesdb_read_csv_file(bdb, 't', temp.name, header=True,
+                                            create=True)
+            cards = bql_utils.cardinality(bdb, 't', cols)
+            for c in cards:
+                assert 2 == len(c)
+                assert c[0] in ('id', 'one', 'two', 'three', 'four')
+            assert cardinalities_expected == [c[1] for c in cards]
