@@ -117,7 +117,8 @@ def selected_heatmaps(bdb, selectors, bql=None, df=None, **kwargs):
         responsible for showing or saving, and then closing.
     bql : str
         The BQL to run and plot. Must be a PAIRWISE BQL query if specified.
-    df : pandas.DataFrame(columns=['generator_id', 'name0', 'name1', 'value'])          If bql is not specified, then take data from here instead.
+    df : pandas.DataFrame(columns=['generator_id', 'name0', 'name1', 'value'])
+        If bql is not specified, then take data from here instead.
     **kwargs : dict
         Passed to zmatrix: vmin, vmax, row_ordering, col_ordering
 
