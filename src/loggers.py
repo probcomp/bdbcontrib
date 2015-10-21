@@ -23,9 +23,18 @@ class BqlLogger(object):
   def warn(self, msg_format, *values):
     '''For warnings or non-fatal errors.'''
     print(msg_format % values, file=sys.stderr)
-  def plot(self, _suggested_name, _figure):
-    '''For plotting. Name is a string, figure a matplotlib object.'''
-    plt.show()
+  def plot(self, _suggested_name, figure):
+    '''For plotting.
+
+    Name : str
+      A filename fragment or window title, not intended to be part of the
+      figure, not intended to be a fully qualified path, but of course if
+      you know more about the particular logger handling your case, then
+      use as you will.
+    Figure : a matplotlib object
+      on which .show or .savefig might be called.
+    '''
+    figure.show()
   def result(self, msg_format, *values):
     '''For formatted text results. In unix, this would be stdout.'''
     print(msg_format % values)
@@ -69,8 +78,8 @@ class LoggingLogger(BqlLogger):
     logging.info(msg_format, *values)
   def warn(self, msg_format, *values):
     logging.warning(msg_format, *values, file=sys.stderr)
-  def plot(self, suggested_name, _figure):
-    plt.savefig(suggested_name + ".png")
+  def plot(self, suggested_name, figure):
+    figure.savefig(suggested_name + ".png")
   def debug(self, *args, **kwargs):
     logging.debug(*args, **kwargs)
   def exception(self, *args, **kwargs):
