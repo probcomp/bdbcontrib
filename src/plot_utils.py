@@ -87,6 +87,7 @@ def heatmap(bdb, bql=None, df=None, **kwargs):
         Active BayesDB instance.
     bql : str
         The BQL to run and plot. Must be a PAIRWISE BQL query if specified.
+        One of bql or df must be specified.
     df : pandas.DataFrame(columns=['generator_id', 'name0', 'name1', 'value'])
         If bql is not specified, take data from here.
 
@@ -98,6 +99,7 @@ def heatmap(bdb, bql=None, df=None, **kwargs):
     clustermap: seaborn.clustermap
     """
     assert bql is not None or df is not None
+    assert bql is None or df is None
     if bql is not None:
         df = bqlu.cursor_to_df(bdb.execute(bql))
     df.fillna(0, inplace=True)
@@ -117,6 +119,7 @@ def selected_heatmaps(bdb, selectors, bql=None, df=None, **kwargs):
         responsible for showing or saving, and then closing.
     bql : str
         The BQL to run and plot. Must be a PAIRWISE BQL query if specified.
+        One of bql or df must be specified.
     df : pandas.DataFrame(columns=['generator_id', 'name0', 'name1', 'value'])
         If bql is not specified, then take data from here instead.
     **kwargs : dict
@@ -127,7 +130,9 @@ def selected_heatmaps(bdb, selectors, bql=None, df=None, **kwargs):
     The triple (clustermap, selector1, selector2).  It is recommended that
     caller keep a dict of these functions to names to help identify each one.
     """
+    # Cannot specify neither or both.
     assert bql is not None or df is not None
+    assert bql is None or df is None
     if bql is not None:
         df = bqlu.cursor_to_df(bdb.execute(bql))
     df.fillna(0, inplace=True)
