@@ -19,6 +19,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
 from contextlib import contextmanager
+import mock
 import numpy as np
 import re
 import os
@@ -31,15 +32,6 @@ import bdbcontrib
 from bayeslite.read_csv import bayesdb_read_csv
 from bdbcontrib.bql_utils import cursor_to_df
 from bdbcontrib.plot_utils import _pairplot
-
-@contextmanager
-def mock(real, fake):
-    the_real_one = real
-    try:
-        real = fake
-        yield
-    finally:
-        real = the_real_one
 
 def dataset(num_rows=400):
     '''Column names give rough type, numbers show which are related.'''
@@ -168,7 +160,7 @@ def test_selected_heatmaps():
                          [0, 'f', 'b', 1],
                          [0, 'f', 'f', 1]])
     seen = []
-    with mock(bdbcontrib.plot_utils.zmatrix, lambda *args, **kwargs: 42):
+    with mock.patch('bdbcontrib.plot_utils.zmatrix', return_value=42):
         for (plot, s0, s1) in bdbcontrib.plot_utils.selected_heatmaps(
                 bdb, selectors=sels, df=deps):
             assert 42 == plot
