@@ -110,6 +110,25 @@ def cursor_to_df(cursor):
     return df
 
 
+def query(bdb, bql):
+    """Execute the `bql` query on the `bdb` instance.
+
+    Parameters
+    ----------
+    bdb : bayeslite.BayesDB
+        Active BayesDB instance.
+    bql : str
+        BQL query string.
+
+    Returns
+    -------
+    df : pandas.DataFrame
+        Table of results as a pandas dataframe.
+    """
+    cursor = bdb.execute(bql)
+    return cursor_to_df(cursor)
+
+
 def describe_table(bdb, table_name):
     """Returns a SQLite3 cursor containg description of `table_name`.
 
