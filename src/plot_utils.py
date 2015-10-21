@@ -104,7 +104,7 @@ def heatmap(bdb, bql=None, df=None, **kwargs):
     return zmatrix(df, **kwargs)
 
 def selected_heatmaps(bdb, selectors, bql=None, df=None, **kwargs):
-    """Plot heatmaps of pairwise matrix, broken up according to selectors.
+    """Yield heatmaps of pairwise matrix, broken up according to selectors.
 
     Parameters
     ----------
