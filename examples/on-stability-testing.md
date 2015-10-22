@@ -84,22 +84,26 @@ Implementation on Satellites
 ============================
 
 The analysis phase is carried out by the program
-`examples/satellites/build_satellites_bdb.py`
+`examples/satellites/build_bdbs.py`
 - This constructs a directory with a bunch of bdb files.
 - The files are named according to a predictable pattern, and
 - Metadata about them is saved in the directory as well.
 - The program is configured by editing global variables in its
   source code.
 
-The probing and visualization phases are carried out by the program
-`examples/satellites/check_stability.py`
+The probing phase is carried out by the program
+`examples/satellites/probe.py`
 - The probe set and configuration is defined in the source of the
   program.
-- Probing can be skipped by commenting it out.
-- Visualization is determined entirely by the probe results.
+
+The visualization phase is carried out by the program
+`examples/satellites/visualize.py`
+- The configuration is defined in the source of the program.
+- Visualization content is determined entirely by the probe results.
 
 Generic probing and visualization machinery is available in the
-modules `examples/aggregation.py` and `examples/visualization.py`.
+modules `bdbcontrib.experiments.probe.py` and
+`bdbcontrib.experiments.visualization.py`.
 
 Possible Extensions
 ===================
