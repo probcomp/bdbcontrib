@@ -14,6 +14,7 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
+from contextlib import contextmanager
 import copy
 from textwrap import wrap
 
@@ -25,7 +26,7 @@ import seaborn as sns
 
 import bayeslite.core
 
-import bql_utils as bqlu
+import bdbcontrib.bql_utils as bqlu
 
 ###############################################################################
 ###                                   PUBLIC                                ###
@@ -77,8 +78,7 @@ def mi_hist(bdb, generator, col1, col2, num_samples=1000, bins=5):
 
     return figure
 
-
-def heatmap(bdb, bql, selectors=None, **kwargs):
+def heatmap(bdb, bql=None, df=None, **kwargs):
     """Plot clustered heatmap of pairwise matrix.
 
     Parameters
@@ -86,12 +86,10 @@ def heatmap(bdb, bql, selectors=None, **kwargs):
     bdb : bayeslite.BayesDB
         Active BayesDB instance.
     bql : str
-        The BQL to run and plot. Must be a PAIRWISE BQL query.
-    selectors : [lambda name --> bool]
-        Rather than plot the full NxN matrix all together, make separate plots
-        for each combination of these selectors, plotting them in sequence.
-        If selectors are specified, returns a list of clustermaps, having
-        shown and closed each one.
+        The BQL to run and plot. Must be a PAIRWISE BQL query if specified.
+        One of bql or df must be specified.
+    df : pandas.DataFrame(columns=['generator_id', 'name0', 'name1', 'value'])
+        If bql is not specified, take data from here.
 
     **kwargs : dict
         Passed to zmatrix: vmin, vmax, row_ordering, col_ordering
@@ -100,20 +98,52 @@ def heatmap(bdb, bql, selectors=None, **kwargs):
     -------
     clustermap: seaborn.clustermap
     """
-    df = bqlu.cursor_to_df(bdb.execute(bql))
+    assert bql is not None or df is not None
+    assert bql is None or df is None
+    if bql is not None:
+        df = bqlu.cursor_to_df(bdb.execute(bql))
     df.fillna(0, inplace=True)
-    if selectors is None:
-        return zmatrix(df, **kwargs)
-    results = []
+    return zmatrix(df, **kwargs)
+
+def selected_heatmaps(bdb, selectors, bql=None, df=None, **kwargs):
+    """Yield heatmaps of pairwise matrix, broken up according to selectors.
+
+    Parameters
+    ----------
+    bdb : bayeslite.BayesDB
+        Active BayesDB instance.
+    selectors : [lambda name --> bool]
+        Rather than plot the full NxN matrix all together, make separate plots
+        for each combination of these selectors, plotting them in sequence.
+        If selectors are specified, yields clustermaps, which caller is
+        responsible for showing or saving, and then closing.
+    bql : str
+        The BQL to run and plot. Must be a PAIRWISE BQL query if specified.
+        One of bql or df must be specified.
+    df : pandas.DataFrame(columns=['generator_id', 'name0', 'name1', 'value'])
+        If bql is not specified, then take data from here instead.
+    **kwargs : dict
+        Passed to zmatrix: vmin, vmax, row_ordering, col_ordering
+
+    Yields
+    ------
+    The triple (clustermap, selector1, selector2).  It is recommended that
+    caller keep a dict of these functions to names to help identify each one.
+    """
+    # Cannot specify neither or both.
+    assert bql is not None or df is not None
+    assert bql is None or df is None
+    if bql is not None:
+        df = bqlu.cursor_to_df(bdb.execute(bql))
+    df.fillna(0, inplace=True)
     for n0selector in selectors:
-      n0selection = deps['name0'].map(n0selector)
-      for n1selector in selectors:
-        n1selection = deps['name1'].map(n1selector)
-        this_block = deps[n0selection & n1selection]
-        results.append(zmatrix(this_block, vmin=0, vmax=1))
-        plt.show()
-        plt.close('all')
-    return results
+        n0selection = df.iloc[:, 1].map(n0selector)
+        for n1selector in selectors:
+            n1selection = df.iloc[:, 2].map(n1selector)
+            this_block = df[n0selection & n1selection]
+            if len(this_block) > 0:
+                yield (zmatrix(this_block, vmin=0, vmax=1, **kwargs),
+                       n0selector, n1selector)
 
 def pairplot(bdb, bql, generator_name=None, show_contour=False, colorby=None,
         show_missing=False, show_full=False):
@@ -633,7 +663,7 @@ def zmatrix(data_df, clustermap_kws=None, row_ordering=None,
         df = df.ix[:, col_ordering]
         df = df.ix[row_ordering, :]
         del clustermap_kws['pivot_kws']
-        fig, ax = plt.subplots()
+        _fig, ax = plt.subplots()
         return (sns.heatmap(df, ax=ax, **clustermap_kws),
             row_ordering, col_ordering)
     else:
