@@ -18,6 +18,7 @@
 import argparse
 import cPickle as pickle # json doesn't like tuple dict keys
 import math
+import os
 
 from bdbcontrib.experiments.probe import log, probe_fileset
 
@@ -150,6 +151,9 @@ def orbit_type_imputation_probes(bdb):
 ######################################################################
 
 def doit(files, outfile, model_schedule, n_replications):
+    out_dir = os.path.dirname(outfile)
+    if out_dir and not os.path.isdir(out_dir):
+        os.makedirs(out_dir)
     results = probe_fileset(
         files, "satellites_cc",
         [country_purpose_probes,
