@@ -35,6 +35,7 @@ Two result types are currently supported:
 """
 
 import contextlib
+import logging
 import random
 import time
 
@@ -44,8 +45,8 @@ from bayeslite.metamodels.crosscat import CrosscatMetamodel
 from crosscat.LocalEngine import LocalEngine as CrosscatLocalEngine
 
 start_time = time.time()
-def log(msg):
-    print "At %3.2fs" % (time.time() - start_time), msg
+def log(msg, *irritants):
+    logging.info("At %3.2fs " % (time.time() - start_time) + msg, *irritants)
 
 def probe_fileset(files, generator, probes, model_schedule=None,
                     n_replications=None, seed=0):

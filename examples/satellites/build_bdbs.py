@@ -48,6 +48,7 @@ following information:
 
 import argparse
 import datetime
+import logging
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
@@ -61,6 +62,7 @@ import bayeslite.metamodels.crosscat
 import bdbcontrib
 import crosscat
 import crosscat.MultiprocessingEngine as ccme
+from bdbcontrib.experiments.probe import log
 
 def doit(out_dir, num_models, num_iters, checkpoint_freq, seed):
     then = time.time()
@@ -83,9 +85,6 @@ def doit(out_dir, num_models, num_iters, checkpoint_freq, seed):
     if os.path.exists(bdb_file):
         print 'Error: File', bdb_file, 'already exists. Please remove it.'
         sys.exit(1)
-
-    def log(msg):
-        print "At %3.2fs" % (time.time() - then), msg
 
     # create database mapped to filesystem
     log('opening bdb on disk: %s' % bdb_file)
@@ -236,6 +235,7 @@ parser.add_argument(
 
 def main():
     args = parser.parse_args()
+    logging.basicConfig(level=logging.INFO)
     doit(args.outdir, args.models, args.iters, args.checkpoint_freq, args.seed)
 
 if __name__ == '__main__':

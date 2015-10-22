@@ -17,6 +17,7 @@
 
 import argparse
 import cPickle as pickle # json doesn't like tuple dict keys
+import logging
 import math
 import os
 
@@ -178,6 +179,7 @@ parser.add_argument('files', nargs="+", help=".bdb files to probe")
 
 def main():
     args = parser.parse_args()
+    logging.basicConfig(level=logging.INFO)
     doit(args.files, args.outfile, args.n_models, args.n_replications)
 
 if __name__ == '__main__':

@@ -20,14 +20,11 @@ matplotlib.use("Agg")
 
 import argparse
 import cPickle as pickle # json doesn't like tuple dict keys
+import logging
 import re
-import time
 
+from bdbcontrib.experiments.probe import log
 from bdbcontrib.experiments.visualization import plot_results
-
-start_time = time.time()
-def log(msg):
-    print "At %3.2fs" % (time.time() - start_time), msg
 
 def analysis_count_from_file_name(fname):
     return int(re.match(r'.*-[0-9]*m-([0-9]*)i.bdb', fname).group(1))
@@ -49,6 +46,7 @@ parser.add_argument('-o', '--outdir',
 
 def main():
     args = parser.parse_args()
+    logging.basicConfig(level=logging.INFO)
     plot_probe_results(args.infile, args.outdir)
 
 if __name__ == '__main__':
