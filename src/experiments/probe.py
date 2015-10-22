@@ -28,6 +28,7 @@ A probe result is represented as a 3-tuple: the name of the probe, the
 type of the result (as a string), and the value of the result.
 
 Two result types are currently supported:
+
 - 'num' results are aggregated by maintaining a list of all of them.
 - 'bool' results are aggregated by maintaining the count of True and
   False results seen.
