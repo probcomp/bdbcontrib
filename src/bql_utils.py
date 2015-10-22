@@ -18,7 +18,7 @@ import pandas as pd
 
 import bayeslite.core
 from bayeslite import bql_quote_name as quote
-
+from bayeslite.util import cursor_value
 
 ###############################################################################
 ###                                 PUBLIC                                  ###
@@ -53,7 +53,7 @@ def cardinality(bdb, table, cols=None):
             SELECT COUNT (DISTINCT %s) FROM %s
         ''' % (quote(col), quote(table))
         res = bdb.sql_execute(sql)
-        counts.append((col, res.next()[0]))
+        counts.append((col, cursor_value(res)))
 
     return counts
 
@@ -108,6 +108,25 @@ def cursor_to_df(cursor):
                 pass
 
     return df
+
+
+def query(bdb, bql):
+    """Execute the `bql` query on the `bdb` instance.
+
+    Parameters
+    ----------
+    bdb : bayeslite.BayesDB
+        Active BayesDB instance.
+    bql : str
+        BQL query string.
+
+    Returns
+    -------
+    df : pandas.DataFrame
+        Table of results as a pandas dataframe.
+    """
+    cursor = bdb.execute(bql)
+    return cursor_to_df(cursor)
 
 
 def describe_table(bdb, table_name):

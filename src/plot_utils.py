@@ -58,7 +58,7 @@ def mi_hist(bdb, generator, col1, col2, num_samples=1000, bins=5):
             WHERE generator_id = ?
     '''
     counts = bdb.execute(bql, (generator_id,))
-    num_models = counts.next()[0]
+    num_models = counts.fetchvalue()
 
     figure, ax = plt.subplots(figsize=(6, 6))
 
@@ -69,7 +69,7 @@ def mi_hist(bdb, generator, col1, col2, num_samples=1000, bins=5):
                 USING MODEL {} LIMIT 1
         '''.format(col1, col2, num_samples, generator, modelno)
         cursor = bdb.execute(bql)
-        mutual_information = cursor.next()[0]
+        mutual_information = cursor.fetchvalue()
         mis.append(mutual_information)
     ax.hist(mis, bins, normed=True)
     ax.set_xlabel('Mutual Information')
@@ -87,6 +87,7 @@ def heatmap(bdb, bql=None, df=None, **kwargs):
         Active BayesDB instance.
     bql : str
         The BQL to run and plot. Must be a PAIRWISE BQL query if specified.
+        One of bql or df must be specified.
     df : pandas.DataFrame(columns=['generator_id', 'name0', 'name1', 'value'])
         If bql is not specified, take data from here.
 
@@ -98,13 +99,14 @@ def heatmap(bdb, bql=None, df=None, **kwargs):
     clustermap: seaborn.clustermap
     """
     assert bql is not None or df is not None
+    assert bql is None or df is None
     if bql is not None:
         df = bqlu.cursor_to_df(bdb.execute(bql))
     df.fillna(0, inplace=True)
     return zmatrix(df, **kwargs)
 
 def selected_heatmaps(bdb, selectors, bql=None, df=None, **kwargs):
-    """Plot heatmaps of pairwise matrix, broken up according to selectors.
+    """Yield heatmaps of pairwise matrix, broken up according to selectors.
 
     Parameters
     ----------
@@ -117,7 +119,9 @@ def selected_heatmaps(bdb, selectors, bql=None, df=None, **kwargs):
         responsible for showing or saving, and then closing.
     bql : str
         The BQL to run and plot. Must be a PAIRWISE BQL query if specified.
-    df : pandas.DataFrame(columns=['generator_id', 'name0', 'name1', 'value'])          If bql is not specified, then take data from here instead.
+        One of bql or df must be specified.
+    df : pandas.DataFrame(columns=['generator_id', 'name0', 'name1', 'value'])
+        If bql is not specified, then take data from here instead.
     **kwargs : dict
         Passed to zmatrix: vmin, vmax, row_ordering, col_ordering
 
@@ -126,7 +130,9 @@ def selected_heatmaps(bdb, selectors, bql=None, df=None, **kwargs):
     The triple (clustermap, selector1, selector2).  It is recommended that
     caller keep a dict of these functions to names to help identify each one.
     """
+    # Cannot specify neither or both.
     assert bql is not None or df is not None
+    assert bql is None or df is None
     if bql is not None:
         df = bqlu.cursor_to_df(bdb.execute(bql))
     df.fillna(0, inplace=True)
