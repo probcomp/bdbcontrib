@@ -39,6 +39,7 @@ import test_plot_utils
 
 from bayeslite.read_csv import bayesdb_read_csv
 from bdbcontrib import recipes
+from bdbcontrib.loggers import BqlLogger
 
 testvars = {'dataset': None, 'input_df': None}
 
@@ -54,7 +55,7 @@ def ensure_timeout(delay, target):
     # proc.join()
 
 
-class MyTestLogger(recipes.BqlLogger):
+class MyTestLogger(BqlLogger):
     def __init__(self, verbose=pytest.config.option.verbose):
         self.calls = []
         self.verbose = verbose
