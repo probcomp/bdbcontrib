@@ -1,7 +1,10 @@
+import os
+import sys
+
 import matplotlib
 import matplotlib.pyplot as plt
-import pandas as pd
 import numpy as np
+import pandas as pd
 
 from matplotlib import rc
 
@@ -9,6 +12,12 @@ try:
     import seaborn
 except ImportError:
     pass
+
+# Get input directory.
+if len(sys.argv) < 2:
+    indir = '.'
+else:
+    indir = sys.argv[1]
 
 # Set up matplotlib.
 matplotlib.rcParams['font.weight'] = 'bold'
@@ -47,9 +56,9 @@ def compute_T(a):
     return T
 
 # Read simulated data.
-KC = pd.read_csv('simulated/kc.csv')
-DC = pd.read_csv('simulated/dc.csv')
-EC = pd.read_csv('simulated/ec.csv')
+KC = pd.read_csv(os.path.join(indir, 'kc.csv'))
+DC = pd.read_csv(os.path.join(indir, 'dc.csv'))
+EC = pd.read_csv(os.path.join(indir, 'ec.csv'))
 
 # Plot of the samples.
 fig, ax = plt.subplots()
@@ -131,9 +140,9 @@ ax[1].set_ylim(0, ax[1].get_ylim()[1]+2)
 
 
 # Apogee vs Period Simulations
-KJ = pd.read_csv('simulated/kj.csv')
-DJ = pd.read_csv('simulated/dj.csv')
-EJ = pd.read_csv('simulated/ej.csv')
+KJ = pd.read_csv(os.path.join(indir, 'kj.csv'))
+DJ = pd.read_csv(os.path.join(indir, 'dj.csv'))
+EJ = pd.read_csv(os.path.join(indir, 'ej.csv'))
 
 fig, ax = plt.subplots()
 ax.scatter(KJ['Apogee_km'], KJ['Period_minutes'],
