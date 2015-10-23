@@ -15,7 +15,6 @@
 #   limitations under the License.
 
 import itertools
-import math
 import sqlite3
 
 import numpy as np
@@ -205,7 +204,7 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
 
     def create_generator(self, bdb, table, schema, instantiate):
         # Parse the schema.
-        (columns, lcols, fcols, fcol_to_pcols, fcol_to_fpred,
+        (columns, lcols, _fcols, fcol_to_pcols, fcol_to_fpred,
             dependencies) = self.parse(schema)
         # Instantiate **this** generator.
         genid, bdbcolumns = instantiate(columns.items())
@@ -446,7 +445,7 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
         mi = []
         if modelno is None:
             n_model = 0
-            while bayesdb_generator_has_model(bdb, genid, n_model):
+            while core.bayesdb_generator_has_model(bdb, genid, n_model):
                 mi.append(self.conditional_mutual_information(bdb, genid,
                     n_model, X, W, Z, Y))
                 n_model += 1
@@ -500,7 +499,7 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
         p = []
         if modelno is None:
             n_model = 0
-            while bayesdb_generator_has_model(bdb, genid, n_model):
+            while core.bayesdb_generator_has_model(bdb, genid, n_model):
                 p.append(self._joint_logpdf(bdb, genid, n_model,
                     [(colno, value)], constraints))
                 n_model += 1
@@ -552,9 +551,9 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
         if numsamples is None:
             numsamples = self.n_samples
         # Obtain all values for all other columns.
-        colnos = bayesdb_generator_column_numbers(bdb, genid)
-        colnames = bayesdb_generator_column_names(bdb, genid)
-        table = bayesdb_generator_table(bdb, genid)
+        colnos = core.bayesdb_generator_column_numbers(bdb, genid)
+        colnames = core.bayesdb_generator_column_names(bdb, genid)
+        table = core.bayesdb_generator_table(bdb, genid)
         sql = '''
             SELECT {} FROM {} WHERE _rowid_ = ?
         '''.format(','.join(map(quote, colnames)), quote(table))
@@ -563,7 +562,7 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
         try:
             row = cursor.next()
         except StopIteration:
-            generator = bayesdb_generator_table(bdb, genid)
+            generator = core.bayesdb_generator_table(bdb, genid)
             raise BQLError(bdb, 'No such row in table {} '
                 'for generator {}: {}.'.format(table, generator, rowid))
         # Account for multiple imputations if imputing parents.
@@ -591,12 +590,12 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
         # Predicting fcol.
         else:
             conditions = {c:v for c,v in zip(colnames, row) if
-                bayesdb_generator_column_number(bdb, genid, c) in
+                core.bayesdb_generator_column_number(bdb, genid, c) in
                 self.pcols(bdb, genid, colno)}
             for colname, val in conditions.iteritems():
                 # Impute all missing parents.
                 if val is None:
-                    imp_col = bayesdb_generator_column_number(bdb, genid,
+                    imp_col = core.bayesdb_generator_column_number(bdb, genid,
                         colname)
                     imp_val, imp_conf = self.predict_confidence(bdb, genid,
                         modelno, imp_col, rowid, numsamples=numsamples)
@@ -612,7 +611,7 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
             samples = predictor.simulate(numsamples, conditions)
         # Since foreign predictor does not know how to impute, imputation
         # shall occur here in the composer by simulate/logpdf calls.
-        stattype = bayesdb_generator_column_stattype(bdb, genid, colno)
+        stattype = core.bayesdb_generator_column_stattype(bdb, genid, colno)
         if stattype == 'categorical':
             # imp_conf is most frequent.
             imp_val =  max(((val, samples.count(val)) for val in set(samples)),
@@ -648,7 +647,7 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
                 numpredictions=numpredictions)
         # Solve inference problem by sampling-importance resampling.
         result = []
-        for i in xrange(numpredictions):
+        for _ in xrange(numpredictions):
             samples, weights = self._weighted_sample(bdb, genid, modelno,
                 constraints)
             p = np.exp(np.asarray(weights) - np.max(weights))
@@ -694,8 +693,9 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
                 predictor = self.predictor(bdb, genid, fcol)
                 # All parents of FP known (evidence or simulated)?
                 assert pcols.issubset(set(samples[k]))
-                conditions = {bayesdb_generator_column_name(bdb, genid, c):v
-                        for c,v in samples[k].iteritems() if c in pcols}
+                conditions = {core.bayesdb_generator_column_name(
+                    bdb, genid, c):v for c,v in samples[k].iteritems()
+                        if c in pcols}
                 # f is evidence: compute likelihood weight.
                 if fcol in samples[k]:
                     w += predictor.logpdf(samples[k][fcol], conditions)
@@ -727,7 +727,7 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
         return cursor.fetchall()[0][0]
 
     def cc(self, bdb, genid):
-        return bayesdb_generator_metamodel(bdb, self.cc_id(bdb, genid))
+        return core.bayesdb_generator_metamodel(bdb, self.cc_id(bdb, genid))
 
     def lcols(self, bdb, genid):
         cursor = bdb.sql_execute('''
@@ -780,7 +780,7 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
             if builder is None:
                 raise LookupError('Foreign predictor for column "{}" '
                     'not registered: "{}".'.format(name,
-                        bayesdb_generator_column_name(bdb, genid, fcol)))
+                        core.bayesdb_generator_column_name(bdb, genid, fcol)))
             self.predictor_cache[(genid, fcol)] = builder.deserialize(binary)
         return self.predictor_cache[(genid, fcol)]
 
@@ -950,7 +950,7 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
             raise ValueError('Duplicate foreign columns enountered: {}.'\
                 .format(fcols))
         # All stattypes declared.
-        for f, c in fcol_to_pcols.iteritems():
+        for _, c in fcol_to_pcols.iteritems():
             for r in c:
                 if r not in columns:
                     raise ValueError('No stattype declaration for "{}".'\
