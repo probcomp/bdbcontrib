@@ -708,40 +708,9 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
         return samples, weights
 
     def _joint_logpdf_cc(self, bdb, genid, modelno, Q, Y):
-        # Evaluates the joint logpdf of crosscat columns. This is acheived by
-        # invoking column_value_probability on univariate columns with
-        # cascading the constraints (the chain rule). This function really
-        # belongs somewhere in the famous sample_utils module in crosscat.
-        # Ensure consistency for nodes in both query and evidence.
-        lcols = self.lcols(bdb, genid)
-        ignore = set()
-        for (cq, vq), (cy, vy) in itertools.product(Q, Y):
-            if cq not in lcols or cy not in lcols:
-                raise ValueError('Foreign colno encountered in internal '
-                    '_joint_logpdf_cc.')
-            if cq == cy:
-                if vq == vy:
-                    ignore.add(cq)
-                else:
-                    return -float('inf')
-        # Convert.
-        Q_cc = []
-        for (col, val) in Q:
-            if col not in ignore:
-                Q_cc.append((self.cc_colno(bdb, genid, col), val))
-        Y_cc = []
-        for (col, val) in Y:
-            Y_cc.append((self.cc_colno(bdb, genid, col), val))
-        # Chain rule.
-        prob = 0
-        for (col, val) in Q_cc:
-            r = self.cc(bdb, genid).column_value_probability(bdb,
-                    self.cc_id(bdb, genid), modelno, col, val, Y_cc)
-            if r == 0:
-                return -float('inf')
-            prob += math.log(r)
-            Y_cc.append((col,val))
-        return prob
+        # Indirection.
+        return self.cc(bdb, genid).logpdf_joint(bdb, self.cc_id(bdb, genid),
+            Q, Y, modelno)
 
     def cc_colno(self, bdb, genid, colno):
         return self.cc_colnos(bdb, genid, [colno])[0]
