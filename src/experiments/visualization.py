@@ -24,9 +24,7 @@ import pandas as pd
 import matplotlib.pylab as plt
 import seaborn as sns
 
-import sys
-sys.path.append(".")
-from aggregation import log
+from bdbcontrib.experiments.probe import log
 
 # results :: [((probe_name, model_ct, iters), tagged aggregated value)]
 

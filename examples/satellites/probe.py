@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
 #   Copyright (c) 2010-2014, MIT Probabilistic Computing Project
@@ -14,16 +15,13 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
-import matplotlib
-matplotlib.use("Agg")
-
+import argparse
+import cPickle as pickle # json doesn't like tuple dict keys
+import logging
 import math
-import re
+import os
 
-import sys
-sys.path.append("..")
-from aggregation import log, analyze_fileset
-from visualization import plot_results
+from bdbcontrib.experiments.probe import log, probe_fileset
 
 ######################################################################
 ## Probes                                                          ##
@@ -153,36 +151,36 @@ def orbit_type_imputation_probes(bdb):
 ## Driver                                                           ##
 ######################################################################
 
-import cPickle as pickle # json doesn't like tuple dict keys
-
-import glob
-
-def save_probe_results(filename):
-    files = glob.glob("3200m-30i/*i.bdb")
-    # files = ["output/satellites-2015-09-30-axch-60m-4i.bdb",
-    #          "output/satellites-2015-09-30-axch-60m-8i.bdb"]
-    results = analyze_fileset(
+def doit(files, outfile, model_schedule, n_replications):
+    out_dir = os.path.dirname(outfile)
+    if out_dir and not os.path.isdir(out_dir):
+        os.makedirs(out_dir)
+    results = probe_fileset(
         files, "satellites_cc",
         [country_purpose_probes,
          unlikely_periods_probes,
          orbit_type_imputation_probes],
-        model_schedule = [1,100,200,300,400],
-        n_replications = 8)
+        model_schedule = model_schedule,
+        n_replications = n_replications)
 
-    with open(filename, "w") as f:
+    with open(outfile, "w") as f:
         pickle.dump(results, f)
-    log("Saved probe results to %s" % filename)
+    log("Saved probe results to %s" % outfile)
 
-def analysis_count_from_file_name(fname):
-    return int(re.match(r'.*-[0-9]*m-([0-9]*)i.bdb', fname).group(1))
+parser = argparse.ArgumentParser(
+    description='Probe a collection of Satellites .bdb files')
+parser.add_argument('-o', '--outfile',
+                    help="Save results to the given file")
+parser.add_argument('-m', '--n_models', nargs="+", type=int,
+                    help="Count of models to probe")
+parser.add_argument('-n', '--n_replications', type=int,
+                    help="Number of replications to probe")
+parser.add_argument('files', nargs="+", help=".bdb files to probe")
 
-def plot_probe_results(filename):
-    log("Loading probe results from %s" % filename)
-    with open(filename, "r") as f:
-        results = pickle.load(f)
-    results = [((probe, n_models, analysis_count_from_file_name(fname)), val)
-               for ((fname, n_models, probe), val) in results.iteritems()]
-    plot_results(results, outdir="figures-3200m-30i")
+def main():
+    args = parser.parse_args()
+    logging.basicConfig(level=logging.INFO)
+    doit(args.files, args.outfile, args.n_models, args.n_replications)
 
-save_probe_results("results-3200m-30i.pkl")
-plot_probe_results("results-3200m-30i.pkl")
+if __name__ == '__main__':
+    main()

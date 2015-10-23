@@ -18,20 +18,24 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
-import bayeslite
+from contextlib import contextmanager
+import mock
 import numpy as np
+import re
 import os
 import pandas as pd
-from cStringIO import StringIO
+from io import BytesIO
+
+import bayeslite
+import bdbcontrib
 
 from bayeslite.read_csv import bayesdb_read_csv
 from bdbcontrib.bql_utils import cursor_to_df
 from bdbcontrib.plot_utils import _pairplot
 
-def prepare():
+def dataset(num_rows=400):
     '''Column names give rough type, numbers show which are related.'''
     df = pd.DataFrame()
-    num_rows = 400
     alphabet = ['A', 'B', 'C', 'D', 'E']
     dist_of_five = np.random.choice(range(5), num_rows,
                                     p=np.array([1, .4, .3, .2, .1]) / 2.)
@@ -49,14 +53,17 @@ def prepare():
     df['many_ints_4'] = np.random.randn(num_rows)
 
     # Need >= 75% to be zero to trigger inter-quartile-range == 0.
-    foo = np.random.choice(
+    numeric_5 = np.random.choice(
         range(4), num_rows, p=[200./256, 40./256, 10./256, 6./256])
     # Need >= 30 unique to be numeric instead of categorical,
     # so perturb the non-zeros:
-    df['skewed_numeric_5'] = [ i * np.random.random() for i in foo ]
-    csv_str = StringIO()
-    df.to_csv(csv_str)
+    df['skewed_numeric_5'] = [ i * np.random.random() for i in numeric_5 ]
+    csv_data = BytesIO()
+    df.to_csv(csv_data, header=True, index_label='index')
+    return (df, csv_data)
 
+def prepare():
+    (df, csv_str) = dataset()
     os.environ['BAYESDB_WIZARD_MODE']='1'
     bdb = bayeslite.bayesdb_open()
     # XXX Do we not have a bayesdb_read_df ?
@@ -67,7 +74,7 @@ def prepare():
     ''')
 
     # do a plot where a some sub-violins are removed
-    remove_violin_bql = """
+    _remove_violin_bql = """
         DELETE FROM plottest
             WHERE categorical_1 = "B"
                 AND (few_ints_3 = 2 OR few_ints_3 = 1);
@@ -105,17 +112,17 @@ def has_nontrivial_contents_over_white_background(imgfile):
     return True
 
 def flush(f):
-    return StringIO(f.getvalue())
+    return BytesIO(f.getvalue())
 
 def test_pairplot_smoke():
     ans = prepare()
-    f = StringIO()
+    f = BytesIO()
     do(ans, f, colorby='categorical_2', show_contour=False)
     assert has_nontrivial_contents_over_white_background(flush(f))
-    f = StringIO()
+    f = BytesIO()
     do(ans, f, colorby='categorical_2', show_contour=True)
     assert has_nontrivial_contents_over_white_background(flush(f))
-    f = StringIO()
+    f = BytesIO()
     do(ans, f, show_contour=False)
     assert has_nontrivial_contents_over_white_background(flush(f))
 
@@ -125,26 +132,54 @@ def test_one_variable():
                 'skewed_numeric_5']:
       cursor = bdb.execute('SELECT %s FROM plottest' % (var,))
       df = cursor_to_df(cursor)
-      f = StringIO()
+      f = BytesIO()
       do((df, bdb), f, show_contour=False)
       assert has_nontrivial_contents_over_white_background(flush(f))
       cursor = bdb.execute('SELECT %s, categorical_2 FROM plottest' % (var,))
       df = cursor_to_df(cursor)
-      f = StringIO()
+      f = BytesIO()
       do((df, bdb), f, colorby='categorical_2', show_contour=False)
       assert has_nontrivial_contents_over_white_background(flush(f))
-      f = StringIO()
+      f = BytesIO()
       do((df, bdb), f, colorby='categorical_2', show_contour=True)
       assert has_nontrivial_contents_over_white_background(flush(f))
 
+def test_selected_heatmaps():
+    (unused_df, bdb) = prepare()
+    s_ae = lambda x: bool(re.search(r'^[a-eA-E]', x[0]))
+    s_fw = lambda x: bool(re.search(r'^[f-wF-W]', x[0]))
+    s_xz = lambda x: bool(re.search(r'^[x-zX-Z]', x[0]))
+    sels = [s_ae, s_fw, s_xz]
+    deps = pd.DataFrame([[0, 'a', 'a', 1],
+                         [0, 'a', 'b', 1],
+                         [0, 'a', 'f', 1],
+                         [0, 'b', 'a', 1],
+                         [0, 'b', 'b', 1],
+                         [0, 'b', 'f', 1],
+                         [0, 'f', 'a', 1],
+                         [0, 'f', 'b', 1],
+                         [0, 'f', 'f', 1]])
+    seen = []
+    with mock.patch('bdbcontrib.plot_utils.zmatrix', return_value=42):
+        for (plot, s0, s1) in bdbcontrib.plot_utils.selected_heatmaps(
+                bdb, selectors=sels, df=deps):
+            assert 42 == plot
+            seen.append((s0, s1))
+    assert 4 == len(seen)
+    assert (s_ae, s_ae) in seen
+    assert (s_ae, s_fw) in seen
+    assert (s_fw, s_ae) in seen
+    assert (s_fw, s_fw) in seen
 
-if __name__ == '__main__':
+def main():
     ans = prepare()
     do(ans, 'fig0.png', colorby='categorical_2', show_contour=False)
     do(ans, 'fig1.png', colorby='categorical_2', show_contour=True)
     do(ans, 'fig2.png', show_contour=False)
     print "Figures saved in 'fig0.png', 'fig1.png', 'fig2.png'"
-    import os
     assert os.path.exists('fig0.png')
     assert os.path.exists('fig1.png')
     assert os.path.exists('fig2.png')
+
+if __name__ == '__main__':
+    main()
