@@ -493,24 +493,13 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
         # Averaging is in direct space is correct.
         return mi/numsamples
 
-    def column_value_probability(self, bdb, genid, modelno, colno, value,
-            constraints):
-        # XXX Aggregator only.
-        p = []
+    def logpdf_joint(self, bdb, generator_id, targets, constraints, modelno):
         if modelno is None:
-            n_model = 0
-            while core.bayesdb_generator_has_model(bdb, genid, n_model):
-                p.append(self._joint_logpdf(bdb, genid, n_model,
-                    [(colno, value)], constraints))
-                n_model += 1
-            if all(e == float('-inf') for e in p):
-                p = float('-inf')
-            else:
-                p = logmeanexp(p)
+            modelnos = core.bayesdb_generator_modelnos(bdb, generator_id)
         else:
-            p = self._joint_logpdf(bdb, genid, modelno, [(colno, value)],
-                constraints)
-        return np.exp(p)
+            modelnos = [modelno]
+        return logmeanexp(self._joint_logpdf(bdb, generator_id, modelno,
+            targets, constraints) for modelno in modelnos)
 
     def _joint_logpdf(self, bdb, genid, modelno, Q, Y, n_samples=None):
         # XXX Computes the joint probability of query Q given evidence Y
