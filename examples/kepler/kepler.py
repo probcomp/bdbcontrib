@@ -1,3 +1,7 @@
+import os
+import sys
+import shutil
+
 import bayeslite
 
 import bdbcontrib
@@ -5,15 +9,32 @@ from bdbcontrib.metamodels.composer import Composer
 from bdbcontrib.predictors import random_forest
 from bdbcontrib.predictors import keplers_law
 
+# Get output directory.
+if len(sys.argv) < 2:
+    outdir = '.'
+else:
+    outdir = sys.argv[1]
+
+# Find the satellites file.
+fullpath = os.path.dirname(os.path.realpath(__file__)).split('/')
+satfile = os.path.sep
+for directory in fullpath:
+    satfile = os.path.join(satfile, directory)
+    if directory == 'bdbcontrib':
+        break
+satfile = os.path.join(satfile, 'examples','satellites','satellites.csv')
+
 composer = Composer()
 composer.register_foreign_predictor(keplers_law.KeplersLaw)
 composer.register_foreign_predictor(random_forest.RandomForest)
 
-bdb = bayeslite.bayesdb_open('kepler.bdb')
-bayeslite.bayesdb_register_metamodel(bdb, composer)
-bayeslite.bayesdb_read_csv_file(bdb, 'satellites',
-    '../satellites/satellites.csv', header=True, create=True)
+if os.path.exists(os.path.join(outdir, 'kepler.bdb')):
+    os.remove(os.path.join(outdir, 'kepler.bdb'))
 
+bdb = bayeslite.bayesdb_open(os.path.join(outdir, 'kepler.bdb'))
+bayeslite.bayesdb_register_metamodel(bdb, composer)
+bayeslite.bayesdb_read_csv_file(bdb, 'satellites', satfile,
+    header=True, create=True)
 
 bdbcontrib.query(bdb, '''
     CREATE GENERATOR sat_kepler FOR satellites USING composer(
@@ -89,9 +110,12 @@ EJ = bdbcontrib.query(bdb, '''
     SELECT Apogee_km, Period_minutes FROM satellites
         WHERE Apogee_km IS NOT NULL AND Period_minutes IS NOT NULL;''')
 
-KC.to_csv('simulated/kc.csv')
-DC.to_csv('simulated/dc.csv')
-EC.to_csv('simulated/ec.csv')
-KJ.to_csv('simulated/kj.csv')
-DJ.to_csv('simulated/dj.csv')
-EJ.to_csv('simulated/ej.csv')
+if not os.path.exists(os.path.join(outdir, 'simulated')):
+    os.mkdir(os.path.join(outdir, 'simulated'))
+
+KC.to_csv(os.path.join(outdir, 'simulated', 'kc.csv'))
+DC.to_csv(os.path.join(outdir, 'simulated', 'dc.csv'))
+EC.to_csv(os.path.join(outdir, 'simulated', 'ec.csv'))
+KJ.to_csv(os.path.join(outdir, 'simulated', 'kj.csv'))
+DJ.to_csv(os.path.join(outdir, 'simulated', 'dj.csv'))
+EJ.to_csv(os.path.join(outdir, 'simulated', 'ej.csv'))
