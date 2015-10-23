@@ -88,11 +88,11 @@ bdbcontrib.query(bdb, 'ANALYZE sat_default FOR 1 ITERATION WAIT')
 
 KC = bdbcontrib.query(bdb, '''
     SIMULATE Apogee_km, Perigee_km FROM sat_kepler
-        GIVEN Period_minutes = 1436 LIMIT 1;''')
+        GIVEN Period_minutes = 1436 LIMIT 100;''')
 
 DC = bdbcontrib.query(bdb, '''
     SIMULATE Apogee_km, Perigee_km FROM sat_default
-        GIVEN Period_minutes = 1436 LIMIT 1;''')
+        GIVEN Period_minutes = 1436 LIMIT 100;''')
 
 EC = bdbcontrib.query(bdb, '''
     SELECT Apogee_km, Perigee_km, Eccentricity FROM satellites
@@ -101,10 +101,10 @@ EC = bdbcontrib.query(bdb, '''
             AND Perigee_km IS NOT NULL;''')
 
 KJ = bdbcontrib.query(bdb, '''
-    SIMULATE Apogee_km, Period_minutes FROM sat_kepler LIMIT 1;''')
+    SIMULATE Apogee_km, Period_minutes FROM sat_kepler LIMIT 100;''')
 
 DJ = bdbcontrib.query(bdb, '''
-    SIMULATE Apogee_km, Period_minutes FROM sat_default LIMIT 1;''')
+    SIMULATE Apogee_km, Period_minutes FROM sat_default LIMIT 100;''')
 
 EJ = bdbcontrib.query(bdb, '''
     SELECT Apogee_km, Period_minutes FROM satellites
