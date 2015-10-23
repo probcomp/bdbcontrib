@@ -20,7 +20,7 @@ import sqlite3
 
 import numpy as np
 
-from bayeslite.core import *
+import bayeslite.core as core
 from bayeslite.exception import BQLError
 from bayeslite.sqlite3_util import sqlite3_quote_name as quote
 from bayeslite.util import logmeanexp, casefold
@@ -29,8 +29,6 @@ from crosscat.utils import sample_utils as su
 
 import bayeslite.metamodel
 import bayeslite.bqlfn
-
-import bdbcontrib
 
 composer_schema_1 = [
 '''
@@ -234,15 +232,15 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
         # Convert strings to column numbers.
         fcolno_to_pcolnos = {}
         for f in fcol_to_pcols:
-            fcolno = bayesdb_generator_column_number(bdb, genid, f)
-            fcolno_to_pcolnos[fcolno] = [bayesdb_generator_column_number(bdb,
-                genid, col) for col in fcol_to_pcols[f]]
+            fcolno = core.bayesdb_generator_column_number(bdb, genid, f)
+            fcolno_to_pcolnos[fcolno] = [core.bayesdb_generator_column_number(
+                bdb, genid, col) for col in fcol_to_pcols[f]]
         with bdb.savepoint():
             # Save internal cc generator id.
             bdb.sql_execute('''
                 INSERT INTO bayesdb_composer_cc_id
                     (generator_id, crosscat_generator_id) VALUES (?,?)
-            ''', (genid, bayesdb_get_generator(bdb, cc_name),))
+            ''', (genid, core.bayesdb_get_generator(bdb, cc_name),))
             # Save lcols/fcolnos.
             for colno, _, _ in bdbcolumns:
                 local = colno not in fcolno_to_pcolnos
@@ -269,7 +267,7 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
             # Save predictor names of foreign columns.
             for fcolno in fcolno_to_pcolnos:
                 fp_name = fcol_to_fpred[casefold(
-                        bayesdb_generator_column_name(bdb,genid, fcolno))]
+                    core.bayesdb_generator_column_name(bdb,genid, fcolno))]
                 bdb.sql_execute('''
                     INSERT INTO bayesdb_composer_column_foreign_predictor
                         (generator_id, colno, predictor_name) VALUES (?,?,?)
@@ -282,7 +280,7 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
             for k in keys:
                 del self.predictor_cache[k]
             # Obtain before losing references.
-            cc_name = bayesdb_generator_name(bdb, self.cc_id(bdb, genid))
+            cc_name = core.bayesdb_generator_name(bdb, self.cc_id(bdb, genid))
             # Delete tables reverse order of insertion.
             bdb.sql_execute('''
                 DELETE FROM bayesdb_composer_column_foreign_predictor
@@ -314,21 +312,21 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
         # then k internal CC models will be created (1-1 mapping).
         bql = """
             INITIALIZE {} MODELS FOR {};
-            """.format(len(modelnos),
-                    bayesdb_generator_name(bdb, self.cc_id(bdb, genid)))
+        """.format(len(modelnos),
+            core.bayesdb_generator_name(bdb, self.cc_id(bdb, genid)))
         bdb.execute(bql)
         # Initialize the foriegn predictors.
         for fcol in self.fcols(bdb, genid):
             # Convert column numbers to names.
             targets = \
-                [(bayesdb_generator_column_name(bdb, genid, fcol),
-                    bayesdb_generator_column_stattype(bdb, genid, fcol))]
+                [(core.bayesdb_generator_column_name(bdb, genid, fcol),
+                  core.bayesdb_generator_column_stattype(bdb, genid, fcol))]
             conditions = \
-                [(bayesdb_generator_column_name(bdb, genid, pcol),
-                    bayesdb_generator_column_stattype(bdb, genid, pcol))
-                    for pcol in self.pcols(bdb, genid, fcol)]
+                [(core.bayesdb_generator_column_name(bdb, genid, pcol),
+                  core.bayesdb_generator_column_stattype(bdb, genid, pcol))
+                 for pcol in self.pcols(bdb, genid, fcol)]
             # Initialize the foreign predictor.
-            table_name = bayesdb_generator_table(bdb, genid)
+            table_name = core.bayesdb_generator_table(bdb, genid)
             predictor_name = self.predictor_name(bdb, genid, fcol)
             builder = self.predictor_builder[predictor_name]
             predictor = builder.create(bdb, table_name, targets, conditions)
@@ -365,7 +363,7 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
         '''
         if modelnos is None:
             n_model = 0
-            while bayesdb_generator_has_model(bdb, genid, n_model):
+            while core.bayesdb_generator_has_model(bdb, genid, n_model):
                 n_model += 1
             modelnos = range(n_model)
         with bdb.savepoint():
@@ -381,7 +379,7 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
         # XXX Aggregator only.
         if modelno is None:
             n_model = 1
-            while bayesdb_generator_has_model(bdb, genid, n_model):
+            while core.bayesdb_generator_has_model(bdb, genid, n_model):
                 n_model += 1
             p = sum(self._column_dependence_probability(bdb, genid, m, colno0,
                 colno1) for m in xrange(n_model)) / float(n_model)
