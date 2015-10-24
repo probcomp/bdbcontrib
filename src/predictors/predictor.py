@@ -38,7 +38,7 @@ class IBayesDBForeignPredictor(object):
     is strongly discouraged.
     """
     def train(self, df, targets, conditions):
-        """Trains the the foriegn predictor.
+        """Called to train the foreign predictor.
 
         Parameters
         ----------
@@ -53,6 +53,11 @@ class IBayesDBForeignPredictor(object):
         conditions: list<tuple>
             A list of `conditions` that the FP may use to generate `targets`.
             The list is of the same form as `targets`.
+
+        The `targets` and `conditions` ultimately come from the schema
+        the client indicates.
+
+        The return value of `train` is ignored.
         """
         raise NotImplementedError
 
@@ -86,9 +91,14 @@ class IBayesDBForeignPredictor(object):
             Number of samples to simulate.
 
         conditions : dict
-            A dictionary of {'condition':'value'} for all `conditions` required
-            by the FP. Missing `conditions` will result in an error, additional
-            entries will be ignored.
+            A dictionary of {'condition':'value'} for all `conditions`
+            required by the FP.  The FP may signal an error if any
+            `conditions` are missing, and should ignore any additional
+            ones.
+
+        Returns
+        -------
+        A list of the simulated values.
         """
         raise NotImplementedError
 
@@ -101,8 +111,14 @@ class IBayesDBForeignPredictor(object):
             The value of `target` to query
 
         conditions : dict
-            A dictionary of {'condition':'value'} for all `conditions` required
-            by the FP. Missing `conditions` will result in an error, additional
-            entries will be ignored.
+            A dictionary of {'condition':'value'} for all `conditions`
+            required by the FP.  The FP may signal an error if any
+            `conditions` are missing, and should ignore any additional
+            ones.
+
+        Returns
+        -------
+        float: The log probability density of the given target value
+        given the conditions.
         """
         raise NotImplementedError
