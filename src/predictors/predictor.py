@@ -57,6 +57,12 @@ class IBayesDBForeignPredictor(object):
         The `targets` and `conditions` ultimately come from the schema
         the client indicates.
 
+        TODO `train` is currently expected to be deterministic.  To
+        support FPs whose training is stochastic, the `Composer`
+        metamodel will need to be extended with options for
+        maintaining ensembles of independently trained instances of
+        such FPs.
+
         The return value of `train` is ignored.
         """
         raise NotImplementedError
@@ -78,6 +84,9 @@ class IBayesDBForeignPredictor(object):
         Returns
         -------
         A list of the simulated values.
+
+        The distribution being simulated from implicitly depends upon
+        the data through the results of training.
         """
         raise NotImplementedError
 
@@ -99,5 +108,8 @@ class IBayesDBForeignPredictor(object):
         -------
         float: The log probability density of the given target value
         given the conditions.
+
+        The distribution being evaluated implicitly depends upon the
+        data through the results of training.
         """
         raise NotImplementedError
