@@ -279,9 +279,3 @@ class RandomForest(predictor.IBayesDBForeignPredictor):
         if targets_val not in classes:
             return -float('inf')
         return np.log(distribution[np.where(classes==targets_val)[0][0]])
-
-    def get_targets(self):
-        return self.targets
-
-    def get_conditions(self):
-        return self.conditions

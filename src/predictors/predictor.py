@@ -61,27 +61,6 @@ class IBayesDBForeignPredictor(object):
         """
         raise NotImplementedError
 
-    def get_targets(self):
-        """Obtain the FP's targets.
-
-        Returns
-        -------
-        targets: list<tuple>
-            List of [(colname, stattype),...].
-        """
-        raise NotImplementedError
-
-    def get_conditions(self):
-        """Obtain the FP's conditions.
-
-        Returns
-        -------
-        conditions: list<tuple>
-            List of [(colname, stattype),...].
-
-        """
-        raise NotImplementedError
-
     def simulate(self, n_samples, conditions):
         """Simulate from the distribution {`targets`}|{`conditions`}.
 

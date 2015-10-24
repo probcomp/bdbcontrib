@@ -127,9 +127,3 @@ class KeplersLaw(predictor.IBayesDBForeignPredictor):
         period = self._compute_period(conditions[self.conditions[0]],
             conditions[self.conditions[1]]) / 60.
         return norm.logpdf(targets_val, loc=period, scale=self.noise)
-
-    def get_targets(self):
-        return self.targets
-
-    def get_conditions(self):
-        return self.conditions
