@@ -529,21 +529,9 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
         # XXX Prefer accuracy over speed for imputation.
         if numsamples is None:
             numsamples = self.n_samples
-        # Obtain all values for all other columns.
         colnos = core.bayesdb_generator_column_numbers(bdb, genid)
         colnames = core.bayesdb_generator_column_names(bdb, genid)
-        table = core.bayesdb_generator_table(bdb, genid)
-        sql = '''
-            SELECT {} FROM {} WHERE _rowid_ = ?
-        '''.format(','.join(map(quote, colnames)), quote(table))
-        cursor = bdb.sql_execute(sql, (rowid,))
-        row = None
-        try:
-            row = cursor.next()
-        except StopIteration:
-            generator = core.bayesdb_generator_table(bdb, genid)
-            raise BQLError(bdb, 'No such row in table {} '
-                'for generator {}: {}.'.format(table, generator, rowid))
+        row = core.bayesdb_generator_row_values(bdb, genid, rowid)
         # Account for multiple imputations if imputing parents.
         parent_conf = 1
         # Predicting lcol.
