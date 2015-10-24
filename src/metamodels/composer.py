@@ -361,10 +361,7 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
                 WHERE generator_id = :generator_id AND modelno = :modelno
         '''
         if modelnos is None:
-            n_model = 0
-            while core.bayesdb_generator_has_model(bdb, genid, n_model):
-                n_model += 1
-            modelnos = range(n_model)
+            modelnos = core.bayesdb_generator_modelnos(bdb, genid)
         with bdb.savepoint():
             for modelno in modelnos:
                 bdb.sql_execute(sql, {
@@ -375,16 +372,13 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
 
     def column_dependence_probability(self, bdb, genid, modelno, colno0,
             colno1):
-        # XXX Aggregator only.
         if modelno is None:
-            n_model = 1
-            while core.bayesdb_generator_has_model(bdb, genid, n_model):
-                n_model += 1
-            p = sum(self._column_dependence_probability(bdb, genid, m, colno0,
-                colno1) for m in xrange(n_model)) / float(n_model)
+            modelnos = core.bayesdb_generator_modelnos(bdb, genid)
         else:
-            p = self._column_dependence_probability(bdb, genid, modelno, colno0,
-                colno1)
+            modelnos = [modelno]
+        p = sum(self._column_dependence_probability(
+                 bdb, genid, m, colno0, colno1)
+                for m in modelnos) / float(len(modelnos))
         return p
 
     def _column_dependence_probability(self, bdb, genid, modelno, colno0,
@@ -442,17 +436,13 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
         X = [colno0]
         W = [colno1]
         Z = Y = []
-        mi = []
         if modelno is None:
-            n_model = 0
-            while core.bayesdb_generator_has_model(bdb, genid, n_model):
-                mi.append(self.conditional_mutual_information(bdb, genid,
-                    n_model, X, W, Z, Y))
-                n_model += 1
-            mi = sum(mi)/n_model
+            modelnos = core.bayesdb_generator_modelnos(bdb, genid)
         else:
-            mi = self.conditional_mutual_information(bdb, genid, modelno, X, W,
-                Z, Y)
+            modelnos = [modelno]
+        mi = sum(self.conditional_mutual_information(
+                  bdb, genid, modelno, X, W, Z, Y)
+                 for modelno in modelnos) / float(len(modelnos))
         return mi
 
     def conditional_mutual_information(self, bdb, genid, modelno, X, W, Z, Y,
