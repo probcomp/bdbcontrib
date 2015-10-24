@@ -175,7 +175,7 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
         assert hasattr(builder, 'deserialize')
         assert hasattr(builder, 'name')
         # Check for duplicates.
-        if builder.name() in self.predictor_builder:
+        if casefold(builder.name()) in self.predictor_builder:
             raise ValueError('A foreign predictor with name "{}" has already '
                 'been registered. Currently registered: {}'.format(
                     builder.name(), self.predictor_builder))
@@ -212,7 +212,6 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
         # this generator name, with a _cc suffix.
         SUFFIX = '_cc'
         cc_name = bayeslite.core.bayesdb_generator_name(bdb, genid) + SUFFIX
-        # cc_name = 'satcc'
         # Create strings for crosscat schema.
         cc_cols = ','.join(['{} {}'.format(c, columns[c]) for c in lcols])
         cc_dep = []
@@ -511,7 +510,7 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
                     ignore.add(cq)
                 else:
                     return -float('inf')
-        Q = [q for q in Q if q not in ignore]
+        Q = [c for c,_ in Q if c not in ignore]
         # (Q,Y) marginal joint density.
         _, QY_weights = self._weighted_sample(bdb, genid, modelno, Q+Y,
             n_samples=n_samples)
