@@ -81,8 +81,8 @@ class IBayesDBForeignPredictor(object):
         """
         raise NotImplementedError
 
-    def logpdf(self, targets_vals, conditions):
-        """Evaluate the log-density of {`targets`=`targets_vals`}|`conditions`.
+    def logpdf(self, values, conditions):
+        """Evaluate the log-density of {`targets`=`values`}|{`conditions`}.
 
         Parameters
         ----------
