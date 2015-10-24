@@ -494,6 +494,8 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
         return mi/numsamples
 
     def logpdf_joint(self, bdb, generator_id, targets, constraints, modelno):
+        targets = [(col, val) for _, col, val in targets]
+        constraints = [(col, val) for _, col, val in constraints]
         if modelno is None:
             modelnos = core.bayesdb_generator_modelnos(bdb, generator_id)
         else:
@@ -623,17 +625,25 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
                 'column encountered in predict_confidence.'.format(stattype))
         return imp_val, imp_conf * parent_conf
 
+    def simulate_joint(self, bdb, generator_id, targets, constraints, modelno,
+            num_predictions=1):
+        targets = [col for _, col in targets]
+        constraints = [(col, val) for _, col, val in constraints]
+        return self.simulate(bdb, generator_id, modelno, constraints, targets,
+            numpredictions=num_predictions)
+
     def simulate(self, bdb, genid, modelno, constraints, colnos,
             numpredictions=1):
         # Delegate to crosscat if colnos+constraints all lcols.
         all_cols = [c for c,v in constraints] + colnos
         if all(f not in all_cols for f in self.fcols(bdb, genid)):
-            Y_cc = [(self.cc_colno(bdb, genid, c), v)
+            row_id = core.bayesdb_generator_fresh_row_id(bdb, genid)
+            Y_cc = [(row_id, self.cc_colno(bdb, genid, c), v)
                 for c, v in constraints]
-            Q_cc = self.cc_colnos(bdb, genid, colnos)
-            return self.cc(bdb, genid).simulate(bdb,
-                self.cc_id(bdb, genid), modelno, Y_cc, Q_cc,
-                numpredictions=numpredictions)
+            Q_cc = [(row_id, c) for c in self.cc_colnos(bdb, genid, colnos)]
+            return self.cc(bdb, genid).simulate_joint(bdb,
+                self.cc_id(bdb, genid), Q_cc, Y_cc, modelno,
+                num_predictions=numpredictions)
         # Solve inference problem by sampling-importance resampling.
         result = []
         for _ in xrange(numpredictions):
@@ -662,21 +672,24 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
         if n_samples is None:
             n_samples = self.n_samples
         # Create n_samples dicts, each entry is weighted sample from joint.
-        samples = [{c:v for (c,v) in Y} for _ in xrange(n_samples)]
+        row_id = core.bayesdb_generator_fresh_row_id(bdb, genid)
+        samples = [{c:v for c,v in Y} for _ in xrange(n_samples)]
         weights = []
         w0 = 0
         # Assess likelihood of evidence at root.
-        Y_cc = [(c, v) for c,v in Y if c in self.lcols(bdb, genid)]
+        Y_cc = [(row_id, c, v) for c,v in Y if c in self.lcols(bdb, genid)]
         if Y_cc:
-            w0 += self._joint_logpdf_cc(bdb, genid, modelno, Y_cc, [])
-        # Simulate latent ccs.
-        Q_cc = [c for c in self.lcols(bdb, genid) if c not in samples[0]]
-        V_cc = self.cc(bdb, genid).simulate(bdb, self.cc_id(bdb, genid),
-            modelno, Y_cc, Q_cc, numpredictions=n_samples)
+            w0 += self.cc(bdb, genid).logpdf_joint(bdb, self.cc_id(bdb, genid),
+                Y_cc, [], modelno)
+        # Simulate unobserved ccs.
+        Q_cc = [(row_id, c)
+                for c in self.lcols(bdb, genid) if c not in samples[0]]
+        V_cc = self.cc(bdb, genid).simulate_joint(bdb, self.cc_id(bdb, genid),
+            Q_cc, Y_cc, modelno, num_predictions=n_samples)
         for k in xrange(n_samples):
             w = w0
             # Add simulated Q_cc.
-            samples[k].update({c:v for c,v in zip(Q_cc, V_cc[k])})
+            samples[k].update({c:v for (_, c), v in zip(Q_cc, V_cc[k])})
             for fcol in self.topo(bdb, genid):
                 pcols = self.pcols(bdb, genid, fcol)
                 predictor = self.predictor(bdb, genid, fcol)
@@ -693,11 +706,6 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
                     samples[k][fcol] = predictor.simulate(1, conditions)[0]
             weights.append(w)
         return samples, weights
-
-    def _joint_logpdf_cc(self, bdb, genid, modelno, Q, Y):
-        # Indirection.
-        return self.cc(bdb, genid).logpdf_joint(bdb, self.cc_id(bdb, genid),
-            Q, Y, modelno)
 
     def cc_colno(self, bdb, genid, colno):
         return self.cc_colnos(bdb, genid, [colno])[0]
