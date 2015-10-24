@@ -222,10 +222,10 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
                 cc_dep.append('INDEPENDENT({})'.format(','.join(dep[1])))
         cc_dep = ','.join(cc_dep)
         bql = """
-            CREATE GENERATOR {} FOR satellites USING crosscat(
+            CREATE GENERATOR {} FOR {} USING crosscat(
                 {}, {}
             );
-        """.format(cc_name, cc_cols, cc_dep)
+        """.format(cc_name, quote(table), cc_cols, cc_dep)
         bdb.execute(bql)
         # Convert strings to column numbers.
         fcolno_to_pcolnos = {}
@@ -301,7 +301,7 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
             # Drop internal crosscat.
             bdb.execute('''
                 DROP GENERATOR {}
-            '''.format(cc_name))
+            '''.format(quote(cc_name)))
 
     def initialize_models(self, bdb, genid, modelnos, model_config):
         # Initialize internal crosscat. If k models of composer are instantiated
