@@ -487,8 +487,8 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
             modelnos = core.bayesdb_generator_modelnos(bdb, generator_id)
         else:
             modelnos = [modelno]
-        return logmeanexp(self._joint_logpdf(bdb, generator_id, modelno,
-            targets, constraints) for modelno in modelnos)
+        return logmeanexp([self._joint_logpdf(bdb, generator_id, modelno,
+            targets, constraints) for modelno in modelnos])
 
     def _joint_logpdf(self, bdb, genid, modelno, Q, Y, n_samples=None):
         # XXX Computes the joint probability of query Q given evidence Y
