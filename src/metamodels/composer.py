@@ -136,29 +136,19 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
             self.n_samples = n_samples
 
     def register_foreign_predictor(self, builder):
-        """Register an object which builds a foreign predictor. The `builder`
-        must have the methods:
+        """Register an object which builds a foreign predictor.
 
-        - create(bdb, table, targets, conditions)
-            Returns a new foreign predictor, typically by calling its `train`
-            method (see `IBayesDBForeignPredictor`).
+        The `builder` must implement
+        :class:`bdbcontrib.predictors.IBayesDBForeignPredictorFactory`.
 
-        - serialize(predictor)
-            Returns the binary represenation of `predictor`.
+        The pattern used by the extant predictors is to include these
+        four methods in the class implementing
+        :class:`bdbcontrib.predictors.IBayesDBForeignPredictor` as
+        `@classmethods`. For example, registering
+        :class:`bdbcontrib.predictors.random_forest.RandomForest` is
+        achieved by registering the **class** instance.
 
-        - deserialize(binary)
-            Returns the foreign predictor from its `binary` representation.
-
-        - name()
-            Returns the name of the builder.
-
-        The current design pattern is to include these four methods in the
-        class implementing `IBayesDBForeignPreidctor` as @classmethods. For
-        example, suppose RandomForest is a class implementing
-        `IBayesDBForeignPreidctor`, then registering RandomForest is achieved
-        by registering the **class** instance.
-
-        >> from bdbcontrib.foreign.random_forest import RandomForest
+        >> from bdbcontrib.predictors.random_forest import RandomForest
         >> composer.register_foreign_predictor(RandomForest)
 
         Explicitly initializing a foreign predictor instance is not
@@ -170,6 +160,9 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
         launched.
         """
         # Validate the builder.
+        # Not isinstance(builder, predictor.IBayesDBForeignPreidctorFactory)
+        # because the pattern using classes and class methods does not make the
+        # classes be instances of that.
         assert hasattr(builder, 'create')
         assert hasattr(builder, 'serialize')
         assert hasattr(builder, 'deserialize')

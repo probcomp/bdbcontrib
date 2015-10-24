@@ -14,8 +14,73 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
+class IBayesDBForeignPredictorFactory(object):
+    """BayesDB foreign predictor factory interface.
+
+    A foreign predictor factory knows how to create instances of
+    particular kind of foreign predictor, either by training them from
+    data or by loading them from their serialized representation.
+
+    Note: A common implementation pattern is to make the class of the
+    foreign predictor be a singleton factory by defining these methods
+    as `@classmethod`, instead of creating a separate class.  See, for
+    example, :class:`bdbcontrib.predictors.KeplersLaw`.
+    """
+
+    def name(self):
+        """Return the name of this kind of foreign predictor, as a string.
+
+        All registered foreign predictors must have unique names.
+        """
+        raise NotImplementedError
+
+    def create(self, bdb, table, targets, conditions):
+        """Create and train a foreign predictor for the given circumstances.
+
+        Parameters
+        ----------
+        bdb: bayeslite.BayesDB
+            The BayesDB containing the data to train on.
+
+        table: string
+            The name of the BayesDB table containing the data.
+
+        targets: list<tuple<string, string>>
+            The columns to be predicted, as pairs of column name and
+            stattype.
+
+        conditions: list<tuple<string, string>>
+            The columns to be used as inputs, as pairs of column name and
+            stattype.
+
+        Returns
+        -------
+        A trained :class:`~IBayesDBForeignPredictor` instance.
+        """
+        raise NotImplementedError
+
+    def serialize(self, predictor):
+        """Serialize the given predictor instance to a string.
+
+        The instance will have been created by calling either
+        :meth:`create` or :meth:`deserialize` on this factory.
+        """
+        raise NotImplementedError
+
+    def deserialize(self, blob):
+        """Reconstitute a serialized predictor instance.
+
+        The `blob` will have been created by calling :meth:`serialize`
+        on an instance of :class:`IBayesDBForeignPredictorFactory`
+        registered with the same :meth:`name` as this one at some
+        point in the past.  In typical use, this will be the same
+        instance as the present one, but the usual advice about
+        backward compatibility with stored data formats applies.
+        """
+        raise NotImplementedError
+
 class IBayesDBForeignPredictor(object):
-    """BayesDB foreign predictor interface.
+    """BayesDB foreign predictor instance interface.
 
     A foreign predictor (FP) is itself an independent object which is typically
     used outside the universe of BayesDB.
@@ -32,11 +97,11 @@ class IBayesDBForeignPredictor(object):
 
         Simulate and logpdf both require a full realization of all `conditions`.
 
-    TODO: Extended interface for serialization of foreign predictors.
-
-    Explicit initialization of foreign predictors using parameters in `__init__`
-    is strongly discouraged.
+    BayesDB initializes foreign predictors through the methods in
+    :class:`~IBayesDBForeignPredictorFactory`, so imposes no
+    particular restrictions on `__init__`.
     """
+
     def train(self, df, targets, conditions):
         """Called to train the foreign predictor.
 
