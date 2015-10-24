@@ -80,11 +80,11 @@ bdbcontrib.query(bdb, '''
             Period_minutes NUMERICAL
     );''')
 
-bdbcontrib.query(bdb, 'INITIALIZE 1 MODEL FOR sat_kepler')
-bdbcontrib.query(bdb, 'INITIALIZE 1 MODEL FOR sat_default')
+bdbcontrib.query(bdb, 'INITIALIZE 16 MODELS FOR sat_kepler')
+bdbcontrib.query(bdb, 'INITIALIZE 16 MODELS FOR sat_default')
 
-bdbcontrib.query(bdb, 'ANALYZE sat_kepler FOR 1 ITERATION WAIT')
-bdbcontrib.query(bdb, 'ANALYZE sat_default FOR 1 ITERATION WAIT')
+bdbcontrib.query(bdb, 'ANALYZE sat_kepler FOR 20 ITERATIONS WAIT')
+bdbcontrib.query(bdb, 'ANALYZE sat_default FOR 20 ITERATIONS WAIT')
 
 KC = bdbcontrib.query(bdb, '''
     SIMULATE Apogee_km, Perigee_km FROM sat_kepler
