@@ -256,13 +256,11 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
                     ''', (genid, fcolno, pcolno,))
             # Save topological order.
             topo = self.topological_sort(fcolno_to_pcolnos)
-            position = 0
-            for colno, _ in topo:
+            for position, (colno, _) in enumerate(topo):
                 bdb.sql_execute('''
                     INSERT INTO bayesdb_composer_column_toposort
                         (generator_id, colno, position) VALUES (?,?,?)
                     ''', (genid, colno, position,))
-                position += 1
             # Save predictor names of foreign columns.
             for fcolno in fcolno_to_pcolnos:
                 fp_name = fcol_to_fpred[casefold(
