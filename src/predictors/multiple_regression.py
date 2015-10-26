@@ -272,6 +272,6 @@ class MultipleRegression(predictor.IBayesDBForeignPredictor):
         prediction, noise = self._compute_targets_distribution(conditions)
         return list(prediction + np.random.normal(scale=noise, size=n_samples))
 
-    def logpdf(self, values, conditions):
+    def logpdf(self, value, conditions):
         prediction, noise = self._compute_targets_distribution(conditions)
-        return norm.logpdf(values, loc=prediction, scale=noise)
+        return norm.logpdf(value, loc=prediction, scale=noise)

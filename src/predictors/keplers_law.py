@@ -113,11 +113,11 @@ class KeplersLaw(predictor.IBayesDBForeignPredictor):
         return list(period/60. + np.random.normal(scale=self.noise,
             size=n_samples))
 
-    def logpdf(self, values, conditions):
+    def logpdf(self, value, conditions):
         if not set(self.conditions).issubset(set(conditions.keys())):
             raise ValueError('Must specify values for all the conditionals.\n'
                 'Received: {}\n'
                 'Expected: {}'.format(conditions, self.conditions))
         period = self._compute_period(conditions[self.conditions[0]],
             conditions[self.conditions[1]]) / 60.
-        return norm.logpdf(values, loc=period, scale=self.noise)
+        return norm.logpdf(value, loc=period, scale=self.noise)

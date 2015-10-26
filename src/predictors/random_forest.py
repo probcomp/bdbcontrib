@@ -272,8 +272,8 @@ class RandomForest(predictor.IBayesDBForeignPredictor):
         draws = np.random.multinomial(1, distribution, size=n_samples)
         return [classes[np.where(d==1)[0][0]] for d in draws]
 
-    def logpdf(self, values, conditions):
+    def logpdf(self, value, conditions):
         distribution, classes = self._compute_targets_distribution(conditions)
-        if values not in classes:
+        if value not in classes:
             return -float('inf')
-        return np.log(distribution[np.where(classes==values)[0][0]])
+        return np.log(distribution[np.where(classes==value)[0][0]])
