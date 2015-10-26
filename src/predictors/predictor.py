@@ -79,7 +79,7 @@ class IBayesDBForeignPredictorFactory(object):
         """
         raise NotImplementedError
 
-    def serialize(self, predictor):
+    def serialize(self, bdb, predictor):
         """Serialize the given predictor instance to a string.
 
         The instance will have been created by calling either
@@ -87,7 +87,7 @@ class IBayesDBForeignPredictorFactory(object):
         """
         raise NotImplementedError
 
-    def deserialize(self, blob):
+    def deserialize(self, bdb, blob):
         """Reconstitute a serialized predictor instance.
 
         The `blob` will have been created by calling :meth:`serialize`

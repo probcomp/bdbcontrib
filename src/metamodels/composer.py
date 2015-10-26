@@ -326,7 +326,7 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
                         predictor_binary = :predictor_binary
                         WHERE generator_id = :genid AND colno = :colno
                 '''
-                predictor_binary = builder.serialize(predictor)
+                predictor_binary = builder.serialize(bdb, predictor)
                 bdb.sql_execute(sql, {
                     'genid': genid,
                     'predictor_binary': sqlite3.Binary(predictor_binary),
@@ -746,7 +746,8 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
                 raise LookupError('Foreign predictor for column "{}" '
                     'not registered: "{}".'.format(name,
                         core.bayesdb_generator_column_name(bdb, genid, fcol)))
-            self.predictor_cache[(genid, fcol)] = builder.deserialize(binary)
+            self.predictor_cache[(genid, fcol)] = \
+                builder.deserialize(bdb, binary)
         return self.predictor_cache[(genid, fcol)]
 
     def parse(self, schema):

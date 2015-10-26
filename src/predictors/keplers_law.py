@@ -38,7 +38,7 @@ class KeplersLaw(predictor.IBayesDBForeignPredictor):
         return kl
 
     @classmethod
-    def serialize(cls, pred):
+    def serialize(cls, _bdb, pred):
         state = {
             'targets': pred.targets,
             'conditions': pred.conditions,
@@ -47,7 +47,7 @@ class KeplersLaw(predictor.IBayesDBForeignPredictor):
         return pickle.dumps(state)
 
     @classmethod
-    def deserialize(cls, binary):
+    def deserialize(cls, _bdb, binary):
         state = pickle.loads(binary)
         kl = cls(targets=state['targets'], conditions=state['conditions'],
             noise=state['noise'])
