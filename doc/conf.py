@@ -18,6 +18,7 @@
 
 extensions = [
     'sphinx.ext.autodoc',
+    'sphinx.ext.autosummary',
     'numpydoc',
 ]
 

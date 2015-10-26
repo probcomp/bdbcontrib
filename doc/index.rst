@@ -16,6 +16,7 @@ Contents:
    bdbcontrib
    internal
    experiments
+   predictors
 
 Indices and tables
 ==================
