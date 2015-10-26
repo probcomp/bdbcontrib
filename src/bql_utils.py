@@ -18,6 +18,7 @@ import pandas as pd
 
 import bayeslite.core
 from bayeslite import bql_quote_name as quote
+from bayeslite.sqlite3_util import sqlite3_quote_name
 from bayeslite.util import cursor_value
 
 ###############################################################################
@@ -109,6 +110,18 @@ def cursor_to_df(cursor):
 
     return df
 
+def table_to_df(bdb, table_name, column_names=None):
+    """Return the contents of the given table as a pandas DataFrame.
+
+    If `column_names` is not None, fetch only those columns.
+    """
+    qt = sqlite3_quote_name(table_name)
+    if column_names is not None:
+        qcns = ','.join(map(sqlite3_quote_name, column_names))
+        select_sql = 'SELECT %s FROM %s' % (qcns, qt)
+    else:
+        select_sql = 'SELECT * FROM %s' % (qt,)
+    return cursor_to_df(bdb.sql_execute(select_sql))
 
 def query(bdb, bql):
     """Execute the `bql` query on the `bdb` instance.
