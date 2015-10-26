@@ -216,9 +216,9 @@ class MultipleRegression(predictor.IBayesDBForeignPredictor):
         self.Y = self.dataset[self.targets].as_matrix().ravel()
 
     def _train_mr(self):
-        """Trains the random forests classifiers.
+        """Trains the regressions.
 
-        We train two classifiers, `partial` which is just trained on
+        We train two regressions, `partial` which is just trained on
         `conditions_numerical`, and `full` which is trained on
         `conditions_numerical+conditions_categorical`.
 
