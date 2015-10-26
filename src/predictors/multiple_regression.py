@@ -29,13 +29,12 @@ import bdbcontrib
 from bdbcontrib.predictors import predictor
 
 class MultipleRegression(predictor.IBayesDBForeignPredictor):
-    """
-    A MultipleRegression FP. The `targets` must be a single numerical stattype.
+    """A linear regression foreign predictor.
 
-    Attributes
-    ----------
-    Please do not mess around with any (exploring is ok).
+    The `targets` must be a single numerical stattype.  The `conditions`
+    may be arbitrary numerical or categorical columns.
     """
+
     @classmethod
     def create(cls, bdb, table, targets, conditions):
         df = bdbcontrib.cursor_to_df(bdb.execute('''

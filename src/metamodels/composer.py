@@ -138,19 +138,6 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
     def register_foreign_predictor(self, builder):
         """Register an object which builds a foreign predictor.
 
-        The `builder` must implement
-        :class:`~.IBayesDBForeignPredictorFactory`.
-
-        The pattern used by the extant predictors is to include these
-        four methods in the class implementing
-        :class:`~.IBayesDBForeignPredictor` as `@classmethods`. For
-        example, registering
-        :class:`bdbcontrib.predictors.random_forest.RandomForest` is
-        achieved by registering the **class** instance.
-
-        >> from bdbcontrib.predictors.random_forest import RandomForest
-        >> composer.register_foreign_predictor(RandomForest)
-
         Explicitly initializing a foreign predictor instance is not
         necessary. The `composer` will create, train, and serialize
         all foreign predictors declared in the `schema` when the BQL query
@@ -158,6 +145,19 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
 
         Foreign predictors must be registered each time the database is
         launched.
+
+        Parameters
+        ----------
+        builder : :class:`.IBayesDBForeignPredictorFactory`
+            The pattern used by the extant predictors is to include these
+            four methods in the class implementing
+            :class:`~.IBayesDBForeignPredictor` as `@classmethods`. For
+            example, registering
+            :class:`bdbcontrib.predictors.random_forest.RandomForest` is
+            achieved by registering the **class** instance::
+
+                >> from bdbcontrib.predictors.random_forest import RandomForest
+                >> composer.register_foreign_predictor(RandomForest)
         """
         # Validate the builder.
         # Not isinstance(builder, predictor.IBayesDBForeignPreidctorFactory)
@@ -797,18 +797,19 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
           the object used when `Composer.register_foreign_predictor`
           was invoked.
 
-        For example:
+        For example::
 
             >> from bdbcontrib.foreign.random_forest import RandomForest
             >> composer.register_foreign_predictor(random_forest.RandomForest)
             >> RandomForest.name()
             random_forest
 
-        The grammar inside foreign predictor directives is:
+        The grammar inside foreign predictor directives is::
+
             <target> <stattype> GIVEN <condition> [...[condition]]
 
-        - All columns specified in `dependent` and `independent`
-          directives must be modeled by the `default` metamodel.
+        All columns specified in `dependent` and `independent`
+        directives must be modeled by the `default` metamodel.
 
         Parameters
         ----------
@@ -943,6 +944,7 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
     @staticmethod
     def topological_sort(graph):
         """Topologically sort a directed graph represented as an adjacency list.
+
         Assumes that edges are incoming, ie (10:[8,7]) means 8->10 and 7->10.
 
         Parameters

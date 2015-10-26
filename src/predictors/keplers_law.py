@@ -29,12 +29,8 @@ class KeplersLaw(predictor.IBayesDBForeignPredictor):
     There must be exactly one `targets` column (period in minutes) and
     exactly two `conditions` columns (apogee in km, perigee in
     km). All stattypes are expected to be numerical.
-
-    Attributes
-    ----------
-    Please do not mess around with any (exploring is ok).
-
     """
+
     @classmethod
     def create(cls, bdb, table, targets, conditions):
         df = bdbcontrib.cursor_to_df(bdb.execute('''

@@ -27,31 +27,31 @@ import bdbcontrib
 from bdbcontrib.predictors import predictor
 
 class RandomForest(predictor.IBayesDBForeignPredictor):
-    """
-    A RandomForest FP. The `targets` must be a single categorical stattype.
+    """A random forest foreign predictor.
 
-    Example
-    -------
-    >> df = pd.read_csv('/path/to/satellites.csv')
-    >> rf = RandomForest()
-    >> rf = train(df, `targets`, `conditions`)
-    >> rf.probability('Intermediate', Perigee_km=535, Apogee_km=551,
-            Eccentricity=0.00116, Period_minutes=95.5, Launch_Mass_kg=293,
-            Power_watts=414,Anticipated_Lifetime=3, Class_of_Orbit='LEO'
-            Purpose='Astrophysics', Users='Government/Civil')
-    0.8499
-    >> rf.simulate(10, Perigee_km=535, Apogee_km=551,
-            Eccentricity=0.00116, Period_minutes=95.5, Launch_Mass_kg=293,
-            Power_watts=414,Anticipated_Lifetime=3, Class_of_Orbit='LEO',
-            Purpose='Astrophysics', Users='Government/Civil')
+    The `targets` must be a single categorical stattype.
+
+    Examples
+    --------
+
+    >>> df = pd.read_csv('/path/to/satellites.csv')
+    >>> rf = RandomForest()
+    >>> rf = train(df, `targets`, `conditions`)
+    >>> rf.logpdf('Intermediate', {Perigee_km:535, Apogee_km:551,
+            Eccentricity:0.00116, Period_minutes:95.5, Launch_Mass_kg:293,
+            Power_watts:414,Anticipated_Lifetime:3, Class_of_Orbit:'LEO'
+            Purpose:'Astrophysics', Users:'Government/Civil'})
+    -0.1626
+
+    >>> rf.simulate(10, {Perigee_km:535, Apogee_km:551,
+            Eccentricity:0.00116, Period_minutes:95.5, Launch_Mass_kg:293,
+            Power_watts:414,Anticipated_Lifetime:3, Class_of_Orbit:'LEO',
+            Purpose='Astrophysics', Users='Government/Civil'})
     ['Intermediate', 'Intermediate', 'Intermediate', 'Intermediate',
      'Intermediate', 'Intermediate', 'Intermediate', 'Sun-Synchronous',
      'Intermediate', 'Intermediate']
-
-    Attributes
-    ----------
-    Please do not mess around with any (exploring is ok).
     """
+
     @classmethod
     def create(cls, bdb, table, targets, conditions):
         df = bdbcontrib.cursor_to_df(bdb.execute('''

@@ -1,4 +1,4 @@
-:mod:`bdbcontrib.predictors.predictor`: Foreign Predictor interface
+:mod:`bdbcontrib.predictors.predictor`: Foreign predictor interface
 ===================================================================
 
 PRELIMINARY!
