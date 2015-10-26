@@ -14,9 +14,9 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
+import math
 import pickle
 import numpy as np
-from scipy.stats import norm
 
 import bdbcontrib
 from bdbcontrib.predictors import predictor
@@ -120,4 +120,10 @@ class KeplersLaw(predictor.IBayesDBForeignPredictor):
                 'Expected: {}'.format(conditions, self.conditions))
         period = self._compute_period(conditions[self.conditions[0]],
             conditions[self.conditions[1]]) / 60.
-        return norm.logpdf(value, loc=period, scale=self.noise)
+        return logpdfGaussian(value, period, self.noise)
+
+HALF_LOG2PI = 0.5 * math.log(2 * math.pi)
+def logpdfGaussian(x, mu, sigma):
+    deviation = x - mu
+    return - math.log(sigma) - HALF_LOG2PI \
+        - (0.5 * deviation * deviation / (sigma * sigma))

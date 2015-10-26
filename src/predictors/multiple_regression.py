@@ -14,12 +14,12 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
+import math
 import pickle
 
 import numpy as np
 import pandas as pd
 
-from scipy.stats import norm
 from sklearn.linear_model import LinearRegression
 from sklearn.preprocessing import Imputer
 
@@ -274,4 +274,10 @@ class MultipleRegression(predictor.IBayesDBForeignPredictor):
 
     def logpdf(self, value, conditions):
         prediction, noise = self._compute_targets_distribution(conditions)
-        return norm.logpdf(value, loc=prediction, scale=noise)
+        return logpdfGaussian(value, prediction, noise)
+
+HALF_LOG2PI = 0.5 * math.log(2 * math.pi)
+def logpdfGaussian(x, mu, sigma):
+    deviation = x - mu
+    return - math.log(sigma) - HALF_LOG2PI \
+        - (0.5 * deviation * deviation / (sigma * sigma))
