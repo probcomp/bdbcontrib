@@ -35,9 +35,8 @@ class MultipleRegression(predictor.IBayesDBForeignPredictor):
 
     @classmethod
     def create(cls, bdb, table, targets, conditions):
-        df = bdbcontrib.cursor_to_df(bdb.execute('''
-                SELECT * FROM {}
-        '''.format(table)))
+        cols = [c for c,_ in targets+conditions]
+        df = bdbcontrib.table_to_df(bdb, table, cols)
         mr = cls()
         mr.train(df, targets, conditions)
         return mr
