@@ -26,7 +26,7 @@ class KeplersLaw(predictor.IBayesDBForeignPredictor):
 
     There must be exactly one `targets` column (period in minutes) and
     exactly two `conditions` columns (apogee in km, perigee in
-    km). All stattypes are expected to be numerical.
+    km, in that order). All stattypes are expected to be numerical.
     """
 
     @classmethod
