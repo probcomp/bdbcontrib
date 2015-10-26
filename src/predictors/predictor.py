@@ -24,7 +24,7 @@ class IBayesDBForeignPredictorFactory(object):
     Note: A common implementation pattern is to make the class of the
     foreign predictor be a singleton factory by defining these methods
     as `@classmethod`, instead of creating a separate class.  See, for
-    example, :class:`bdbcontrib.predictors.KeplersLaw`.
+    example, :class:`bdbcontrib.predictors.keplers_law.KeplersLaw`.
     """
 
     def name(self):

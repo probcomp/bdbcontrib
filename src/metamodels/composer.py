@@ -139,12 +139,12 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
         """Register an object which builds a foreign predictor.
 
         The `builder` must implement
-        :class:`bdbcontrib.predictors.IBayesDBForeignPredictorFactory`.
+        :class:`~.IBayesDBForeignPredictorFactory`.
 
         The pattern used by the extant predictors is to include these
         four methods in the class implementing
-        :class:`bdbcontrib.predictors.IBayesDBForeignPredictor` as
-        `@classmethods`. For example, registering
+        :class:`~.IBayesDBForeignPredictor` as `@classmethods`. For
+        example, registering
         :class:`bdbcontrib.predictors.random_forest.RandomForest` is
         achieved by registering the **class** instance.
 
@@ -750,50 +750,53 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
         return self.predictor_cache[(genid, fcol)]
 
     def parse(self, schema):
-        """Parse the given `schema` for a `composer` metamodel. An example
-        of a schema is:
+        """Parse the given `schema` for a `composer` metamodel.
 
-        CREATE GENERATOR foo FOR satellites USING composer(
-            default (
-                Country_of_Operator CATEGORICAL, Operator_Owner
-                CATEGORICAL, Users CATEGORICAL, Purpose CATEGORICAL,
-                Class_of_orbit CATEGORICAL, Perigee_km NUMERICAL, Apogee_km
-                NUMERICAL, Eccentricity NUMERICAL, Launch_Mass_kg NUMERICAL,
-                Dry_Mass_kg NUMERICAL, Power_watts NUMERICAL, Date_of_Launch
-                NUMERICAL, Anticipated_Lifetime NUMERICAL, Contractor
-                CATEGORICAL, Country_of_Contractor CATEGORICAL, Launch_Site
-                CATEGORICAL, Launch_Vehicle CATEGORICAL,
-                Source_Used_for_Orbital_Data CATEGORICAL,
-                longitude_radians_of_geo NUMERICAL, Inclination_radians
-                NUMERICAL
-            ),
-            random_forest (
-                Type_of_Orbit CATEGORICAL
-                    GIVEN Apogee_km, Perigee_km,
-                        Eccentricity, Period_minutes, Launch_Mass_kg,
-                        Power_watts, Anticipated_Lifetime, Class_of_orbit
-            ),
-            keplers_law (
-                Period_minutes NUMERICAL
-                    GIVEN Perigee_km, Apogee_km
-            ),
-            multiple_regression (
-                Anticipated_Lifetime NUMERICAL
-                    GIVEN Dry_Mass_kg, Launch_Mass_kg, Purpose
-            ),
-            dependent(Launch_Mass_kg, Dry_Mass_kg, Power_watts),
-            dependent(Perigee_km, Apogee_km),
-            independent(Operator_Owner, Inclination_radians)
-        );
+        An example of a schema is::
+
+            CREATE GENERATOR foo FOR satellites USING composer(
+                default (
+                    Country_of_Operator CATEGORICAL, Operator_Owner
+                    CATEGORICAL, Users CATEGORICAL, Purpose CATEGORICAL,
+                    Class_of_orbit CATEGORICAL, Perigee_km NUMERICAL, Apogee_km
+                    NUMERICAL, Eccentricity NUMERICAL, Launch_Mass_kg NUMERICAL,
+                    Dry_Mass_kg NUMERICAL, Power_watts NUMERICAL, Date_of_Launch
+                    NUMERICAL, Anticipated_Lifetime NUMERICAL, Contractor
+                    CATEGORICAL, Country_of_Contractor CATEGORICAL, Launch_Site
+                    CATEGORICAL, Launch_Vehicle CATEGORICAL,
+                    Source_Used_for_Orbital_Data CATEGORICAL,
+                    longitude_radians_of_geo NUMERICAL, Inclination_radians
+                    NUMERICAL
+                ),
+                random_forest (
+                    Type_of_Orbit CATEGORICAL
+                        GIVEN Apogee_km, Perigee_km,
+                            Eccentricity, Period_minutes, Launch_Mass_kg,
+                            Power_watts, Anticipated_Lifetime, Class_of_orbit
+                ),
+                keplers_law (
+                    Period_minutes NUMERICAL
+                        GIVEN Perigee_km, Apogee_km
+                ),
+                multiple_regression (
+                    Anticipated_Lifetime NUMERICAL
+                        GIVEN Dry_Mass_kg, Launch_Mass_kg, Purpose
+                ),
+                dependent(Launch_Mass_kg, Dry_Mass_kg, Power_watts),
+                dependent(Perigee_km, Apogee_km),
+                independent(Operator_Owner, Inclination_radians)
+            );
 
         The schema must adhere to the following rules:
 
-        - Default metamodel is identified `default` or `crosscat`. Every
-        `colname` must have its `stattype` declared. IGNORE and GUESS(*) are
-        forbidden.
+        - Default metamodel is identified `default` or
+          `crosscat`. Every `colname` must have its `stattype`
+          declared. IGNORE and GUESS(*) are forbidden.
 
-        - Foriegn predictors are identified by the `name()` method of the object
-         used when `Composer.register_foreign_predictor` was invoked.
+        - Foriegn predictors are identified by the `name()` method of
+          the object used when `Composer.register_foreign_predictor`
+          was invoked.
+
         For example:
 
             >> from bdbcontrib.foreign.random_forest import RandomForest
@@ -804,8 +807,8 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
         The grammar inside foreign predictor directives is:
             <target> <stattype> GIVEN <condition> [...[condition]]
 
-        - All columns specified in `dependent` and `independent` directives must
-        be modeled by the `default` metamodel.
+        - All columns specified in `dependent` and `independent`
+          directives must be modeled by the `default` metamodel.
 
         Parameters
         ----------
@@ -834,9 +837,11 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
             `self.predictor_builder`.
 
         dependencies : list(<tuple(<bool>,<list<str>)>)
-            A list of dependency constraints. Each entry in the list is a tuple.
-            For example, (True, ['foo', 'bar', 'baz']) means the three
-            variables are mutually and pairwise *dependent*.
+            A list of dependency constraints. Each entry in the list
+            is a tuple.  For example, (True, ['foo', 'bar', 'baz'])
+            means the three variables are mutually and pairwise
+            *dependent*.
+
         """
         # Allowed keywords.
         DIRECTIVES = ['crosscat', 'default', 'dependent', 'independent'] + \

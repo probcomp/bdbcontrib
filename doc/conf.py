@@ -29,3 +29,5 @@ release = '0.1.dev'
 version = '0.1'
 
 nitpicky = True
+
+numpydoc_show_class_members = False

@@ -16,3 +16,6 @@
 
 from predictor import IBayesDBForeignPredictorFactory
 from predictor import IBayesDBForeignPredictor
+from keplers_law import KeplersLaw
+from multiple_regression import MultipleRegression
+from random_forest import RandomForest
