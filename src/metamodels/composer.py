@@ -503,7 +503,7 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
                     ignore.add(cq)
                 else:
                     return -float('inf')
-        Q = [c for c,_ in Q if c not in ignore]
+        Q = [(c,v) for c,v in Q if c not in ignore]
         # (Q,Y) marginal joint density.
         _, QY_weights = self._weighted_sample(bdb, genid, modelno, Q+Y,
             n_samples=n_samples)
