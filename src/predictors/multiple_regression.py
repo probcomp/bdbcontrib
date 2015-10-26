@@ -42,16 +42,16 @@ class MultipleRegression(predictor.IBayesDBForeignPredictor):
         return mr
 
     @classmethod
-    def serialize(cls, predictor):
+    def serialize(cls, pred):
         state = {
-            'targets': predictor.targets,
-            'conditions_numerical': predictor.conditions_numerical,
-            'conditions_categorical': predictor.conditions_categorical,
-            'mr_full': predictor.mr_full,
-            'mr_partial': predictor.mr_partial,
-            'mr_full_noise': predictor.mr_full_noise,
-            'mr_partial_noise': predictor.mr_partial_noise,
-            'lookup': predictor.lookup
+            'targets': pred.targets,
+            'conditions_numerical': pred.conditions_numerical,
+            'conditions_categorical': pred.conditions_categorical,
+            'mr_full': pred.mr_full,
+            'mr_partial': pred.mr_partial,
+            'mr_full_noise': pred.mr_full_noise,
+            'mr_partial_noise': pred.mr_partial_noise,
+            'lookup': pred.lookup
         }
         return pickle.dumps(state)
 

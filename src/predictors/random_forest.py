@@ -59,14 +59,14 @@ class RandomForest(predictor.IBayesDBForeignPredictor):
         return rf
 
     @classmethod
-    def serialize(cls, predictor):
+    def serialize(cls, pred):
         state = {
-            'targets': predictor.targets,
-            'conditions_numerical': predictor.conditions_numerical,
-            'conditions_categorical': predictor.conditions_categorical,
-            'rf_full': predictor.rf_full,
-            'rf_partial': predictor.rf_partial,
-            'lookup': predictor.lookup
+            'targets': pred.targets,
+            'conditions_numerical': pred.conditions_numerical,
+            'conditions_categorical': pred.conditions_categorical,
+            'rf_full': pred.rf_full,
+            'rf_partial': pred.rf_partial,
+            'lookup': pred.lookup
         }
         return pickle.dumps(state)
 
