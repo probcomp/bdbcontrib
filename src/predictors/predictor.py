@@ -48,6 +48,8 @@ class IBayesDBForeignPredictorFactory(object):
         targets : list<tuple<string, string>>
             The columns to be predicted, as pairs of column name and
             stattype.
+            TODO Until :class:`.Composer` supports joint prediction,
+            the `targets` list will have length 1.
 
         conditions : list<tuple<string, string>>
             The columns to be used as inputs, as pairs of column name and
@@ -124,9 +126,12 @@ class IBayesDBForeignPredictor(object):
             Contains the training set.
 
         targets : list<tuple>
-            A list of `targets` that the FP must learn to generate. The list is
-            of the form [(`colname`, `stattype`),...], where `colname` must be
-            the name of a column in `df`, and `stattype` is the data type.
+            A list of `targets` that the FP must learn to
+            generate. The list is of the form [(`colname`,
+            `stattype`),...], where `colname` must be the name of a
+            column in `df`, and `stattype` is the data type.
+            TODO Until :class:`.Composer` supports joint prediction,
+            the `targets` will have length 1.
 
         conditions : list<tuple>
             A list of `conditions` that the FP may use to generate `targets`.
@@ -135,7 +140,7 @@ class IBayesDBForeignPredictor(object):
         raise NotImplementedError
 
     def simulate(self, n_samples, conditions):
-        """Simulate from the distribution {`targets`}|{`conditions`}.
+        """Simulate from the distribution {`target`}|{`conditions`}.
 
         The distribution being simulated from implicitly depends upon
         the data through the results of training.
@@ -159,15 +164,16 @@ class IBayesDBForeignPredictor(object):
         raise NotImplementedError
 
     def logpdf(self, values, conditions):
-        """Evaluate the log-density of {`targets`=`values`}|{`conditions`}.
+        """Evaluate the log-density of {`target`=`value`}|{`conditions`}.
 
         The distribution being evaluated implicitly depends upon the
         data through the results of training.
 
         Parameters
         ----------
-        values : int
-            The value of `target` to query
+        value : object
+            The value of `target` to query.  The type will appropriate
+            to the statistical type of the column.
 
         conditions : dict
             A dictionary of {'condition':'value'} for all `conditions`
