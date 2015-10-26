@@ -15,7 +15,7 @@
 #   limitations under the License.
 
 class IBayesDBForeignPredictorFactory(object):
-    """BayesDB foreign predictor factory interface.
+    """PRELIMINARY BayesDB foreign predictor factory interface.
 
     A foreign predictor factory knows how to create instances of
     particular kind of foreign predictor, either by training them from
@@ -36,6 +36,15 @@ class IBayesDBForeignPredictorFactory(object):
 
     def create(self, bdb, table, targets, conditions):
         """Create and train a foreign predictor for the given circumstances.
+
+        The `targets` and `conditions` ultimately come from the schema
+        the client indicates.
+
+        TODO `create` is currently assumed to be deterministic.  To
+        support FPs whose training is stochastic, the :class:`.Composer`
+        metamodel will need to be extended with options for
+        maintaining ensembles of independently trained instances of
+        such FPs.
 
         Parameters
         ----------
@@ -59,6 +68,14 @@ class IBayesDBForeignPredictorFactory(object):
         -------
         predictor : :class:`~.IBayesDBForeignPredictor`
             A trained instance of the foreign predictor.
+
+        See Also
+        --------
+
+        :func:`bdbcontrib.table_to_df`
+            a helper function you can use if you want to train from a
+            Pandas DataFrame rather than interacting directly with the
+            database.
         """
         raise NotImplementedError
 
@@ -83,21 +100,18 @@ class IBayesDBForeignPredictorFactory(object):
         raise NotImplementedError
 
 class IBayesDBForeignPredictor(object):
-    """BayesDB foreign predictor instance interface.
+    """PRELIMINARY BayesDB trained foreign predictor instance interface.
 
     A foreign predictor (FP) is itself an independent object which is typically
     used outside the universe of BayesDB.
 
-    The primitives that an FP must support are:
+    Training is the province of
+    :meth:`.IBayesDBForeignPredictorFactory.create`.
 
-    - Train, given as inputs a
+    A trained foreign predictor must support:
 
-      - Pandas dataframe, which contains the training data.
-      - Set of targets, which the FP is responsible for generating.
-      - Set of conditions, which the FP may use to generate targets.
-
-    - Simulate targets.
-    - Evaluate the logpdf of targets taking certain values.
+    - Simulation of the target column
+    - Evaluation of the logpdf of the target column taking a certain value.
 
     Simulate and logpdf both require a full realization of all `conditions`.
 
@@ -105,39 +119,6 @@ class IBayesDBForeignPredictor(object):
     :class:`~IBayesDBForeignPredictorFactory`, so imposes no
     particular restrictions on `__init__`.
     """
-
-    def train(self, df, targets, conditions):
-        """Called to train the foreign predictor.
-
-        The `targets` and `conditions` ultimately come from the schema
-        the client indicates.
-
-        TODO `train` is currently expected to be deterministic.  To
-        support FPs whose training is stochastic, the :class:`.Composer`
-        metamodel will need to be extended with options for
-        maintaining ensembles of independently trained instances of
-        such FPs.
-
-        The return value of `train` is ignored.
-
-        Parameters
-        ----------
-        df : pandas.Dataframe
-            Contains the training set.
-
-        targets : list<tuple>
-            A list of `targets` that the FP must learn to
-            generate. The list is of the form [(`colname`,
-            `stattype`),...], where `colname` must be the name of a
-            column in `df`, and `stattype` is the data type.
-            TODO Until :class:`.Composer` supports joint prediction,
-            the `targets` will have length 1.
-
-        conditions : list<tuple>
-            A list of `conditions` that the FP may use to generate `targets`.
-            The list is of the same form as `targets`.
-        """
-        raise NotImplementedError
 
     def simulate(self, n_samples, conditions):
         """Simulate from the distribution {`target`}|{`conditions`}.
