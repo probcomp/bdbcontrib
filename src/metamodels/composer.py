@@ -1004,9 +1004,16 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
             An adjacency list, where the order of the nodes is listed
             in topological order.
         """
+        # Algorithm: until the unsorted graph is empty, find a node
+        # that has no remaining predecessors, put it at the end of the
+        # current sort, and remove it from the graph.
+        # XXX This is O(v*(v+e)) in the worst case, whereas Tarjan's
+        # alogrithm is O(v+e).  Tarjan's algorithm also reports the
+        # location of cycles with greater precision if there happens
+        # to be more than one.  Someone^TM should replace this with
+        # that.
         graph_sorted = []
         graph = dict(graph)
-        # Run until the unsorted graph is empty.
         while graph:
             acyclic = False
             for node, edges in graph.items():
