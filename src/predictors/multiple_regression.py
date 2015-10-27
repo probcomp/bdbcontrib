@@ -259,17 +259,21 @@ class MultipleRegression(predictor.IBayesDBForeignPredictor):
         X_numerical = [conditions[col] for col in self.conditions_numerical]
 
         if unseen:
-            prediction = self.mr_partial.predict(X_numerical)
+            inputs = np.array([X_numerical])
+            assert inputs.shape == (1, len(self.conditions_numerical))
+            predictions = self.mr_partial.predict(inputs)
             noise = self.mr_partial_noise
         else:
             X_categorical = [conditions[col] for col in
                 self.conditions_categorical]
             X_categorical = self._binarize_categorical_row(X_categorical)
-            prediction = self.mr_full.predict(
-                np.hstack((X_numerical, X_categorical)))
+            inputs = np.concatenate(([X_numerical], [X_categorical]), axis=1)
+            assert inputs.shape == \
+                (1, len(self.conditions_numerical) + len(X_categorical))
+            predictions = self.mr_full.predict(inputs)
             noise = self.mr_full_noise
 
-        return prediction[0], noise
+        return predictions[0], noise
 
     def simulate(self, n_samples, conditions):
         prediction, noise = self._compute_targets_distribution(conditions)
