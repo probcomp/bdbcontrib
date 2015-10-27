@@ -118,6 +118,7 @@ setup(
         'tornado>=4.0',
     ],
     tests_require=[
+        'mock',
         'pillow',
         'pytest',
     ],
