@@ -35,6 +35,7 @@ class KeplersLaw(predictor.IBayesDBForeignPredictor):
         df = bdbcontrib.table_to_df(bdb, table, cols)
         kl = cls()
         kl.train(df, targets, conditions)
+        kl.prng = bdb.np_prng
         return kl
 
     @classmethod
@@ -47,10 +48,11 @@ class KeplersLaw(predictor.IBayesDBForeignPredictor):
         return pickle.dumps(state)
 
     @classmethod
-    def deserialize(cls, _bdb, binary):
+    def deserialize(cls, bdb, binary):
         state = pickle.loads(binary)
         kl = cls(targets=state['targets'], conditions=state['conditions'],
             noise=state['noise'])
+        kl.prng = bdb.np_prng
         return kl
 
     @classmethod
@@ -109,7 +111,7 @@ class KeplersLaw(predictor.IBayesDBForeignPredictor):
                 'Expected: {}'.format(conditions, self.conditions))
         period = self._compute_period(conditions[self.conditions[0]],
             conditions[self.conditions[1]])
-        return list(period/60. + np.random.normal(scale=self.noise,
+        return list(period/60. + self.prng.normal(scale=self.noise,
             size=n_samples))
 
     def logpdf(self, value, conditions):

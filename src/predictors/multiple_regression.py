@@ -39,6 +39,7 @@ class MultipleRegression(predictor.IBayesDBForeignPredictor):
         df = bdbcontrib.table_to_df(bdb, table, cols)
         mr = cls()
         mr.train(df, targets, conditions)
+        mr.prng = bdb.np_prng
         return mr
 
     @classmethod
@@ -56,7 +57,7 @@ class MultipleRegression(predictor.IBayesDBForeignPredictor):
         return pickle.dumps(state)
 
     @classmethod
-    def deserialize(cls, _bdb, binary):
+    def deserialize(cls, bdb, binary):
         state = pickle.loads(binary)
         mr = cls(targets=state['targets'],
             conditions_numerical=state['conditions_numerical'],
@@ -65,6 +66,7 @@ class MultipleRegression(predictor.IBayesDBForeignPredictor):
             mr_full_noise=state['mr_full_noise'],
             mr_partial_noise=state['mr_partial_noise'],
             lookup=state['lookup'])
+        mr.prng = bdb.np_prng
         return mr
 
     @classmethod
@@ -271,7 +273,7 @@ class MultipleRegression(predictor.IBayesDBForeignPredictor):
 
     def simulate(self, n_samples, conditions):
         prediction, noise = self._compute_targets_distribution(conditions)
-        return list(prediction + np.random.normal(scale=noise, size=n_samples))
+        return list(prediction + self.prng.normal(scale=noise, size=n_samples))
 
     def logpdf(self, value, conditions):
         prediction, noise = self._compute_targets_distribution(conditions)

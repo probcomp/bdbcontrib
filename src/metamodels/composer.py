@@ -619,7 +619,7 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
                 constraints)
             p = np.exp(np.asarray(weights) - np.max(weights))
             p /= np.sum(p)
-            draw = np.nonzero(np.random.multinomial(1,p))[0][0]
+            draw = np.nonzero(bdb.np_prng.multinomial(1,p))[0][0]
             s = [samples[draw].get(col) for col in colnos]
             result.append(s)
         return result

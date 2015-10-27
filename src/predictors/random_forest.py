@@ -56,6 +56,7 @@ class RandomForest(predictor.IBayesDBForeignPredictor):
         df = bdbcontrib.table_to_df(bdb, table, cols)
         rf = cls()
         rf.train(df, targets, conditions)
+        rf.prng = bdb.np_prng
         return rf
 
     @classmethod
@@ -71,13 +72,14 @@ class RandomForest(predictor.IBayesDBForeignPredictor):
         return pickle.dumps(state)
 
     @classmethod
-    def deserialize(cls, _bdb, binary):
+    def deserialize(cls, bdb, binary):
         state = pickle.loads(binary)
         rf = cls(targets=state['targets'],
             conditions_numerical=state['conditions_numerical'],
             conditions_categorical=state['conditions_categorical'],
             rf_full=state['rf_full'], rf_partial=state['rf_partial'],
             lookup=state['lookup'])
+        rf.prng = bdb.np_prng
         return rf
 
     @classmethod
@@ -270,7 +272,7 @@ class RandomForest(predictor.IBayesDBForeignPredictor):
 
     def simulate(self, n_samples, conditions):
         distribution, classes = self._compute_targets_distribution(conditions)
-        draws = np.random.multinomial(1, distribution, size=n_samples)
+        draws = self.prng.multinomial(1, distribution, size=n_samples)
         return [classes[np.where(d==1)[0][0]] for d in draws]
 
     def logpdf(self, value, conditions):
