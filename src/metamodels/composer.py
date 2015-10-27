@@ -135,6 +135,15 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
             assert 0 < n_samples
             self.n_samples = n_samples
 
+    def _predictor_cache(self, bdb):
+        assert bdb.cache is not None
+        if 'composer' in bdb.cache:
+            return bdb.cache['composer']
+        else:
+            comp_cache = {}
+            bdb.cache['composer'] = comp_cache
+            return comp_cache
+
     def register_foreign_predictor(self, builder):
         """Register an object which builds a foreign predictor.
 
@@ -265,9 +274,9 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
     def drop_generator(self, bdb, genid):
         with bdb.savepoint():
             # Clear caches.
-            keys = [k for k in self.predictor_cache if k[0] == genid]
+            keys = [k for k in self._predictor_cache(bdb) if k[0] == genid]
             for k in keys:
-                del self.predictor_cache[k]
+                del self._predictor_cache(bdb)[k]
             # Obtain before losing references.
             cc_name = core.bayesdb_generator_name(bdb, self.cc_id(bdb, genid))
             # Delete tables reverse order of insertion.
@@ -366,9 +375,10 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
             modelnos = core.bayesdb_generator_modelnos(bdb, genid)
         else:
             modelnos = [modelno]
-        p = sum(self._column_dependence_probability(
-                 bdb, genid, m, colno0, colno1)
-                for m in modelnos) / float(len(modelnos))
+        with bdb.savepoint():
+            p = sum(self._column_dependence_probability(
+                     bdb, genid, m, colno0, colno1)
+                    for m in modelnos) / float(len(modelnos))
         return p
 
     def _column_dependence_probability(self, bdb, genid, modelno, colno0,
@@ -430,12 +440,19 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
             modelnos = core.bayesdb_generator_modelnos(bdb, genid)
         else:
             modelnos = [modelno]
-        mi = sum(self.conditional_mutual_information(
-                  bdb, genid, modelno, X, W, Z, Y)
-                 for modelno in modelnos) / float(len(modelnos))
+        with bdb.savepoint():
+            mi = sum(self.conditional_mutual_information(
+                      bdb, genid, modelno, X, W, Z, Y)
+                     for modelno in modelnos) / float(len(modelnos))
         return mi
 
     def conditional_mutual_information(self, bdb, genid, modelno, X, W, Z, Y,
+            numsamples=None):
+        with bdb.savepoint():
+            return self._conditional_mutual_information(
+                bdb, genid, modelno, X, W, Z, Y, numsamples=numsamples)
+
+    def _conditional_mutual_information(self, bdb, genid, modelno, X, W, Z, Y,
             numsamples=None):
         # WARNING: SUPER EXPERIMENTAL.
         # Computes the conditional mutual information I(X:W|Z,Y=y), defined
@@ -480,8 +497,9 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
             modelnos = core.bayesdb_generator_modelnos(bdb, generator_id)
         else:
             modelnos = [modelno]
-        return logmeanexp([self._joint_logpdf(bdb, generator_id, modelno,
-            targets, constraints) for modelno in modelnos])
+        with bdb.savepoint():
+            return logmeanexp([self._joint_logpdf(bdb, generator_id, modelno,
+                targets, constraints) for modelno in modelnos])
 
     def _joint_logpdf(self, bdb, genid, modelno, Q, Y, n_samples=None):
         # XXX Computes the joint probability of query Q given evidence Y
@@ -516,6 +534,12 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
         return logpQY - logpY
 
     def predict_confidence(self, bdb, genid, modelno, colno, rowid,
+            numsamples=None):
+        with bdb.savepoint():
+            return self._predict_confidence(bdb, genid, modelno, colno, rowid,
+                numsamples=numsamples)
+
+    def _predict_confidence(self, bdb, genid, modelno, colno, rowid,
             numsamples=None):
         # Predicts a value for the cell [rowid, colno] with a confidence metric.
         # XXX Prefer accuracy over speed for imputation.
@@ -597,8 +621,9 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
             num_predictions=1):
         targets = [col for _, col in targets]
         constraints = [(col, val) for _, col, val in constraints]
-        return self.simulate(bdb, generator_id, modelno, constraints, targets,
-            numpredictions=num_predictions)
+        with bdb.savepoint():
+            return self.simulate(bdb, generator_id, modelno, constraints,
+                targets, numpredictions=num_predictions)
 
     def simulate(self, bdb, genid, modelno, constraints, colnos,
             numpredictions=1):
@@ -734,7 +759,7 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
         return cursor.fetchall()[0][0]
 
     def predictor(self, bdb, genid, fcol):
-        if (genid, fcol) not in self.predictor_cache:
+        if (genid, fcol) not in self._predictor_cache(bdb):
             cursor = bdb.sql_execute('''
                 SELECT predictor_name, predictor_binary
                     FROM bayesdb_composer_column_foreign_predictor
@@ -746,9 +771,9 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
                 raise LookupError('Foreign predictor for column "{}" '
                     'not registered: "{}".'.format(name,
                         core.bayesdb_generator_column_name(bdb, genid, fcol)))
-            self.predictor_cache[(genid, fcol)] = \
+            self._predictor_cache(bdb)[(genid, fcol)] = \
                 builder.deserialize(bdb, binary)
-        return self.predictor_cache[(genid, fcol)]
+        return self._predictor_cache(bdb)[(genid, fcol)]
 
     def parse(self, schema):
         """Parse the given `schema` for a `composer` metamodel.
