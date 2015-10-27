@@ -306,10 +306,13 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
             '''.format(quote(cc_name)))
 
     def initialize_models(self, bdb, genid, modelnos, model_config):
-        # Initialize internal crosscat. If k models of composer are instantiated
-        # then k internal CC models will be created (1-1 mapping).
+        # Initialize internal crosscat, maintaining equality of model numbers.
+        # The semantics of INITIALIZE are that it guarantees the existence
+        # of a sequence of models up to the requested number of them,
+        # and BayesDB computes the numbers that need to be filled in.
+        # The inverse of that computation is max(modelnos)+1.
         qg = quote(core.bayesdb_generator_name(bdb, self.cc_id(bdb, genid)))
-        bql = 'INITIALIZE {} MODELS FOR {};'.format(len(modelnos), qg)
+        bql = 'INITIALIZE {} MODELS FOR {};'.format(max(modelnos)+1, qg)
         bdb.execute(bql)
         # Initialize the foriegn predictors.
         for fcol in self.fcols(bdb, genid):
@@ -341,8 +344,13 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
                 })
 
     def drop_models(self, bdb, genid, modelnos=None):
-        raise NotImplementedError('Individual models from compser cannot '
-            'be dropped.')
+        qg = quote(core.bayesdb_generator_name(bdb, self.cc_id(bdb, genid)))
+        if modelnos is not None:
+            models = ",".join(str(modelno) for modelno in modelnos)
+            bql = 'DROP MODELS {} FROM {};'.format(models, qg)
+        else:
+            bql = 'DROP MODELS FROM {};'.format(qg)
+        bdb.execute(bql)
 
     def analyze_models(self, bdb, genid, modelnos=None, iterations=1,
                 max_seconds=None, ckpt_iterations=None, ckpt_seconds=None):

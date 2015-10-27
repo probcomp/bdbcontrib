@@ -460,6 +460,8 @@ def test_composer_integration_slow():
     # Check number of models.
     curs = bdbcontrib.describe_generator_models(bdb, 't1')
     assert len(curs.fetchall()) == 2
+    curs = bdbcontrib.describe_generator_models(bdb, 't1_cc')
+    assert len(curs.fetchall()) == 2
 
     # -------------------
     # TEST ANALYZE MODELS
