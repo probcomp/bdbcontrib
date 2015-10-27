@@ -59,7 +59,6 @@ build/satellites-bdbs-2m-4i/satellites.bdb: build/satellites-bdbs-2m-4i/stamp
 	satellites/build_bdbs.py --outdir build/satellites-bdbs-2m-4i/ \
 	 --models 2 --iters 4 --checkpoint_freq 2 --seed 0
 
-# On my laptop, this step took around an hour 10/5/15
 build/satellites-probes-2m-4i.pkl: build/stamp
 build/satellites-probes-2m-4i.pkl: build/satellites-bdbs-2m-4i/satellites.bdb
 build/satellites-probes-2m-4i.pkl: satellites/probe.py
