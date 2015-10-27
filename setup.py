@@ -106,7 +106,7 @@ setup(
     author_email='bayesdb@mit.edu',
     license='Apache License, Version 2.0',
     install_requires=[
-        'bayeslite>=0.1rc5',
+        'bayeslite>=0.1.2',
         'ipython[notebook]>=3',
         'markdown2',
         'matplotlib',
