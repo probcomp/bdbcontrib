@@ -118,8 +118,8 @@ setup(
         'tornado>=4.0',
     ],
     tests_require=[
+        'pillow',
         'pytest',
-        'pillow'
     ],
     packages=[
         'bdbcontrib',
