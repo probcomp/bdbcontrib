@@ -19,6 +19,7 @@ import pandas as pd
 import bayeslite.core
 from bayeslite import bayesdb_open
 from bayeslite import bql_quote_name as quote
+from bayeslite.read_pandas import bayesdb_read_pandas_df
 from bayeslite.sqlite3_util import sqlite3_quote_name
 from bayeslite.util import cursor_value
 
@@ -139,15 +140,7 @@ def df_to_table(df, tablename=None, **kwargs):
     bdb = bayesdb_open(**kwargs)
     if tablename is None:
         tablename = bdb.temp_table_name()
-    qt = quote(tablename)
-    qcols = [quote(col) for col in df.columns]
-    qcol_types = ["%s NUMERIC" % (col,) for col in qcols]
-    sql = 'CREATE TABLE %s (%s)' % (qt, ",".join(qcol_types))
-    bdb.sql_execute(sql)
-    params = ",".join(["?"] * len(qcols))
-    sql_row = 'INSERT INTO %s (%s) VALUES (%s)' % (qt, ",".join(qcols), params)
-    for row in df.itertuples(index=False):
-        bdb.sql_execute(sql_row, row)
+    bayesdb_read_pandas_df(bdb, tablename, df, create=True)
     return (bdb, tablename)
 
 def query(bdb, bql):
