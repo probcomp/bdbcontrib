@@ -83,7 +83,16 @@ angular.module('bdbRestExampleApp', ['ngResource', 'bdbServices'])
               yAxis = d3.svg.axis().scale(yScale).orient("left");
 
           // setup fill color
-          var cValue = function(d) { return d.Country_of_Operator;},
+          var colorMap = d3.nest().key(function (d) { return d.Country_of_Operator; })
+                  .rollup(function(v) { return v.length; })
+                  .entries(newVal);
+          colorMap.sort(function (a,b) { return b.values - a.values;});
+          colorMap = colorMap.slice(0,10);
+          colorMap = d3.map(colorMap, function (e) { return e.key; });
+          var cValue = function(d) {
+              var c = d.Country_of_Operator;
+              return colorMap.has(c) ? c : 'Other';
+          },
               color = d3.scale.category10();
 
           // add the tooltip area to the webpage
