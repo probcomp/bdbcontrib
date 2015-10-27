@@ -468,8 +468,11 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
                 'conditional_mutual_information.\n'
                 'X: {}\nW: {}\nZ: {}\nY: {}'.format(X, W, Z, Y))
         # Simulate from joint.
-        XWZ_samples = self.simulate(bdb, genid, modelno, Y, X+W+Z,
-            numpredictions=numsamples)
+        row_id = core.bayesdb_generator_fresh_row_id(bdb, genid)
+        hack_targets = [(row_id, c) for c in X+W+Z]
+        hack_constraints = [(row_id, r, c) for r, c in Y]
+        XWZ_samples = self.simulate(bdb, genid, modelno, hack_targets,
+            hack_constraints, numpredictions=numsamples)
         # Simple Monte Carlo
         mi = logpz = logpxwz = logpxz = logpwz = 0
         for s in XWZ_samples:
@@ -566,10 +569,10 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
                         self.cc_colno(bdb, genid, colno), rowid)
             else:
                 # Obtain likelihood weighted samples from posterior.
-                Q = [colno]
-                Y = [(c,v) for c,v in zip(colnos, row) if c != colno and v
-                        is not None]
-                samples = self.simulate(bdb, genid, modelno, Y, Q,
+                Q = [(rowid, colno)]
+                Y = [(rowid, c, v) for c,v in zip(colnos, row)
+                     if c != colno and v is not None]
+                samples = self.simulate(bdb, genid, modelno, Q, Y,
                     numpredictions=numsamples)
                 samples = [s[0] for s in samples]
         # Predicting fcol.
@@ -621,30 +624,30 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
 
     def simulate_joint(self, bdb, generator_id, targets, constraints, modelno,
             num_predictions=1):
-        targets = [col for _, col in targets]
-        constraints = [(col, val) for _, col, val in constraints]
         with bdb.savepoint():
-            return self.simulate(bdb, generator_id, modelno, constraints,
-                targets, numpredictions=num_predictions)
+            return self.simulate(bdb, generator_id, modelno, targets,
+                constraints, numpredictions=num_predictions)
 
-    def simulate(self, bdb, genid, modelno, constraints, colnos,
+    def simulate(self, bdb, genid, modelno, targets, constraints,
             numpredictions=1):
         # Delegate to crosscat if colnos+constraints all lcols.
-        all_cols = [c for c,v in constraints] + colnos
-        row_id = core.bayesdb_generator_fresh_row_id(bdb, genid)
+        colnos = [c for _,c in targets]
+        all_cols = [c for _,c,_ in constraints] + colnos
         if all(f not in all_cols for f in self.fcols(bdb, genid)):
-            Y_cc = [(row_id, self.cc_colno(bdb, genid, c), v)
-                for c, v in constraints]
-            Q_cc = [(row_id, c) for c in self.cc_colnos(bdb, genid, colnos)]
+            Y_cc = [(r, self.cc_colno(bdb, genid, c), v)
+                for r, c, v in constraints]
+            Q_cc = [(r, self.cc_colno(bdb, genid, c)) for r,c in targets]
             return self.cc(bdb, genid).simulate_joint(bdb,
                 self.cc_id(bdb, genid), Q_cc, Y_cc, modelno,
                 num_predictions=numpredictions)
         # Solve inference problem by sampling-importance resampling.
         result = []
-        hack_constraints = [(row_id, c, v) for c, v in constraints]
+        for r,_ in targets:
+            assert r == targets[0][0], "Cannot simulate more than one row, "\
+                "%s and %s requested" % (targets[0][0], r)
         for _ in xrange(numpredictions):
             samples, weights = self._weighted_sample(bdb, genid, modelno,
-                row_id, hack_constraints)
+                targets[0][0], constraints)
             p = np.exp(np.asarray(weights) - np.max(weights))
             p /= np.sum(p)
             draw = np.nonzero(bdb.np_prng.multinomial(1,p))[0][0]
@@ -661,8 +664,8 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
 
     def _weighted_sample(self, bdb, genid, modelno, row_id, Y, n_samples=None):
         # Returns a pairs of parallel lists ([sample ...], [weight ...])
-        # Each `sample` is a vector s=(X1,...,Xn) of values for all
-        # nodes in the network. Y specifies evidence nodes as (row,
+        # Each `sample` is a dict {col:v} of values for all nodes in
+        # the network for one row. Y specifies evidence nodes as (row,
         # col, value) triples: all returned samples have constrained
         # values at the evidence nodes.
         # `weight` is the likelihood of the evidence Y under s\Y.
