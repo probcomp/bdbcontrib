@@ -17,6 +17,7 @@
 import numpy as np
 import pandas as pd
 
+from bdbcontrib import df_to_table
 from crosscat.tests import synthetic_data_generator as sdg
 
 from bdbcontrib.predictors.random_forest import RandomForest
@@ -70,19 +71,18 @@ def get_synthetic_data(n_sample, seed=438):
         component_weights, separation, seed, distargs=distargs)
     data = pd.DataFrame(synthetic_data[0])
     data.columns = colnames
-    return data
+    return df_to_table(data)
 
 # ------------------------------------------------------------------------------
 # Tests
 
 def test_random_forest():
     # Train foreign predictor.
-    df = get_synthetic_data(150)
+    (bdb, table) = get_synthetic_data(150)
     conditions = [(c, 'NUMERICAL') for c in ['c1','c2','c4','c8']] + \
         [(c, 'CATEGORICAL') for c in ['m1', 'm3']]
     target = [('m5', 'CATEGORICAL')]
-    srf_predictor = RandomForest()
-    srf_predictor.train(df, target, conditions)
+    srf_predictor = RandomForest.create(bdb, table, target, conditions)
 
     # Dummy realization of conditions. Include extra conditions.
     parents = {'c1':1.3, 'c2':-2.1, 'c4':0.2, 'c8':0.2, 'm1':1, 'm3':7, 'm5':5}
@@ -93,19 +93,18 @@ def test_random_forest():
     assert srf_predictor.logpdf(-1, parents) == float('-inf')
 
     # Serialization tests.
-    srf_binary = RandomForest.serialize(srf_predictor)
-    srf_predictor2 = RandomForest.deserialize(srf_binary)
+    srf_binary = RandomForest.serialize(bdb, srf_predictor)
+    srf_predictor2 = RandomForest.deserialize(bdb, srf_binary)
     srf_predictor2.simulate(10, parents)
     pdf_val2 = srf_predictor2.logpdf(7, parents)
     assert np.allclose(pdf_val, pdf_val2)
 
 def test_keplers_law():
     # Train foreign predictor.
-    df = get_synthetic_data(150)
+    (bdb, table) = get_synthetic_data(150)
     conditions = [('c1','NUMERICAL'), ('c3', 'NUMERICAL')]
     target = [('c4', 'NUMERICAL')]
-    kl_predictor = KeplersLaw()
-    kl_predictor.train(df, target, conditions)
+    kl_predictor = KeplersLaw.create(bdb, table, target, conditions)
 
     # Dummy realization of conditions.
     inputs = {'c1':2.1, 'c3':1.7}
@@ -115,20 +114,19 @@ def test_keplers_law():
     pdf_val = kl_predictor.logpdf(1.2, inputs)
 
     # Serialization tests.
-    kl_binary = KeplersLaw.serialize(kl_predictor)
-    kl_predictor2 = KeplersLaw.deserialize(kl_binary)
+    kl_binary = KeplersLaw.serialize(bdb, kl_predictor)
+    kl_predictor2 = KeplersLaw.deserialize(bdb, kl_binary)
     kl_predictor2.simulate(10, inputs)
     pdf_val2 = kl_predictor2.logpdf(1.2, inputs)
     assert np.allclose(pdf_val, pdf_val2)
 
 def test_multiple_regression():
     # Train foreign predictor.
-    df = get_synthetic_data(150)
+    (bdb, table) = get_synthetic_data(150)
     conditions = [(c, 'NUMERICAL') for c in ['c1','c2','c4','c8']] + \
         [(c, 'CATEGORICAL') for c in ['m1', 'm3']]
     target = [('c7', 'NUMERICAL')]
-    mr_predictor = MultipleRegression()
-    mr_predictor.train(df, target, conditions)
+    mr_predictor = MultipleRegression.create(bdb, table, target, conditions)
 
     # Dummy realization of conditions. Include extra conditions.
     inputs = {'c1':1.3, 'c2':-2.1, 'c4':0.2, 'c8':0.2, 'm1':1, 'm3':7, 'm5':5}
@@ -138,8 +136,8 @@ def test_multiple_regression():
     pdf_val = mr_predictor.logpdf(-0.4, inputs)
 
     # Serialization tests.
-    mr_binary = MultipleRegression.serialize(mr_predictor)
-    mr_predictor2 = MultipleRegression.deserialize(mr_binary)
+    mr_binary = MultipleRegression.serialize(bdb, mr_predictor)
+    mr_predictor2 = MultipleRegression.deserialize(bdb, mr_binary)
     mr_predictor2.simulate(10, inputs)
     pdf_val2 = mr_predictor2.logpdf(-0.4, inputs)
     assert np.allclose(pdf_val, pdf_val2)
