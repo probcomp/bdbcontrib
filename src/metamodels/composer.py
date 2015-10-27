@@ -521,12 +521,14 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
                     ignore.add(cq)
                 else:
                     return -float('inf')
-        Q = [(c,v) for c,v in Q if c not in ignore]
+        row_id = core.bayesdb_generator_fresh_row_id(bdb, genid)
+        Q = [(row_id, c, v) for c,v in Q if c not in ignore]
+        Y = [(row_id, c, v) for c,v in Y]
         # (Q,Y) marginal joint density.
-        _, QY_weights = self._weighted_sample(bdb, genid, modelno, Q+Y,
+        _, QY_weights = self._weighted_sample(bdb, genid, modelno, row_id, Q+Y,
             n_samples=n_samples)
         # Y marginal density.
-        _, Y_weights = self._weighted_sample(bdb, genid, modelno, Y,
+        _, Y_weights = self._weighted_sample(bdb, genid, modelno, row_id, Y,
             n_samples=n_samples)
         # XXX TODO Keep sampling until logpQY <= logpY
         logpQY = logmeanexp(QY_weights)
@@ -629,8 +631,8 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
             numpredictions=1):
         # Delegate to crosscat if colnos+constraints all lcols.
         all_cols = [c for c,v in constraints] + colnos
+        row_id = core.bayesdb_generator_fresh_row_id(bdb, genid)
         if all(f not in all_cols for f in self.fcols(bdb, genid)):
-            row_id = core.bayesdb_generator_fresh_row_id(bdb, genid)
             Y_cc = [(row_id, self.cc_colno(bdb, genid, c), v)
                 for c, v in constraints]
             Q_cc = [(row_id, c) for c in self.cc_colnos(bdb, genid, colnos)]
@@ -639,9 +641,10 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
                 num_predictions=numpredictions)
         # Solve inference problem by sampling-importance resampling.
         result = []
+        hack_constraints = [(row_id, c, v) for c, v in constraints]
         for _ in xrange(numpredictions):
             samples, weights = self._weighted_sample(bdb, genid, modelno,
-                constraints)
+                row_id, hack_constraints)
             p = np.exp(np.asarray(weights) - np.max(weights))
             p /= np.sum(p)
             draw = np.nonzero(bdb.np_prng.multinomial(1,p))[0][0]
@@ -656,21 +659,22 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
         return self.cc(bdb, genid).row_similarity(bdb, self.cc_id(bdb, genid),
             modelno, rowid, target_rowid, cc_colnos)
 
-    def _weighted_sample(self, bdb, genid, modelno, Y, n_samples=None):
+    def _weighted_sample(self, bdb, genid, modelno, row_id, Y, n_samples=None):
         # Returns a pairs of parallel lists ([sample ...], [weight ...])
-        # Each `sample` is a vector s=(X1,...,Xn) of values for all nodes in
-        # the network. Y specifies evidence nodes: all returned samples have
-        # constrained values at the evidence nodes.
+        # Each `sample` is a vector s=(X1,...,Xn) of values for all
+        # nodes in the network. Y specifies evidence nodes as (row,
+        # col, value) triples: all returned samples have constrained
+        # values at the evidence nodes.
         # `weight` is the likelihood of the evidence Y under s\Y.
         if n_samples is None:
             n_samples = self.n_samples
         # Create n_samples dicts, each entry is weighted sample from joint.
-        row_id = core.bayesdb_generator_fresh_row_id(bdb, genid)
-        samples = [{c:v for c,v in Y} for _ in xrange(n_samples)]
+        samples = [{c:v for r,c,v in Y if r == row_id}
+                   for _ in xrange(n_samples)]
         weights = []
         w0 = 0
         # Assess likelihood of evidence at root.
-        Y_cc = [(row_id, c, v) for c,v in Y if c in self.lcols(bdb, genid)]
+        Y_cc = [(r, c, v) for r,c,v in Y if c in self.lcols(bdb, genid)]
         if Y_cc:
             w0 += self.cc(bdb, genid).logpdf_joint(bdb, self.cc_id(bdb, genid),
                 Y_cc, [], modelno)
@@ -691,11 +695,11 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
                 conditions = {core.bayesdb_generator_column_name(
                     bdb, genid, c):v for c,v in samples[k].iteritems()
                         if c in pcols}
-                # f is evidence: compute likelihood weight.
                 if fcol in samples[k]:
+                    # f is evidence: compute likelihood weight.
                     w += predictor.logpdf(samples[k][fcol], conditions)
-                # f is latent: simulate from conditional distribution.
                 else:
+                    # f is latent: simulate from conditional distribution.
                     samples[k][fcol] = predictor.simulate(1, conditions)[0]
             weights.append(w)
         return samples, weights

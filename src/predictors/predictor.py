@@ -110,10 +110,15 @@ class IBayesDBForeignPredictor(object):
 
     A trained foreign predictor must support:
 
-    - Simulation of the target column
-    - Evaluation of the logpdf of the target column taking a certain value.
+    - Simulation of the target column for a new observation
+
+    - Evaluation of the logpdf of the target column of a new
+      observation taking a certain value
 
     Simulate and logpdf both require a full realization of all `conditions`.
+
+    TODO We do not yet support referring to row-specific training
+    results or querying predictive distributions for observed rows.
 
     BayesDB initializes foreign predictors through the methods in
     :class:`~IBayesDBForeignPredictorFactory`, so imposes no
