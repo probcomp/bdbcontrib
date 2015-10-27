@@ -23,6 +23,7 @@ import crosscat
 import crosscat.LocalEngine
 import matplotlib.pyplot as plt
 import re
+import os
 import pandas as pd
 import sys
 import traceback
@@ -62,8 +63,10 @@ class BqlRecipes(object):
           self.bdb, self.name, self.csv,
           header=True, create=True, ifnotexists=True)
     bdbcontrib.nullify(self.bdb, self.name, "")
-    import os
-    old_wizmode = os.environ["BAYESDB_WIZARD_MODE"]
+    if "BAYESDB_WIZARD_MODE" in os.environ:
+      old_wizmode = os.environ["BAYESDB_WIZARD_MODE"]
+    else:
+      old_wizmode = ""
     os.environ["BAYESDB_WIZARD_MODE"] = "1"
     crosscat_engine = crosscat.LocalEngine.LocalEngine(seed=0)
     bayeslite.metamodels.crosscat.CrosscatMetamodel(crosscat_engine)
@@ -87,7 +90,7 @@ class BqlRecipes(object):
         self.bdb, self.generator_name))
 
   def q(self, query_string, *args):
-    """Query the database. Use %t for the data table and %m for the generator.
+    """Query the database. Use %t for the data table and %g for the generator.
 
     %t and %g work only with word boundaries. E.g., 'LIKE "%table%"' is fine.
 
@@ -95,23 +98,26 @@ class BqlRecipes(object):
     the underlying bdb would return, so LIMIT your queries if you need to.
     """
     self.check_representation()
-    query_string = re.sub(r'(^|(?<=\s))%t\b', self.name,
-                          re.sub(r'(^|(?<=\s))%g\b', self.generator_name,
+    query_string = re.sub(r'(^|(?<=\s))%t\b',
+                          bayeslite.bql_quote_name(self.name),
+                          re.sub(r'(^|(?<=\s))%g\b',
+                                 bayeslite.bql_quote_name(self.generator_name),
                                  query_string))
     self.logger.info("BQL [%s] [%r]" % (query_string, args))
     with self.bdb.savepoint():
       try:
         res = self.bdb.execute(query_string, args)
-        if res is not None and res.description is not None:
-          self.logger.debug("BQL [%s] [%r] has returned a cursor." %
+        assert res is not None and res.description is not None
+        self.logger.debug("BQL [%s] [%r] has returned a cursor." %
+                          (query_string, args))
+        df = bdbcontrib.cursor_to_df(res)
+        self.logger.debug("BQL [%s] [%r] has created a dataframe." %
                             (query_string, args))
-          df = bdbcontrib.cursor_to_df(res)
-          self.logger.debug("BQL [%s] [%r] has created a dataframe." %
-                            (query_string, args))
-          return df
+        return df
       except:
         self.logger.exception('FROM BQL [%s] [%r]' % (query_string, args))
         raise
+
   def analyze(self, models=100, minutes=0, iterations=0, checkpoint=0):
     '''Run analysis.
 
@@ -195,16 +201,16 @@ class BqlRecipes(object):
         The result of a .q('ESTIMATE ... PAIRWISE ...')
         E.g., DEPENDENCE PROBABILITY, MUTUAL INFORMATION, COVARIANCE, etc.
 
-    selectors : {[lambda name --> bool]: str}
+    selectors : {str: lambda name --> bool}
         Rather than plot the full NxN matrix all together, make separate plots
         for each combination of these selectors, plotting them in sequence.
-        If selectors are specified, the actual selector functions are keys of a
-        dict, and the values are their names, for purposes of plot legends and
+        If selectors are specified, the actual selector functions are values of
+        a dict, and the keys are their names, for purposes of plot legends and
         filenames.
         E.g.,
-          {lambda x: bool(re.search(r'^[a-eA-E]', x[0])): 'A-E',
-           lambda x: bool(re.search(r'^[f-oF-O]', x[0])): 'F-O',
-           lambda x: bool(re.search(r'^[p-zP-Z]', x[0])): 'P-Z'}
+          {'A-E': lambda x: bool(re.search(r'^[a-eA-E]', x[0])),
+           'F-O': lambda x: bool(re.search(r'^[f-oF-O]', x[0])),
+           'P-Z': lambda x: bool(re.search(r'^[p-zP-Z]', x[0]))}
 
     plotfile : str
         If a plotfile is specified, savefig to that file. If selectors are also
@@ -218,11 +224,12 @@ class BqlRecipes(object):
                        bdbcontrib.heatmap(self.bdb, df=deps, **kwargs))
       plt.close('all')
     else:
-      selfns = selectors.keys()
+      selfns = [selectors[k] for k in sorted(selectors.keys())]
+      reverse = dict([(v, k) for (k, v) in selectors.items()])
       for (hmap, sel1, sel2) in bdbcontrib.plot_utils.selected_heatmaps(
           self.bdb, df=deps, selectors=selfns, **kwargs):
-        self.logger.plot("%s.%s.%s" % (selectors[sel1], selectors[sel2],
-                                       plotfile), hmap)
+        self.logger.plot("%s.%s.%s" % (reverse[sel1], reverse[sel2], plotfile),
+                         hmap)
         plt.close('all')
 
   def most_dependent(self, topn=50, plotfile='most_dependent'):
@@ -302,8 +309,13 @@ class BqlRecipes(object):
         [repr(identify_row_by), str(self.status)])).hexdigest()
     column_name = 'similarity_to_' + "__".join(
         re.sub(r'\W', '_', str(val)) for val in identify_row_by.values())
-    query_attrs = ' and '.join([('''"%s" = '%s' ''' %
-                                 (k, v)) for k, v in identify_row_by.items()])
+    query_params = []
+    query_columns = []
+    for k, v in identify_row_by.iteritems():
+        query_columns.append('''%s = ? ''' % bayeslite.bql_quote_name(k))
+        query_params.append(v)
+    query_attrs = ' and '.join(query_columns)
+
     with self.bdb.savepoint():
       row_exists = self.q('SELECT COUNT(*) FROM %s WHERE %s;' %
                           (self.name, query_attrs))
@@ -312,11 +324,9 @@ class BqlRecipes(object):
             'identify_row_by found %d rows instead of exactly 1 in %s.' %
             (row_exists.ix[0][0], self.csv))
       creation_query = ('''CREATE TEMP TABLE IF NOT EXISTS %s AS ESTIMATE *,
-                           SIMILARITY TO (%s) AS %s FROM %s LIMIT %d;''' %
-                        (table_name, query_attrs, column_name,
-                         self.generator_name, nsimilar))
-      self.logger.info("SQL [%s]" % creation_query)
-      self.q(creation_query)
+                           SIMILARITY TO (%s) AS %s FROM %%g LIMIT %d;''' %
+                        (table_name, query_attrs, column_name, nsimilar))
+      self.q(creation_query, query_params)
       result = self.q('''SELECT * FROM %s ORDER BY %s DESC;''' %
                       (table_name, column_name))
     return result

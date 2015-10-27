@@ -178,9 +178,9 @@ def test_heatmap():
         dts.logger.calls = []
         dts.heatmap(deps, plotfile='foobar.png',
                     selectors=
-                    {lambda x: bool(re.search(r'^[a-eA-E]', x[0])): 'A-E',
-                     lambda x: bool(re.search(r'^[f-wF-W]', x[0])): 'F-W',
-                     lambda x: bool(re.search(r'^[x-zX-Z]', x[0])): 'X-Z'})
+                    {'A-E': lambda x: bool(re.search(r'^[a-eA-E]', x[0])),
+                     'F-W': lambda x: bool(re.search(r'^[f-wF-W]', x[0])),
+                     'X-Z': lambda x: bool(re.search(r'^[x-zX-Z]', x[0]))})
         # NOTE: columns are: 'floats_1', 'categorical_1', 'categorical_2',
         #     'few_ints_3', 'floats_3', 'many_ints_4', 'skewed_numeric_5',
         # So there are 2 in A-E, 5 in F-W, and 0 in X-Z.
@@ -258,16 +258,19 @@ def test_similar_rows():
                 'a':'b', 'c': 'd'})
             assert 'SELECT COUNT(*)' == q_calls[-3][0][:15]
             assert 'CREATE TEMP TABLE' == q_calls[-2][0][:17]
-            assert re.search(r'''"a" = 'b'\s+and\s+"c" = 'd' ''',
+            assert re.search(r'''"a" = [?]\s+and\s+"c" = [?] ''',
                              q_calls[-2][0])
+            assert (['b', 'd'],) == q_calls[-2][1]
             assert 'SELECT * FROM' == q_calls[-1][0][:13]
         finally:
             dts.q = the_real_q
 
 
         call_types = pd.DataFrame([call[0] for call in dts.logger.calls])
-        call_counts = call_types.iloc[:,0].value_counts()
-        assert 'warn' not in call_counts
+        if len(call_types) > 0:
+            call_counts = call_types.iloc[:,0].value_counts()
+            assert 'warn' not in call_counts
+
 
 def teardown_module(_module):
     with prepare() as (dts, _df):
