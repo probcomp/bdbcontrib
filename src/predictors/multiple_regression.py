@@ -136,6 +136,8 @@ class MultipleRegression(predictor.IBayesDBForeignPredictor):
 
         `NaN` strings are converted to Python `None`.
 
+        Rows where the target is absent are dropped.
+
         Creates: self.dataset.
         """
         df = df.where((pd.notnull(df)), None)
