@@ -475,8 +475,8 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
         mi = logpz = logpxwz = logpxz = logpwz = 0
         for s in XWZ_samples:
             Qx = [(r,c,v) for ((r,c),v) in zip(X, s[:len(X)])]
-            Qw = [(r,c,v) for ((r,c),v) in zip(Z, s[len(X):-len(Z)])]
-            Qz = [(r,c,v) for ((r,c),v) in zip(W, s[-len(Z):])]
+            Qw = [(r,c,v) for ((r,c),v) in zip(W, s[len(X):len(X)+len(W)])]
+            Qz = [(r,c,v) for ((r,c),v) in zip(Z, s[len(X)+len(W):])]
             if Z:
                 logpz = self._joint_logpdf(bdb, genid, modelno, Qz, Y)
             else:
