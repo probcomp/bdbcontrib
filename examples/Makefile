@@ -40,6 +40,23 @@ build/satellites.bdb: satellites/satellites.csv build/stamp
 	| BAYESDB_WIZARD_MODE=1 PYTHONPATH=../:$$PYTHONPATH \
 	  bayeslite -j0 --seed 0 $@.tmp && mv -f $@.tmp $@
 
+# The "short" satellites smoke-test build
+
+build/satellites-bdbs-2m-4i/satellites.bdb:
+	satellites/build_bdbs.py --outdir build/satellites-bdbs-2m-4i/ \
+	 --models 2 --iters 4 --checkpoint_freq 2 --seed 0
+
+# On my laptop, this step took around an hour 10/5/15
+build/satellites-probes-2m-4i.pkl: build/satellites-bdbs-2m-4i/satellites.bdb
+	satellites/probe.py --outfile $@ \
+	 --n_models 1 2 4 --n_replications 1 \
+	 build/satellites-bdbs-2m-4i/*i.bdb
+
+build/satellites-short-figures: .PHONY
+build/satellites-short-figures: build/satellites-probes-2m-4i.pkl
+	visualize.py --infile build/satellites-probes-2m-4i.pkl \
+	 --outdir build/satellites-figures-2m-4i
+
 # The "fat" satellites stability build
 
 # On probcomp, this step took around 36 minutes 10/5/15
