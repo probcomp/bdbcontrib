@@ -308,10 +308,8 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
     def initialize_models(self, bdb, genid, modelnos, model_config):
         # Initialize internal crosscat. If k models of composer are instantiated
         # then k internal CC models will be created (1-1 mapping).
-        bql = """
-            INITIALIZE {} MODELS FOR {};
-        """.format(len(modelnos),
-            core.bayesdb_generator_name(bdb, self.cc_id(bdb, genid)))
+        qg = quote(core.bayesdb_generator_name(bdb, self.cc_id(bdb, genid)))
+        bql = 'INITIALIZE {} MODELS FOR {};'.format(len(modelnos), qg)
         bdb.execute(bql)
         # Initialize the foriegn predictors.
         for fcol in self.fcols(bdb, genid):
