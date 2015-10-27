@@ -215,19 +215,20 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
         SUFFIX = '_cc'
         cc_name = bayeslite.core.bayesdb_generator_name(bdb, genid) + SUFFIX
         # Create strings for crosscat schema.
-        cc_cols = ','.join(['{} {}'.format(c, columns[c]) for c in lcols])
+        cc_cols = ','.join('{} {}'.format(quote(c), quote(columns[c]))
+                           for c in lcols)
         cc_dep = []
-        for dep in dependencies:
-            if dep[0] == True:
-                cc_dep.append('DEPENDENT({})'.format(','.join(dep[1])))
+        for dep, colnames in dependencies:
+            qcns = ','.join(map(quote, colnames))
+            if dep:
+                cc_dep.append('DEPENDENT({})'.format(qcns))
             else:
-                cc_dep.append('INDEPENDENT({})'.format(','.join(dep[1])))
-        cc_dep = ','.join(cc_dep)
+                cc_dep.append('INDEPENDENT({})'.format(qcns))
         bql = """
             CREATE GENERATOR {} FOR {} USING crosscat(
                 {}, {}
             );
-        """.format(cc_name, quote(table), cc_cols, cc_dep)
+        """.format(quote(cc_name), quote(table), cc_cols, ','.join(cc_dep))
         bdb.execute(bql)
         # Convert strings to column numbers.
         fcolno_to_pcolnos = {}
