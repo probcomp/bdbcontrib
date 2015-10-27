@@ -16,13 +16,10 @@ else:
     outdir = sys.argv[1]
 
 # Find the satellites file.
-fullpath = os.path.dirname(os.path.realpath(__file__)).split('/')
-satfile = os.path.sep
-for directory in fullpath:
-    satfile = os.path.join(satfile, directory)
-    if directory == 'bdbcontrib':
-        break
-satfile = os.path.join(satfile, 'examples','satellites','satellites.csv')
+PATH_KEPLER = os.path.dirname(os.path.abspath(__file__))
+PATH_EXAMPLES = os.path.dirname(PATH_KEPLER)
+PATH_SATELLITES = os.path.join(PATH_EXAMPLES, 'satellites')
+PATH_SATELLITES_CSV = os.path.join(PATH_SATELLITES, 'satellites.csv')
 
 composer = Composer()
 composer.register_foreign_predictor(keplers_law.KeplersLaw)
@@ -33,7 +30,7 @@ if os.path.exists(os.path.join(outdir, 'kepler.bdb')):
 
 bdb = bayeslite.bayesdb_open(os.path.join(outdir, 'kepler.bdb'))
 bayeslite.bayesdb_register_metamodel(bdb, composer)
-bayeslite.bayesdb_read_csv_file(bdb, 'satellites', satfile,
+bayeslite.bayesdb_read_csv_file(bdb, 'satellites', PATH_SATELLITES_CSV,
     header=True, create=True)
 
 bdbcontrib.query(bdb, '''
