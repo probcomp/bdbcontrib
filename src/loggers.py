@@ -15,9 +15,10 @@
 #   limitations under the License.
 
 from __future__ import print_function
-import matplotlib.pyplot as plt
+
 import IPython.utils.warn
 import logging
+import matplotlib.pyplot as plt
 import sys
 import traceback
 
