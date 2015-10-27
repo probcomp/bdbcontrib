@@ -28,13 +28,11 @@ from bdbcontrib.predictors import multiple_regression
 
 
 # Use satellites for all tests.
-fullpath = os.path.dirname(os.path.realpath(__file__)).split('/')
-satfile = os.path.sep
-for directory in fullpath:
-    satfile = os.path.join(satfile, directory)
-    if directory == 'bdbcontrib':
-        break
-satfile = os.path.join(satfile, 'examples','satellites','satellites.csv')
+PATH_TESTS = os.path.dirname(os.path.abspath(__file__))
+PATH_ROOT = os.path.dirname(PATH_TESTS)
+PATH_EXAMPLES = os.path.join(PATH_ROOT, 'examples')
+PATH_SATELLITES = os.path.join(PATH_EXAMPLES, 'satellites')
+PATH_SATELLITES_CSV = os.path.join(PATH_SATELLITES, 'satellites.csv')
 
 # ------------------------------------------------------------------------------
 # The following live outside the TestComposer class since we do not need to
@@ -42,8 +40,8 @@ satfile = os.path.join(satfile, 'examples','satellites','satellites.csv')
 
 def test_create_generator_schema():
     bdb = bayeslite.bayesdb_open()
-    bayeslite.bayesdb_read_csv_file(bdb, 'satellites', satfile, header=True,
-        create=True)
+    bayeslite.bayesdb_read_csv_file(bdb, 'satellites', PATH_SATELLITES_CSV,
+        header=True, create=True)
     composer = Composer(n_samples=5)
     bayeslite.bayesdb_register_metamodel(bdb, composer)
     # Using crosscat and default to specify models should work.
@@ -329,8 +327,8 @@ def test_register_foreign_predictor():
 def test_drop_generator():
     bdb = bayeslite.bayesdb_open()
     # Initialize the database
-    bayeslite.bayesdb_read_csv_file(bdb, 'satellites', satfile, header=True,
-        create=True)
+    bayeslite.bayesdb_read_csv_file(bdb, 'satellites', PATH_SATELLITES_CSV,
+        header=True, create=True)
     composer = Composer(n_samples=5)
     bayeslite.bayesdb_register_metamodel(bdb, composer)
     composer.register_foreign_predictor(random_forest.RandomForest)
@@ -404,8 +402,8 @@ def test_composer_integration_slow():
     # -----
     # Dataset.
     bdb = bayeslite.bayesdb_open()
-    bayeslite.bayesdb_read_csv_file(bdb, 'satellites', satfile, header=True,
-        create=True)
+    bayeslite.bayesdb_read_csv_file(bdb, 'satellites', PATH_SATELLITES_CSV,
+        header=True, create=True)
     bdbcontrib.nullify(bdb, 'satellites', 'NaN')
     # Composer.
     composer = Composer(n_samples=5)
