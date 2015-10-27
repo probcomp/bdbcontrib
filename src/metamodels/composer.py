@@ -513,14 +513,9 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
         if len(Q) == 0:
             raise ValueError('Invalid query Q: len(Q) == 0.')
         # Ensure consistency of any duplicates in Q and Y.
-        ignore = set()
-        for (rq, cq, vq), (ry, cy, vy) in itertools.product(Q, Y):
-            if cq == cy and rq == ry:
-                if vq == vy:
-                    ignore.add((rq, cq))
-                else:
-                    return -float('inf')
-        Q = [(r, c, v) for r,c,v in Q if (r,c) not in ignore]
+        Q = self._queries_consistent_with_constraints(Q, Y)
+        if Q is None:
+            return float('-inf')
         for r, _, _ in Q+Y:
             assert r == Q[0][0], "Cannot assess more than one row, "\
                 "%s and %s requested" % (Q[0][0], r)
@@ -534,6 +529,25 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
         logpQY = logmeanexp(QY_weights)
         logpY = logmeanexp(Y_weights)
         return logpQY - logpY
+
+    def _queries_consistent_with_constraints(self, Q, Y):
+        queries = dict()
+        for (row, col, val) in Q:
+            if (row, col) in queries:
+                raise ValueError('Cannot specify duplicate query columns.')
+            queries[(row, col)] = val
+        ignore = set()
+        constraints = set()
+        for (row, col, val) in Y:
+            if (row, col) in constraints:
+                raise ValueError('Cannot specify duplicate constraint row, column.')
+            if (row, col) in queries:
+                if queries[(row, col)] == val:
+                    ignore.add((row, col))
+                else:
+                    return None
+            constraints.add((row, col))
+        return [(r, c, v) for r,c,v in Q if (r,c) not in ignore]
 
     def predict_confidence(self, bdb, genid, modelno, colno, rowid,
             numsamples=None):
