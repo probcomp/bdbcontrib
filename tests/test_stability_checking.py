@@ -29,6 +29,8 @@ root = os.path.dirname(os.path.dirname(__file__))
 sats_path = os.path.join(root, "examples", "satellites")
 
 def test_stability_check_integration_smoke():
+    bdbs_dir = None
+    plots_dir = None
     old_path = copy.copy(sys.path)
     sys.path.append(sats_path)
     try:
@@ -45,5 +47,7 @@ def test_stability_check_integration_smoke():
             visualize.plot_probe_results(f.name, plots_dir)
     finally:
         sys.path = old_path
-        shutil.rmtree(bdbs_dir)
-        shutil.rmtree(plots_dir)
+        if bdbs_dir is not None:
+            shutil.rmtree(bdbs_dir)
+        if plots_dir is not None:
+            shutil.rmtree(plots_dir)
