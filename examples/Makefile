@@ -9,6 +9,10 @@ all: satellites
 clean: .PHONY
 	-rm -rf build
 
+# Just make sure something builds.
+check: .PHONY
+check: build/satellites-probes-2m-4i.pkl
+
 STAMP = mkdir -p "`dirname $@`" && touch $@
 
 build/stamp:
