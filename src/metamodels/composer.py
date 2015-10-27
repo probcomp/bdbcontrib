@@ -433,8 +433,9 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
         if numsamples is None:
             numsamples = self.n_samples
         # XXX Aggregator only.
-        X = [colno0]
-        W = [colno1]
+        row_id = core.bayesdb_generator_fresh_row_id(bdb, genid)
+        X = [(row_id, colno0)]
+        W = [(row_id, colno1)]
         Z = Y = []
         if modelno is None:
             modelnos = core.bayesdb_generator_modelnos(bdb, genid)
@@ -457,28 +458,25 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
         # WARNING: SUPER EXPERIMENTAL.
         # Computes the conditional mutual information I(X:W|Z,Y=y), defined
         # defined as the expectation E_z~Z{X:W|Z=z,Y=y}.
-        # X, W, and Z must each be a list [colno, ..].
-        # Y is an evidence list [(colno,val), ..].
+        # X, W, and Z must each be a list [(rowid, colno), ..].
+        # Y is an evidence list [(rowid,colno,val), ..].
         if numsamples is None:
             numsamples = self.n_samples
         # All sets must be disjoint.
-        all_cols = X + W + Z + [y[0] for y in Y]
+        all_cols = X + W + Z + [(r,c) for r,c,_ in Y]
         if len(all_cols) != len(set(all_cols)):
-            raise ValueError('Duplicate colnos received in '
+            raise ValueError('Duplicate cells received in '
                 'conditional_mutual_information.\n'
                 'X: {}\nW: {}\nZ: {}\nY: {}'.format(X, W, Z, Y))
         # Simulate from joint.
-        row_id = core.bayesdb_generator_fresh_row_id(bdb, genid)
-        hack_targets = [(row_id, c) for c in X+W+Z]
-        hack_constraints = [(row_id, r, c) for r, c in Y]
-        XWZ_samples = self.simulate(bdb, genid, modelno, hack_targets,
-            hack_constraints, numpredictions=numsamples)
+        XWZ_samples = self.simulate(bdb, genid, modelno, X+W+Z,
+            Y, numpredictions=numsamples)
         # Simple Monte Carlo
         mi = logpz = logpxwz = logpxz = logpwz = 0
         for s in XWZ_samples:
-            Qx = zip(X, s[:len(X)])
-            Qw = zip(Z, s[len(X):-len(Z)])
-            Qz = zip(W, s[-len(Z):])
+            Qx = [(r,c,v) for ((r,c),v) in zip(X, s[:len(X)])]
+            Qw = [(r,c,v) for ((r,c),v) in zip(Z, s[len(X):-len(Z)])]
+            Qz = [(r,c,v) for ((r,c),v) in zip(W, s[-len(Z):])]
             if Z:
                 logpz = self._joint_logpdf(bdb, genid, modelno, Qz, Y)
             else:
@@ -494,8 +492,6 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
         return mi/numsamples
 
     def logpdf_joint(self, bdb, generator_id, targets, constraints, modelno):
-        targets = [(col, val) for _, col, val in targets]
-        constraints = [(col, val) for _, col, val in constraints]
         if modelno is None:
             modelnos = core.bayesdb_generator_modelnos(bdb, generator_id)
         else:
@@ -518,21 +514,22 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
             raise ValueError('Invalid query Q: len(Q) == 0.')
         # Ensure consistency of any duplicates in Q and Y.
         ignore = set()
-        for (cq, vq), (cy, vy) in itertools.product(Q, Y):
-            if cq == cy:
+        for (rq, cq, vq), (ry, cy, vy) in itertools.product(Q, Y):
+            if cq == cy and rq == ry:
                 if vq == vy:
-                    ignore.add(cq)
+                    ignore.add((rq, cq))
                 else:
                     return -float('inf')
-        row_id = core.bayesdb_generator_fresh_row_id(bdb, genid)
-        Q = [(row_id, c, v) for c,v in Q if c not in ignore]
-        Y = [(row_id, c, v) for c,v in Y]
+        Q = [(r, c, v) for r,c,v in Q if (r,c) not in ignore]
+        for r, _, _ in Q+Y:
+            assert r == Q[0][0], "Cannot assess more than one row, "\
+                "%s and %s requested" % (Q[0][0], r)
         # (Q,Y) marginal joint density.
-        _, QY_weights = self._weighted_sample(bdb, genid, modelno, row_id, Q+Y,
-            n_samples=n_samples)
+        _, QY_weights = self._weighted_sample(bdb, genid, modelno,
+            Q[0][0], Q+Y, n_samples=n_samples)
         # Y marginal density.
-        _, Y_weights = self._weighted_sample(bdb, genid, modelno, row_id, Y,
-            n_samples=n_samples)
+        _, Y_weights = self._weighted_sample(bdb, genid, modelno,
+            Q[0][0], Y, n_samples=n_samples)
         # XXX TODO Keep sampling until logpQY <= logpY
         logpQY = logmeanexp(QY_weights)
         logpY = logmeanexp(Y_weights)
