@@ -134,26 +134,20 @@ class RandomForest(predictor.IBayesDBForeignPredictor):
             self.conditions_categorical, self.dataset)
 
     def _init_X_categorical(self):
-        """Creates: self.X_categorical.
-        """
+        """Extracts categorical columns from the dataset into a matrix."""
         self.X_categorical = utils.extract_sklearn_features_categorical(
             self.conditions_categorical, self.categories_to_val_map,
             self.dataset)
 
     def _init_X_numerical(self):
-        """Extract numerical columns from the dataset into a matrix.
-
-        Creates: self.X_numerical
-        """
+        """Extract numerical columns from the dataset into a matrix."""
         self.X_numerical = utils.extract_sklearn_features_numerical(
             self.conditions_numerical, self.dataset)
 
     def _init_Y(self):
-        """Extracts the targets column.
-
-        Creates: self.Y
-        """
-        self.Y = self.dataset[self.targets].as_matrix().ravel()
+        """Extracts the targets column into a vector."""
+        self.Y = utils.extract_sklearn_univariate_target(self.targets,
+            self.dataset)
 
     def _train_rf(self):
         """Trains the random forests classifiers.

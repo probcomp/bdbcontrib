@@ -138,3 +138,18 @@ def build_categorical_to_value_map(columns, dataset):
         categories_to_val_map[categorical] = {val:code
             for (code,val) in enumerate(dataset[categorical].unique())}
     return categories_to_val_map
+
+def extract_sklearn_univariate_target(target, dataset):
+    """Extracts a single target column from a dataset as a vector for sklearn.
+
+    Parameters
+    ----------
+    target : str
+        Name of the target column.
+    dataset : pandas.DataFrame
+
+    Returns
+    -------
+    target_vector : np.array
+    """
+    return dataset[target].as_matrix().ravel()
