@@ -17,28 +17,49 @@
 import numpy as np
 import pandas as pd
 
+from sklearn.preprocessing import Imputer
+
 def extract_sklearn_dataset(conditions, targets, dataset):
-        """Extracts the `conditions` and `targets` colums from `dataset` with
-        additional preprocessing.
+    """Extracts the `conditions` and `targets` colums from `dataset` with
+    additional preprocessing.
 
-        `NaN` strings are converted to Python `None`. Rows where the target is
-        absent are dropped. All columns not in `conditions` and `target` are
-        dropped.
+    `NaN` strings are converted to Python `None`. Rows where the target is
+    absent are dropped. All columns not in `conditions` and `target` are
+    dropped.
 
-        Parameters
-        ----------
-        condtions, targets : list<str>
-            Column names of the `conditions` and `targets`
-        dataset : pandas.DataFrame
+    Parameters
+    ----------
+    condtions, targets : list<str>
+        Column names of the `conditions` and `targets`
+    dataset : pandas.DataFrame
 
-        Returns
-        -------
-        pd.DataFrame
-        """
-        dataset = dataset.where((pd.notnull(dataset)), None)
-        return dataset[conditions + targets].dropna(subset=targets)
+    Returns
+    -------
+    pd.DataFrame
+    """
+    dataset = dataset.where((pd.notnull(dataset)), None)
+    return dataset[conditions + targets].dropna(subset=targets)
 
-def binarize_categorical_matrix(categories,  categories_to_val_map, dataset):
+def extract_sklearn_features_numerical(columns, dataset):
+    """Extracts the numerical `columns` from `dataset`.
+
+    Missing cells are imputed using mean imputation.
+
+    Parameters
+    ----------
+    columns : list<str>
+        Column names corresponding to numerical features.
+    dataset : pandas.DataFrame
+
+    Returns
+    -------
+    pd.DataFrame
+    """
+    X_numerical = dataset[columns].as_matrix().astype(float)
+    return Imputer().fit_transform(X_numerical)
+
+def extract_sklearn_features_categorical(categories,  categories_to_val_map,
+        dataset):
     """Converts each categorical column i (Ki categories, N rows) into an
     N x Ki matrix. Each row in the matrix is a binary vector.
 
@@ -83,10 +104,9 @@ def binarize_categorical_matrix(categories,  categories_to_val_map, dataset):
 
 def binarize_categorical_row(categories, categories_to_val_map, row):
     """Unrolls a row of categorical data into the corresponding binary
-    vector version.
-    The order of the entries in `row` must be the same as those in the list
-    `categories`. The `row` must be a list of strings
-    corresponding to the value of each categorical column.
+    vector version. The order of the entries in `row` must be the same as those
+    in the list `categories`. The `row` must be a list of strings corresponding
+    to the value of each categorical column.
     """
     assert len(row) == len(categories)
     binary_data = []

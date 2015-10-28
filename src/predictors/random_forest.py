@@ -160,7 +160,7 @@ class RandomForest(predictor.IBayesDBForeignPredictor):
     def _init_X_categorical(self):
         """Creates: self.X_categorical.
         """
-        self.X_categorical = utils.binarize_categorical_matrix(
+        self.X_categorical = utils.extract_sklearn_features_categorical(
             self.conditions_categorical, self.categories_to_val_map,
             self.dataset)
 
@@ -169,9 +169,8 @@ class RandomForest(predictor.IBayesDBForeignPredictor):
 
         Creates: self.X_numerical
         """
-        X_numerical = self.dataset[self.conditions_numerical].as_matrix().\
-            astype(float)
-        self.X_numerical = Imputer().fit_transform(X_numerical)
+        self.X_numerical = utils.extract_sklearn_features_numerical(
+            self.conditions_numerical, self.dataset)
 
     def _init_Y(self):
         """Extracts the targets column.
