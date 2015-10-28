@@ -89,7 +89,7 @@ class KeplersLaw(predictor.IBayesDBForeignPredictor):
 
         # Learn the noise model.
         actual_period = self.dataset[self.targets].as_matrix().ravel()
-        theoretical_period = self._compute_period(X[:,0], X[:,1])/60.
+        theoretical_period = satellite_period(X[:,0], X[:,1])/60.
         errors = np.abs(actual_period-theoretical_period)
         errors = np.mean(np.select(
             [errors<np.percentile(errors, 95)], [errors]))
@@ -100,22 +100,13 @@ class KeplersLaw(predictor.IBayesDBForeignPredictor):
         perigee_km_i = self.conditions[1]
         return conditions[apogee_km_i], conditions[perigee_km_i]
 
-    def _compute_period(self, apogee_km, perigee_km):
-        """Computes the period of the satellite in seconds given the apogee_km
-        and perigee_km of the satellite.
-        """
-        GM = 398600.4418
-        EARTH_RADIUS = 6378
-        a = 0.5*(abs(apogee_km) + abs(perigee_km)) + EARTH_RADIUS
-        return 2 * np.pi * np.sqrt(a**3/GM)
-
     def simulate(self, n_samples, conditions):
         if not set(self.conditions).issubset(set(conditions.keys())):
             raise ValueError('Must specify values for all the conditionals.\n'
                 'Received: {}\n'
                 'Expected: {}'.format(conditions, self.conditions))
         apogee_km, perigee_km = self._conditions(conditions)
-        period = self._compute_period(apogee_km, perigee_km)
+        period = satellite_period(apogee_km, perigee_km)
         return list(period/60. + self.prng.normal(scale=self.noise,
             size=n_samples))
 
@@ -125,7 +116,7 @@ class KeplersLaw(predictor.IBayesDBForeignPredictor):
                 'Received: {}\n'
                 'Expected: {}'.format(conditions, self.conditions))
         apogee_km, perigee_km = self._conditions(conditions)
-        period = self._compute_period(apogee_km, perigee_km) / 60.
+        period = satellite_period(apogee_km, perigee_km) / 60.
         return logpdfGaussian(value, period, self.noise)
 
 HALF_LOG2PI = 0.5 * math.log(2 * math.pi)
@@ -133,3 +124,12 @@ def logpdfGaussian(x, mu, sigma):
     deviation = x - mu
     return - math.log(sigma) - HALF_LOG2PI \
         - (0.5 * deviation * deviation / (sigma * sigma))
+
+def satellite_period(apogee_km, perigee_km):
+    """Period of satellite with specified apogee and perigee.
+
+    Apogee and perigee are in kilometers; period is in seconds."""
+    GM = 398600.4418
+    EARTH_RADIUS = 6378
+    a = 0.5*(abs(apogee_km) + abs(perigee_km)) + EARTH_RADIUS
+    return 2 * np.pi * np.sqrt(a**3/GM)
