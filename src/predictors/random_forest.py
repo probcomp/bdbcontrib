@@ -26,29 +26,10 @@ from bdbcontrib.predictors import predictor
 from bdbcontrib.predictors import utils
 
 class RandomForest(predictor.IBayesDBForeignPredictor):
-    """A random forest foreign predictor.
+    """A Random Forest foreign predictor.
 
-    The `targets` must be a single categorical stattype.
-
-    Examples
-    --------
-
-    >>> df = pd.read_csv('/path/to/satellites.csv')
-    >>> rf = RandomForest()
-    >>> rf = train(df, `targets`, `conditions`)
-    >>> rf.logpdf('Intermediate', {Perigee_km:535, Apogee_km:551,
-            Eccentricity:0.00116, Period_minutes:95.5, Launch_Mass_kg:293,
-            Power_watts:414,Anticipated_Lifetime:3, Class_of_Orbit:'LEO'
-            Purpose:'Astrophysics', Users:'Government/Civil'})
-    -0.1626
-
-    >>> rf.simulate(10, {Perigee_km:535, Apogee_km:551,
-            Eccentricity:0.00116, Period_minutes:95.5, Launch_Mass_kg:293,
-            Power_watts:414,Anticipated_Lifetime:3, Class_of_Orbit:'LEO',
-            Purpose='Astrophysics', Users='Government/Civil'})
-    ['Intermediate', 'Intermediate', 'Intermediate', 'Intermediate',
-     'Intermediate', 'Intermediate', 'Intermediate', 'Sun-Synchronous',
-     'Intermediate', 'Intermediate']
+    The `targets` must be a single categorical stattype.  The `conditions`
+    may be arbitrary numerical or categorical columns.
     """
 
     @classmethod
