@@ -91,8 +91,8 @@ class KeplersLaw(predictor.IBayesDBForeignPredictor):
         actual_period = self.dataset[self.targets].as_matrix().ravel()
         theoretical_period = satellite_period(X[:,0], X[:,1])/60.
         errors = np.abs(actual_period-theoretical_period)
-        errors = np.mean(np.select(
-            [errors<np.percentile(errors, 95)], [errors]))
+        error_95 = np.percentile(errors, 95)
+        errors = np.mean(np.select([errors < error_95], [errors]))
         self.noise = np.sqrt(np.mean(errors**2))
 
     def _conditions(self, conditions):
