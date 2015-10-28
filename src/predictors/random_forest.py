@@ -19,7 +19,6 @@ import pickle
 import numpy as np
 import pandas as pd
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.preprocessing import Imputer
 
 import bdbcontrib
 from bdbcontrib.predictors import predictor
