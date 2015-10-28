@@ -119,8 +119,9 @@ setup(
         'scikit-learn', # For the foreign predictors
     ],
     tests_require=[
+        'mock',
+        'pillow',
         'pytest',
-        'pillow'
     ],
     packages=[
         'bdbcontrib',

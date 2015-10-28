@@ -18,7 +18,6 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
-from contextlib import contextmanager
 import mock
 import numpy as np
 import re

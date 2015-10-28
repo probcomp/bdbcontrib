@@ -48,6 +48,7 @@ following information:
 
 import argparse
 import datetime
+import hashlib
 import logging
 import matplotlib
 matplotlib.use('Agg')
@@ -177,7 +178,11 @@ def doit(out_dir, num_models, num_iters, checkpoint_freq, seed):
         f.flush()
 
     def report(saved_file_name, metadata_file, echo=False, plot_file_name=None):
-        sha_sum = subprocess.check_output(["sha256sum", saved_file_name])
+        sha256 = hashlib.sha256()
+        with open(saved_file_name, 'rb') as fd:
+            for chunk in iter(lambda: fd.read(65536), ''):
+                sha256.update(chunk)
+        sha_sum = sha256.hexdigest() + '\n'
         total_time = time.time() - then
         with open(metadata_file, 'w') as fd:
             record_metadata(fd, saved_file_name,
