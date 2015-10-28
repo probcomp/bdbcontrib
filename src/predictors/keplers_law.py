@@ -95,6 +95,11 @@ class KeplersLaw(predictor.IBayesDBForeignPredictor):
             [errors<np.percentile(errors, 95)], [errors]))
         self.noise = np.sqrt(np.mean(errors**2))
 
+    def _conditions(self, conditions):
+        apogee_km_i = self.conditions[0]
+        perigee_km_i = self.conditions[1]
+        return conditions[apogee_km_i], conditions[perigee_km_i]
+
     def _compute_period(self, apogee_km, perigee_km):
         """Computes the period of the satellite in seconds given the apogee_km
         and perigee_km of the satellite.
@@ -109,8 +114,8 @@ class KeplersLaw(predictor.IBayesDBForeignPredictor):
             raise ValueError('Must specify values for all the conditionals.\n'
                 'Received: {}\n'
                 'Expected: {}'.format(conditions, self.conditions))
-        period = self._compute_period(conditions[self.conditions[0]],
-            conditions[self.conditions[1]])
+        apogee_km, perigee_km = self._conditions(conditions)
+        period = self._compute_period(apogee_km, perigee_km)
         return list(period/60. + self.prng.normal(scale=self.noise,
             size=n_samples))
 
@@ -119,8 +124,8 @@ class KeplersLaw(predictor.IBayesDBForeignPredictor):
             raise ValueError('Must specify values for all the conditionals.\n'
                 'Received: {}\n'
                 'Expected: {}'.format(conditions, self.conditions))
-        period = self._compute_period(conditions[self.conditions[0]],
-            conditions[self.conditions[1]]) / 60.
+        apogee_km, perigee_km = self._conditions(conditions)
+        period = self._compute_period(apogee_km, perigee_km) / 60.
         return logpdfGaussian(value, period, self.noise)
 
 HALF_LOG2PI = 0.5 * math.log(2 * math.pi)
