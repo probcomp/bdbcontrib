@@ -35,7 +35,7 @@ angular.module('bdbRestExampleApp', ['ngResource', 'bdbServices'])
 
   // constants
   var margin = 20,
-    width = 960,
+    width = 820,
     height = 500 - .5 - margin,
     color = d3.interpolateRgb("#f77", "#77f");
 
@@ -146,7 +146,9 @@ angular.module('bdbRestExampleApp', ['ngResource', 'bdbServices'])
               .data(data)
               .enter().append("circle")
               .attr("class", "dot")
-              .attr("r", 3.5)
+              .attr("r", function(d) {
+                  return d.Dry_Mass_kg ? Math.log(d.Dry_Mass_kg) : 3;
+                                     })
               .attr("cx", xMap)
               .attr("cy", yMap)
               .style("fill", function(d) { return color(cValue(d));})
