@@ -1,0 +1,76 @@
+# -*- coding: utf-8 -*-
+
+#   Copyright (c) 2010-2014, MIT Probabilistic Computing Project
+#
+#   Licensed under the Apache License, Version 2.0 (the "License");
+#   you may not use this file except in compliance with the License.
+#   You may obtain a copy of the License at
+#
+#       http://www.apache.org/licenses/LICENSE-2.0
+#
+#   Unless required by applicable law or agreed to in writing, software
+#   distributed under the License is distributed on an "AS IS" BASIS,
+#   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#   See the License for the specific language governing permissions and
+#   limitations under the License.
+
+import numpy as np
+
+def binarize_categorical_matrix(categories,  categories_to_val_map, dataset):
+    """Converts each categorical column i (Ki categories, N rows) into an
+    N x Ki matrix. Each row in the matrix is a binary vector.
+
+    If there are J columns in conditions_categorical, then
+    dataset_binary will be N x (J*sum(Ki)) (ie all encoded categorical
+    matrices are concatenated).
+
+    Example
+        Nationality|Gender
+        -----------+------      -----+-
+        USA        | M          1,0,0,1
+        France     | F          0,1,0,0
+        France     | M          0,1,0,1
+        Germany    | M          0,0,1,1
+
+    Parameters
+    ----------
+    categories : list<str>
+        List of column names corresponding to the categoricals.
+    categories_to_val_map : dict<category : dict<cat:code>>
+        A dictionary of the code lookup dictionary for each category. For
+        example, in the example above
+        {'Nationality': {'USA':0, 'France':1, 'Germany':2},
+            'Gender': {'M':0, 'F':1}}
+    dataset : pandas.DataFrame
+        The matrix stored as a pandas dataframe. The `categories` must appear
+        as columns in the dataframe.
+
+    Returns
+    -------
+    dataset_binary : np.array
+        Refined dataset with the same number of rows and appropriate number
+        of columns representing the binary version of dataset.
+    """
+    dataset_binary = []
+    for row in dataset.iterrows():
+        row = list(row[1][categories])
+        row_binary = binarize_categorical_row(
+            categories, categories_to_val_map, row)
+        dataset_binary.append(row_binary)
+    return np.asarray(dataset_binary)
+
+def binarize_categorical_row(categories, categories_to_val_map, row):
+    """Unrolls a row of categorical data into the corresponding binary
+    vector version.
+    The order of the entries in `row` must be the same as those in the list
+    `categories`. The `row` must be a list of strings
+    corresponding to the value of each categorical column.
+    """
+    assert len(row) == len(categories)
+    binary_data = []
+    for categorical, value in zip(categories, row):
+        K = len(categories_to_val_map[categorical])
+        encoding = [0]*K
+        encoding[categories_to_val_map[categorical][value]] = 1
+        binary_data.extend(encoding)
+    return binary_data

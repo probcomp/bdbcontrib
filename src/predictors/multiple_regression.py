@@ -25,6 +25,7 @@ from sklearn.preprocessing import Imputer
 
 import bdbcontrib
 from bdbcontrib.predictors import predictor
+from bdbcontrib.predictors import utils
 
 class MultipleRegression(predictor.IBayesDBForeignPredictor):
     """A linear regression foreign predictor.
@@ -157,58 +158,18 @@ class MultipleRegression(predictor.IBayesDBForeignPredictor):
                 enumerate(self.dataset[categorical].unique())}
 
     def _init_X_categorical(self):
-        """Converts each categorical column i (Ki categories, N rows) into an
-        N x Ki matrix. Each row in the matrix is a binary vector.
-
-        If there are J columns in conditions_categorical, then
-        self.X_categorical will be N x (J*sum(Ki)) (ie all encoded categorical
-        matrices are concatenated).
-
-        Example
-            Nationality|Gender
-            -----------+------      -----+-
-            USA        | M          1,0,0,1
-            France     | F          0,1,0,0
-            France     | M          0,1,0,1
-            Germany    | M          0,0,1,1
-
-        Creates: self.X_categorical
+        """Creates: self.X_categorical.
         """
-        self.X_categorical = []
-        for row in self.dataset.iterrows():
-            data = list(row[1][self.conditions_categorical])
-            binary_data = self._binarize_categorical_row(data)
-            self.X_categorical.append(binary_data)
-        self.x_categorical = np.asarray(self.X_categorical)
-
-    def _binarize_categorical_row(self, data):
-        """Unrolls a row of categorical data into the corresponding binary
-        vector version.
-
-        The order of the columns in `data` must be the same as
-        self.conditions_categorical. The `data` must be a list of strings
-        corresponding to the value of each categorical column.
-        """
-        assert len(data) == len(self.conditions_categorical)
-        binary_data = []
-        for categorical, value in zip(self.conditions_categorical, data):
-            K = len(self.lookup[categorical])
-            encoding = [0]*K
-            encoding[self.lookup[categorical][value]] = 1
-            binary_data.extend(encoding)
-        return binary_data
+        self.X_categorical = utils.binarize_categorical_matrix(
+            self.conditions_categorical, self.lookup, self.dataset)
 
     def _init_X_numerical(self):
         """Extract numerical columns from the dataset into a matrix.
 
         Creates: self.X_numerical
         """
-        X_numerical = self.dataset[self.conditions_numerical].as_matrix().astype(
-            float)
-        # XXX This is necessary. sklearn cannot deal with missing values and
-        # every row in the dataset has at least one missing value. The
-        # imputer is generic. Cannot use CC since a foreign predictor
-        # is independent.
+        X_numerical = self.dataset[self.conditions_numerical].as_matrix().\
+            astype(float)
         self.X_numerical = Imputer().fit_transform(X_numerical)
 
     def _init_Y(self):
