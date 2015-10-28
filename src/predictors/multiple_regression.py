@@ -53,7 +53,7 @@ class MultipleRegression(predictor.IBayesDBForeignPredictor):
             'mr_partial': pred.mr_partial,
             'mr_full_noise': pred.mr_full_noise,
             'mr_partial_noise': pred.mr_partial_noise,
-            'lookup': pred.lookup
+            'categories_to_val_map': pred.categories_to_val_map
         }
         return pickle.dumps(state)
 
@@ -66,7 +66,7 @@ class MultipleRegression(predictor.IBayesDBForeignPredictor):
             mr_full=state['mr_full'], mr_partial=state['mr_partial'],
             mr_full_noise=state['mr_full_noise'],
             mr_partial_noise=state['mr_partial_noise'],
-            lookup=state['lookup'])
+            categories_to_val_map=state['categories_to_val_map'])
         mr.prng = bdb.np_prng
         return mr
 
@@ -76,7 +76,8 @@ class MultipleRegression(predictor.IBayesDBForeignPredictor):
 
     def __init__(self, targets=None, conditions_numerical=None,
             conditions_categorical=None, mr_full=None, mr_partial=None,
-            mr_full_noise=None, mr_partial_noise=None, lookup=None):
+            mr_full_noise=None, mr_partial_noise=None,
+            categories_to_val_map=None):
         self.targets = targets
         self.conditions_numerical = conditions_numerical
         self.conditions_categorical = conditions_categorical
@@ -88,7 +89,7 @@ class MultipleRegression(predictor.IBayesDBForeignPredictor):
         self.mr_partial = mr_partial
         self.mr_full_noise = mr_full_noise
         self.mr_partial_noise = mr_partial_noise
-        self.lookup = lookup
+        self.categories_to_val_map = categories_to_val_map
 
     def train(self, df, targets, conditions):
         # Obtain the targets column.
@@ -117,7 +118,7 @@ class MultipleRegression(predictor.IBayesDBForeignPredictor):
         # The dataset.
         self.dataset = pd.DataFrame()
         # Lookup for categoricals to code.
-        self.lookup = dict()
+        self.categories_to_val_map = dict()
         # Training set (regressors and labels)
         self.X_numerical = np.ndarray(0)
         self.X_categorical = np.ndarray(0)
@@ -151,17 +152,18 @@ class MultipleRegression(predictor.IBayesDBForeignPredictor):
         """Builds a dictionary of dictionaries. Each dictionary contains the
         mapping category -> code for the corresponding categorical feature.
 
-        Creates: self.lookup
+        Creates: self.categories_to_val_map
         """
         for categorical in self.conditions_categorical:
-            self.lookup[categorical] = {val:code for (code,val) in
-                enumerate(self.dataset[categorical].unique())}
+            self.categories_to_val_map[categorical] = {val:code
+                for (code,val) in enumerate(self.dataset[categorical].unique())}
 
     def _init_X_categorical(self):
         """Creates: self.X_categorical.
         """
         self.X_categorical = utils.binarize_categorical_matrix(
-            self.conditions_categorical, self.lookup, self.dataset)
+            self.conditions_categorical, self.categories_to_val_map,
+            self.dataset)
 
     def _init_X_numerical(self):
         """Extract numerical columns from the dataset into a matrix.
@@ -214,7 +216,7 @@ class MultipleRegression(predictor.IBayesDBForeignPredictor):
 
         # Are there any category values in conditions which never appeared during
         # training? If yes, we need to run the partial RF.
-        unseen = any([conditions[cat] not in self.lookup[cat]
+        unseen = any([conditions[cat] not in self.categories_to_val_map[cat]
             for cat in self.conditions_categorical])
 
         X_numerical = [conditions[col] for col in self.conditions_numerical]

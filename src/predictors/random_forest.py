@@ -68,7 +68,7 @@ class RandomForest(predictor.IBayesDBForeignPredictor):
             'conditions_categorical': pred.conditions_categorical,
             'rf_full': pred.rf_full,
             'rf_partial': pred.rf_partial,
-            'lookup': pred.lookup
+            'categories_to_val_map': pred.categories_to_val_map
         }
         return pickle.dumps(state)
 
@@ -79,7 +79,7 @@ class RandomForest(predictor.IBayesDBForeignPredictor):
             conditions_numerical=state['conditions_numerical'],
             conditions_categorical=state['conditions_categorical'],
             rf_full=state['rf_full'], rf_partial=state['rf_partial'],
-            lookup=state['lookup'])
+            categories_to_val_map=state['categories_to_val_map'])
         rf.prng = bdb.np_prng
         return rf
 
@@ -89,7 +89,7 @@ class RandomForest(predictor.IBayesDBForeignPredictor):
 
     def __init__(self, targets=None, conditions_numerical=None,
             conditions_categorical=None, rf_full=None, rf_partial=None,
-            lookup=None):
+            categories_to_val_map=None):
         self.targets = targets
         self.conditions_numerical = conditions_numerical
         self.conditions_categorical = conditions_categorical
@@ -99,7 +99,7 @@ class RandomForest(predictor.IBayesDBForeignPredictor):
                 self.conditions_categorical
         self.rf_full = rf_full
         self.rf_partial = rf_partial
-        self.lookup = lookup
+        self.categories_to_val_map = categories_to_val_map
 
     def train(self, df, targets, conditions):
         # Obtain the targets column.
@@ -126,7 +126,7 @@ class RandomForest(predictor.IBayesDBForeignPredictor):
         # The dataset.
         self.dataset = pd.DataFrame()
         # Lookup for categoricals to code.
-        self.lookup = dict()
+        self.categories_to_val_map = dict()
         # Training set (regressors and labels)
         self.X_numerical = np.ndarray(0)
         self.X_categorical = np.ndarray(0)
@@ -158,17 +158,18 @@ class RandomForest(predictor.IBayesDBForeignPredictor):
         """Builds a dictionary of dictionaries. Each dictionary contains the
         mapping category -> code for the corresponding categorical feature.
 
-        Creates: self.lookup
+        Creates: self.categories_to_val_map
         """
         for categorical in self.conditions_categorical:
-            self.lookup[categorical] = {val:code for (code,val) in
-                enumerate(self.dataset[categorical].unique())}
+            self.categories_to_val_map[categorical] = {val:code
+                for (code,val) in enumerate(self.dataset[categorical].unique())}
 
     def _init_X_categorical(self):
         """Creates: self.X_categorical.
         """
         self.X_categorical = utils.binarize_categorical_matrix(
-            self.conditions_categorical, self.lookup, self.dataset)
+            self.conditions_categorical, self.categories_to_val_map,
+            self.dataset)
 
     def _init_X_numerical(self):
         """Extract numerical columns from the dataset into a matrix.
@@ -214,7 +215,7 @@ class RandomForest(predictor.IBayesDBForeignPredictor):
 
         # Are there any category values in conditions which never appeared during
         # training? If yes, we need to run the partial RF.
-        unseen = any([conditions[cat] not in self.lookup[cat]
+        unseen = any([conditions[cat] not in self.categories_to_val_map[cat]
             for cat in self.conditions_categorical])
 
         X_numerical = [conditions[col] for col in self.conditions_numerical]
