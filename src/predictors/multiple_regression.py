@@ -136,17 +136,9 @@ class MultipleRegression(predictor.IBayesDBForeignPredictor):
         self._train_mr()
 
     def _init_dataset(self, df):
-        """Create the dataframe of the satellites dataset.
-
-        `NaN` strings are converted to Python `None`.
-
-        Rows where the target is absent are dropped.
-
-        Creates: self.dataset.
-        """
-        df = df.where((pd.notnull(df)), None)
-        self.dataset = df[self.conditions + self.targets].dropna(
-            subset=self.targets)
+        """Creates: self.dataset."""
+        self.dataset = utils.extract_sklearn_dataset(self.conditions,
+            self.targets, df)
 
     def _init_categorical_lookup(self):
         """Builds a dictionary of dictionaries. Each dictionary contains the

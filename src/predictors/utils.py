@@ -15,6 +15,28 @@
 #   limitations under the License.
 
 import numpy as np
+import pandas as pd
+
+def extract_sklearn_dataset(conditions, targets, dataset):
+        """Extracts the `conditions` and `targets` colums from `dataset` with
+        additional preprocessing.
+
+        `NaN` strings are converted to Python `None`. Rows where the target is
+        absent are dropped. All columns not in `conditions` and `target` are
+        dropped.
+
+        Parameters
+        ----------
+        condtions, targets : list<str>
+            Column names of the `conditions` and `targets`
+        dataset : pandas.DataFrame
+
+        Returns
+        -------
+        pd.DataFrame
+        """
+        dataset = dataset.where((pd.notnull(dataset)), None)
+        return dataset[conditions + targets].dropna(subset=targets)
 
 def binarize_categorical_matrix(categories,  categories_to_val_map, dataset):
     """Converts each categorical column i (Ki categories, N rows) into an
