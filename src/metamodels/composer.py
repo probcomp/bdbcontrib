@@ -14,7 +14,6 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
-import itertools
 import sqlite3
 
 import numpy as np
@@ -27,7 +26,6 @@ from bayeslite.util import logmeanexp, casefold
 from crosscat.utils import sample_utils as su
 
 import bayeslite.metamodel
-import bayeslite.bqlfn
 
 composer_schema_1 = [
 '''
@@ -35,12 +33,11 @@ INSERT INTO bayesdb_metamodel
     (name, version) VALUES ('composer', 1);
 ''','''
 CREATE TABLE bayesdb_composer_cc_id(
-    generator_id INTEGER NOT NULL
+    generator_id INTEGER NOT NULL PRIMARY KEY
         REFERENCES bayesdb_generator(id),
-    crosscat_generator_id INTEGER NOT NULL
+    crosscat_generator_id INTEGER NOT NULL UNIQUE
         REFERENCES bayesdb_generator(id),
 
-    PRIMARY KEY(generator_id, crosscat_generator_id),
     CHECK (generator_id != crosscat_generator_id)
 );
 ''','''
@@ -49,7 +46,7 @@ CREATE TABLE bayesdb_composer_column_owner(
     colno INTEGER NOT NULL,
     local BOOLEAN NOT NULL,
 
-    PRIMARY KEY(generator_id, colno, local),
+    PRIMARY KEY(generator_id, colno),
     FOREIGN KEY(generator_id, colno)
         REFERENCES bayesdb_generator_column(generator_id, colno)
 );
