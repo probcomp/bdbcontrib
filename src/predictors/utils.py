@@ -116,3 +116,25 @@ def binarize_categorical_row(categories, categories_to_val_map, row):
         encoding[categories_to_val_map[categorical][value]] = 1
         binary_data.extend(encoding)
     return binary_data
+
+def build_categorical_to_value_map(columns, dataset):
+    """Builds a dictionary of dictionaries.
+
+    Parameters
+    ----------
+    columns : list<str>
+        Column names corresponding to categorical features.
+    dataset : pandas.DataFrame
+
+    Returns
+    -------
+    categories_to_val_map : dict<col:dict>
+        Dictionary of keys with dictionary values. Each value dictionary
+        contains the mapping category -> code for the corresponding
+        categorical feature, which is the key.
+    """
+    categories_to_val_map = dict()
+    for categorical in columns:
+        categories_to_val_map[categorical] = {val:code
+            for (code,val) in enumerate(dataset[categorical].unique())}
+    return categories_to_val_map

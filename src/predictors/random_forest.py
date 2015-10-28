@@ -148,14 +148,9 @@ class RandomForest(predictor.IBayesDBForeignPredictor):
             self.targets, df)
 
     def _init_categorical_lookup(self):
-        """Builds a dictionary of dictionaries. Each dictionary contains the
-        mapping category -> code for the corresponding categorical feature.
-
-        Creates: self.categories_to_val_map
-        """
-        for categorical in self.conditions_categorical:
-            self.categories_to_val_map[categorical] = {val:code
-                for (code,val) in enumerate(self.dataset[categorical].unique())}
+        """Creates: self.categories_to_val_map."""
+        self.categories_to_val_map = utils.build_categorical_to_value_map(
+            self.conditions_categorical, self.dataset)
 
     def _init_X_categorical(self):
         """Creates: self.X_categorical.
