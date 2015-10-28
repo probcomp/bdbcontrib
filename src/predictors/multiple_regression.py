@@ -127,39 +127,20 @@ class MultipleRegression(predictor.IBayesDBForeignPredictor):
         self.mr_partial = LinearRegression()
         self.mr_full = LinearRegression()
 
-        # Build the foreign predictor.
-        self._init_dataset(df)
-        self._init_categorical_lookup()
-        self._init_X_categorical()
-        self._init_X_numerical()
-        self._init_Y()
-        self._train_mr()
-
-    def _init_dataset(self, df):
-        """Creates: self.dataset."""
+        # Preprocess the data.
         self.dataset = utils.extract_sklearn_dataset(self.conditions,
             self.targets, df)
-
-    def _init_categorical_lookup(self):
-        """Creates: self.categories_to_val_map."""
         self.categories_to_val_map = utils.build_categorical_to_value_map(
             self.conditions_categorical, self.dataset)
-
-    def _init_X_categorical(self):
-        """Extracts categorical columns from the dataset into a matrix."""
         self.X_categorical = utils.extract_sklearn_features_categorical(
             self.conditions_categorical, self.categories_to_val_map,
             self.dataset)
-
-    def _init_X_numerical(self):
-        """Extract numerical columns from the dataset into a matrix."""
         self.X_numerical = utils.extract_sklearn_features_numerical(
             self.conditions_numerical, self.dataset)
-
-    def _init_Y(self):
-        """Extracts the targets column into a vector."""
         self.Y = utils.extract_sklearn_univariate_target(self.targets,
             self.dataset)
+        # Train the multiple regression.
+        self._train_mr()
 
     def _train_mr(self):
         """Trains the regressions.
