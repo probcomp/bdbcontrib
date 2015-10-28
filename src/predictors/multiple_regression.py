@@ -189,7 +189,9 @@ class MultipleRegression(predictor.IBayesDBForeignPredictor):
         else:
             X_categorical = [conditions[col] for col in
                 self.conditions_categorical]
-            X_categorical = self._binarize_categorical_row(X_categorical)
+            X_categorical = utils.binarize_categorical_row(
+                self.conditions_categorical, self.categories_to_val_map,
+                X_categorical)
             inputs = np.concatenate(([X_numerical], [X_categorical]), axis=1)
             assert inputs.shape == \
                 (1, len(self.conditions_numerical) + len(X_categorical))

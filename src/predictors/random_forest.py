@@ -167,7 +167,9 @@ class RandomForest(predictor.IBayesDBForeignPredictor):
         else:
             X_categorical = [conditions[col] for col in
                 self.conditions_categorical]
-            X_categorical = self._binarize_categorical_row(X_categorical)
+            X_categorical = utils.binarize_categorical_row(
+                self.conditions_categorical, self.categories_to_val_map,
+                X_categorical)
             distribution = self.rf_full.predict_proba(
                 np.hstack((X_numerical, X_categorical)))
             classes = self.rf_partial.classes_

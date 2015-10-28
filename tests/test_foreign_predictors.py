@@ -84,8 +84,16 @@ def test_random_forest():
     target = [('m5', 'CATEGORICAL')]
     srf_predictor = RandomForest.create(bdb, table, target, conditions)
 
-    # Dummy realization of conditions. Include extra conditions.
+    # Dummy realization of conditions. Include extra conditions with unseen.
     parents = {'c1':1.3, 'c2':-2.1, 'c4':0.2, 'c8':0.2, 'm1':1, 'm3':7, 'm5':5}
+
+    # Crash tests.
+    srf_predictor.simulate(10, parents)
+    pdf_val = srf_predictor.logpdf(7, parents)
+    assert srf_predictor.logpdf(-1, parents) == float('-inf')
+
+    # Dummy realization of conditions. Include extra conditions all seen.
+    parents = {'c1':1.3, 'c2':-2.1, 'c4':0.2, 'c8':0.2, 'm1':1, 'm3':4, 'm5':5}
 
     # Crash tests.
     srf_predictor.simulate(10, parents)
@@ -128,8 +136,15 @@ def test_multiple_regression():
     target = [('c7', 'NUMERICAL')]
     mr_predictor = MultipleRegression.create(bdb, table, target, conditions)
 
-    # Dummy realization of conditions. Include extra conditions.
+    # Dummy realization of conditions. Include extra conditions with unseen.
     inputs = {'c1':1.3, 'c2':-2.1, 'c4':0.2, 'c8':0.2, 'm1':1, 'm3':7, 'm5':5}
+
+    # Crash tests.
+    mr_predictor.simulate(10, inputs)
+    pdf_val = mr_predictor.logpdf(-0.4, inputs)
+
+    # Dummy realization of conditions. Include extra conditions al seen.
+    inputs = {'c1':1.3, 'c2':-2.1, 'c4':0.2, 'c8':0.2, 'm1':1, 'm3':4, 'm5':5}
 
     # Crash tests.
     mr_predictor.simulate(10, inputs)
