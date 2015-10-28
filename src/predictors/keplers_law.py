@@ -89,7 +89,7 @@ class KeplersLaw(predictor.IBayesDBForeignPredictor):
 
         # Learn the noise model.
         actual_period = self.dataset[self.targets].as_matrix().ravel()
-        theoretical_period = satellite_period(X[:,0], X[:,1])/60.
+        theoretical_period = satellite_period_minutes(X[:,0], X[:,1])
         errors = np.abs(actual_period-theoretical_period)
         error_95 = np.percentile(errors, 95)
         errors = np.mean(np.select([errors < error_95], [errors]))
@@ -106,8 +106,8 @@ class KeplersLaw(predictor.IBayesDBForeignPredictor):
                 'Received: {}\n'
                 'Expected: {}'.format(conditions, self.conditions))
         apogee_km, perigee_km = self._conditions(conditions)
-        period = satellite_period(apogee_km, perigee_km)
-        return list(period/60. + self.prng.normal(scale=self.noise,
+        period_minutes = satellite_period_minutes(apogee_km, perigee_km)
+        return list(period_minutes + self.prng.normal(scale=self.noise,
             size=n_samples))
 
     def logpdf(self, value, conditions):
@@ -116,8 +116,8 @@ class KeplersLaw(predictor.IBayesDBForeignPredictor):
                 'Received: {}\n'
                 'Expected: {}'.format(conditions, self.conditions))
         apogee_km, perigee_km = self._conditions(conditions)
-        period = satellite_period(apogee_km, perigee_km) / 60.
-        return logpdfGaussian(value, period, self.noise)
+        period_minutes = satellite_period_minutes(apogee_km, perigee_km)
+        return logpdfGaussian(value, period_minutes, self.noise)
 
 HALF_LOG2PI = 0.5 * math.log(2 * math.pi)
 def logpdfGaussian(x, mu, sigma):
@@ -125,11 +125,11 @@ def logpdfGaussian(x, mu, sigma):
     return - math.log(sigma) - HALF_LOG2PI \
         - (0.5 * deviation * deviation / (sigma * sigma))
 
-def satellite_period(apogee_km, perigee_km):
+def satellite_period_minutes(apogee_km, perigee_km):
     """Period of satellite with specified apogee and perigee.
 
-    Apogee and perigee are in kilometers; period is in seconds."""
+    Apogee and perigee are in kilometers; period is in minutes."""
     GM = 398600.4418
     EARTH_RADIUS = 6378
     a = 0.5*(abs(apogee_km) + abs(perigee_km)) + EARTH_RADIUS
-    return 2 * np.pi * np.sqrt(a**3/GM)
+    return 2 * np.pi * np.sqrt(a**3/GM) / 60.
