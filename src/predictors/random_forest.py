@@ -22,7 +22,7 @@ from sklearn.ensemble import RandomForestClassifier
 
 import bdbcontrib
 from bdbcontrib.predictors import predictor
-from bdbcontrib.predictors import utils
+from bdbcontrib.predictors import sklearn_utils as utils
 
 class RandomForest(predictor.IBayesDBForeignPredictor):
     """A Random Forest foreign predictor.

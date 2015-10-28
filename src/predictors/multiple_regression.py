@@ -24,7 +24,7 @@ from sklearn.linear_model import LinearRegression
 
 import bdbcontrib
 from bdbcontrib.predictors import predictor
-from bdbcontrib.predictors import utils
+from bdbcontrib.predictors import sklearn_utils as utils
 
 class MultipleRegression(predictor.IBayesDBForeignPredictor):
     """A linear regression foreign predictor.
