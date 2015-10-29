@@ -16,6 +16,12 @@ The software in bdbcontrib requires:
 - [seaborn >=6](http://stanford.edu/~mwaskom/software/seaborn/)
 - [tornado >=4](http://www.tornadoweb.org/en/stable/)
 
+The tests require:
+
+- [mock](https://pypi.python.org/pypi/mock)
+- [pillow](https://python-pillow.github.io/)
+- [pytest](http://pytest.org/)
+
 The documentation requires:
 
 - [numpydoc](https://pypi.python.org/pypi/numpydoc)
