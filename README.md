@@ -4,15 +4,25 @@ A set of utilities for bayesdb.
 
 ## Installing
 
-**Requires**
+The software in bdbcontrib requires:
 
-- Matplotlib
-- Seaborn == 0.5.1
-- Pandas
-- numpy
-- markdown2 (for `.readtohtml`)
-- sphinx (for documentation)
-- numpydoc (for documentation)
+- [bayeslite >=0.1.2](http://probcomp.csail.mit.edu/bayesdb/)
+- [ipython notebook >=3](http://ipython.org/notebook.html)
+- [markdown2](https://pypi.python.org/pypi/markdown2)
+- [matplotlib](http://matplotlib.org/)
+- [numpy](http://www.numpy.org/)
+- [pandas](http://pandas.pydata.org/)
+- [scikit-learn](http://scikit-learn.org/)
+- [seaborn >=6](http://stanford.edu/~mwaskom/software/seaborn/)
+- [tornado >=4](http://www.tornadoweb.org/en/stable/)
+
+The documentation requires:
+
+- [numpydoc](https://pypi.python.org/pypi/numpydoc)
+- [sphinx](sphinx-doc.org)
+
+Individual parts of bdbcontrib may have slimmer dependencies, if you
+want to pull them out for more limited purposes.
 
 ## Test
 
