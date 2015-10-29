@@ -106,7 +106,7 @@ setup(
     author_email='bayesdb@mit.edu',
     license='Apache License, Version 2.0',
     install_requires=[
-        'bayeslite>=0.1rc5',
+        'bayeslite>=0.1.2',
         'ipython[notebook]>=3',
         'markdown2',
         'matplotlib',
@@ -116,6 +116,7 @@ setup(
         'seaborn>=0.6',
         'sphinx',
         'tornado>=4.0',
+        'scikit-learn', # For the foreign predictors
     ],
     tests_require=[
         'mock',
@@ -124,6 +125,8 @@ setup(
     ],
     packages=[
         'bdbcontrib',
+        'bdbcontrib.predictors',
+        'bdbcontrib.metamodels',
         'bdbcontrib.demo',
         'bdbcontrib.demo.ed25519',
         'bdbcontrib.experiments',

@@ -84,7 +84,7 @@ build/satellites-bdbs-3200m-30i/satellites.bdb: build/satellites-bdbs-3200m-30i/
 	satellites/build_bdbs.py --outdir build/satellites-bdbs-3200m-30i/ \
 	 --models 3200 --iters 30 --checkpoint_freq 5 --seed 0
 
-# On my laptop, this step took around an hour 10/5/15
+# On axch laptop, this step took around an hour 10/5/15
 build/satellites-probes-3200m-30i.pkl: build/stamp
 build/satellites-probes-3200m-30i.pkl: build/satellites-bdbs-3200m-30i/satellites.bdb
 build/satellites-probes-3200m-30i.pkl: satellites/probe.py
@@ -109,7 +109,7 @@ build/satellites-bdbs-320m-300i/satellites.bdb: build/satellites-bdbs-320m-300i/
 	satellites/build_bdbs.py --outdir build/satellites-bdbs-320m-300i/ \
 	 --models 320 --iters 300 --checkpoint_freq 30 --seed 0
 
-# On my laptop, this step took around 20 minutes 10/5/15
+# On axch laptop, this step took around 20 minutes 10/5/15
 build/satellites-probes-320m-300i.pkl: build/stamp
 build/satellites-probes-320m-300i.pkl: build/satellites-bdbs-320m-300i/satellites.bdb
 build/satellites-probes-320m-300i.pkl: satellites/probe.py
@@ -150,3 +150,10 @@ heatmap: build/satellites.bdb .PHONY
 	 echo ".heatmap 'ESTIMATE DEPENDENCE PROBABILITY FROM PAIRWISE COLUMNS OF satellites_cc;'") \
 	| PYTHONPATH=../:$$PYTHONPATH \
 	  bayeslite -j1 --seed 0 build/satellites.bdb
+
+kepler-plots: .PHONY
+kepler-plots: build/kepler.bdb build/simulated
+	echo "plt.show()" | python -i kepler/plots.py build/simulated/
+
+build/kepler.bdb: kepler/kepler.py build/stamp
+	python kepler/kepler.py build/

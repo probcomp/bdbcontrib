@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-#   Copyright (c) 2015, MIT Probabilistic Computing Project
+#   Copyright (c) 2010-2014, MIT Probabilistic Computing Project
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -14,20 +14,8 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
-"""Sphinx configuration file."""
-
-extensions = [
-    'sphinx.ext.autodoc',
-    'sphinx.ext.autosummary',
-    'numpydoc',
-]
-
-copyright = '2015, MIT Probabilistic Computing Project'
-master_doc = 'index'
-project = 'bdbcontrib'
-release = '0.1.dev'
-version = '0.1'
-
-nitpicky = True
-
-numpydoc_show_class_members = False
+from predictor import IBayesDBForeignPredictorFactory
+from predictor import IBayesDBForeignPredictor
+from keplers_law import KeplersLaw
+from multiple_regression import MultipleRegression
+from random_forest import RandomForest

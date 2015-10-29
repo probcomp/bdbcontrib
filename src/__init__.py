@@ -26,7 +26,9 @@ from bql_utils import describe_generator
 from bql_utils import describe_generator_columns
 from bql_utils import describe_generator_models
 from bql_utils import describe_table
+from bql_utils import df_to_table
 from bql_utils import nullify
+from bql_utils import table_to_df
 from bql_utils import query
 
 from diagnostic_utils import estimate_kl_divergence
@@ -78,7 +80,9 @@ __all__ = [
         'describe_generator_columns',
         'describe_generator_models',
         'describe_table',
+        'df_to_table',
         'nullify',
+        'table_to_df',
         'query',
     # crosscat_utils
         'draw_crosscat',

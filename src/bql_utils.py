@@ -17,7 +17,10 @@
 import pandas as pd
 
 import bayeslite.core
+from bayeslite import bayesdb_open
 from bayeslite import bql_quote_name as quote
+from bayeslite.read_pandas import bayesdb_read_pandas_df
+from bayeslite.sqlite3_util import sqlite3_quote_name
 from bayeslite.util import cursor_value
 
 ###############################################################################
@@ -109,8 +112,39 @@ def cursor_to_df(cursor):
 
     return df
 
+def table_to_df(bdb, table_name, column_names=None):
+    """Return the contents of the given table as a pandas DataFrame.
+
+    If `column_names` is not None, fetch only those columns.
+    """
+    qt = sqlite3_quote_name(table_name)
+    if column_names is not None:
+        qcns = ','.join(map(sqlite3_quote_name, column_names))
+        select_sql = 'SELECT %s FROM %s' % (qcns, qt)
+    else:
+        select_sql = 'SELECT * FROM %s' % (qt,)
+    return cursor_to_df(bdb.sql_execute(select_sql))
+
+def df_to_table(df, tablename=None, **kwargs):
+    """Return a new BayesDB with a single table with the data in `df`.
+
+    `df` is a Pandas DataFrame.
+
+    If `tablename` is not supplied, an arbitrary one will be chosen.
+
+    `kwargs` are passed on to `bayesdb_open`.
+
+    Returns a 2-tuple of the new BayesDB instance and the name of the
+    new table.
+    """
+    bdb = bayesdb_open(**kwargs)
+    if tablename is None:
+        tablename = bdb.temp_table_name()
+    bayesdb_read_pandas_df(bdb, tablename, df, create=True)
+    return (bdb, tablename)
 
 def query(bdb, bql):
+
     """Execute the `bql` query on the `bdb` instance.
 
     Parameters
