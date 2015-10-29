@@ -114,9 +114,10 @@ setup(
         'numpydoc',
         'pandas',
         'seaborn>=0.6',
+        'sklearn',
+        'sklearn-pandas',
         'sphinx',
         'tornado>=4.0',
-        'scikit-learn', # For the foreign predictors
     ],
     tests_require=[
         'mock',
