@@ -20,8 +20,9 @@ import numpy as np
 
 import bayeslite.core as core
 from bayeslite.exception import BQLError
+from bayeslite.math_util import logmeanexp
 from bayeslite.sqlite3_util import sqlite3_quote_name as quote
-from bayeslite.util import logmeanexp, casefold
+from bayeslite.util import casefold
 
 from crosscat.utils import sample_utils as su
 
