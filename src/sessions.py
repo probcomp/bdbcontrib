@@ -19,19 +19,32 @@ import os
 import gzip
 import json
 import copy
+from bayeslite.util import cursor_value
+import re
 
-csv_fields = ["timestamp", "client_ip", "version", "id", "session_id", "type", "data", "start_time", "end_time", "error"]
+_csv_fields = ["timestamp", "client_ip", "version", "id", "session_id", "type", "data", "start_time", "end_time", "error"]
 
-class Entries:
 
-    def __init__(self, sessions_dir):
+class _StoredSessionsEntryIterator:
+
+    def __init__(self, sessions_dir, feature_extractors = {}):
+        '''
+            feeature_extractors is a dictionary of feature extractors for
+            entries. the key will be the column name. the order of these
+            columns in the resulting table is undefined
+        '''
+        
+        feature_names = list(feature_extractors.keys())
+        self.columns = _csv_fields + feature_names
+
         # iterate over the files in the directory
         files = []
         for (_, _, fnames) in os.walk(sessions_dir):
             files.extend(fnames)
             break
-        csv_rows = []
+        self.csv_rows = []
         for file in files:
+            print 'loading entries from %s ..' % (file,)
             if file.endswith('.json.gz'):
                 with gzip.open(os.path.join(sessions_dir, file), 'rb') as f:
                     data = json.loads(f.read().decode("ascii"))
@@ -44,26 +57,58 @@ class Entries:
                     for entry in entries:
                         row = copy.deepcopy(baserow)
                         for (field, value) in zip(fields, entry):
-                            row[field] = str(value)
-                        csv_str = ','.join([row[field] for field in csv_fields])
-                        csv_rows.append(csv_str)
-        csv_rows_idx = 0
+                            row[field] = value
+                        # extract derived features
+                        for (feat_name, feat) in feature_extractors.iteritems():
+                            row[feat_name] = feat(row)
+                        csv_str = ','.join([str(row[field]) for field in self.columns])
+                        self.csv_rows.append(csv_str)
+        self.csv_rows_idx = 0
 
-    def next():
-        if csv_rows_idx == 0:
-            result = ','.join(csv_fields)
-        elif csv_rows_idx < len(csv_rows):
-            result = csv_rows[csv_rows_idx]
+    def __iter__(self):
+        return self
+
+    def next(self):
+        if self.csv_rows_idx == 0:
+            result = ','.join(self.columns)
+        elif self.csv_rows_idx < len(self.csv_rows):
+            result = self.csv_rows[self.csv_rows_idx]
         else:
-            return None
-        csv_rows_idx += 1
+            raise StopIteration()
+        self.csv_rows_idx += 1
+        return result
 
+def primary_keyword(entry):
+    return entry["data"].split(" ")[0]
 
+def create_query_pattern_search(pattern):
+    prog = re.compile(pattern)
+    return lambda entry: prog.search(entry["data"]) is not None
 
 def create_bdb_from_session_dumps(bdb_file, sessions_dir):
 
-    entries_iter = Entries(sessions_dir)
-    bdb = bayeslite.bayesdb_open(bdb_file, builtin_metamodels=None)
-    bayeslite.bayesdb_read_csv(bdb, 'entries', entries_iter, header=True, create=True, ifnotexists=False)
+    if os.path.isfile(bdb_file):
+        os.remove(bdb_file)
+        #raise ValueError("The file %s exists, please use a different filename." % (bdb_file,))
 
-create_bdb_from_session_dumps('sessions_test.bdb', '/afs/csail/proj/probcomp/bayeslite_saved_sessions')
+    if not os.path.isdir(sessions_dir):
+        raise ValueError("The provided path %s is not a directory." % (sessions_dir,))
+
+    features = {}
+    features["primary_keyword"] = primary_keyword
+    features["dep_prob"] = create_query_pattern_search("dependence_probability")
+    entries_iter = _StoredSessionsEntryIterator(sessions_dir, features)
+
+    bdb = bayeslite.bayesdb_open(bdb_file, builtin_metamodels=None)
+    bayeslite.bayesdb_read_csv(bdb, 'entries', entries_iter, header=True, create=True, ifnotexists=True)
+    num_entries = int(cursor_value(bdb.sql_execute("SELECT COUNT(*) FROM entries;")))
+    print 'loaded %d entries' % (num_entries,)
+
+    for row in list(bdb.sql_execute("SELECT primary_keyword,client_ip,dep_prob from entries;")):
+        print row
+
+create_bdb_from_session_dumps('sessions_test.bdb', 'dir')
+
+
+
+
