@@ -36,7 +36,7 @@ class BqlRecipes(object):
 
     name : str
         The name of dataset, should use letters and underscores only.
-    csv : str
+    csv_path : str
         The path to a comma-separated values file for the data to analyze.
     logger : object
         Something on which we can call .info or .warn, by default a
@@ -47,7 +47,7 @@ class BqlRecipes(object):
     assert re.match(r'\w+', name)
     self.name = name
     self.generator_name = name + '_cc'
-    self.csv = csv_path
+    self.csv_path = csv_path
     self.bdb_path = bdb_path if bdb_path else (self.name + ".bdb")
     self.logger = BqlLogger() if logger is None else logger
     self.bdb = None
@@ -60,7 +60,7 @@ class BqlRecipes(object):
     self.bdb = bayeslite.bayesdb_open(self.bdb_path)
     if not bayeslite.core.bayesdb_has_table(self.bdb, self.name):
       bayeslite.bayesdb_read_csv_file(
-          self.bdb, self.name, self.csv,
+          self.bdb, self.name, self.csv_path,
           header=True, create=True, ifnotexists=True)
     bdbcontrib.nullify(self.bdb, self.name, "")
     if "BAYESDB_WIZARD_MODE" in os.environ:
@@ -322,7 +322,7 @@ class BqlRecipes(object):
       if row_exists.ix[0][0] != 1:
         raise NotImplementedError(
             'identify_row_by found %d rows instead of exactly 1 in %s.' %
-            (row_exists.ix[0][0], self.csv))
+            (row_exists.ix[0][0], self.csv_path))
       creation_query = ('''CREATE TEMP TABLE IF NOT EXISTS %s AS ESTIMATE *,
                            SIMILARITY TO (%s) AS %s FROM %%g LIMIT %d;''' %
                         (table_name, query_attrs, column_name, nsimilar))
