@@ -23,7 +23,7 @@ from bayeslite.util import cursor_value
 import re
 
 _csv_fields = ["timestamp", "client_ip", "version", "id", "session_id", "type", "data", "start_time", "end_time", "error"]
-
+keywords = ['select', 'simulate', 'infer', 'estimate', 'predict', 'given', 'predictive probability', 'probability of value', 'similarity', 'correlation', 'dependence probability', 'mutual information']
 
 class _StoredSessionsEntryIterator:
 
@@ -82,21 +82,23 @@ def primary_keyword(entry):
     return entry["data"].split(" ")[0]
 
 def create_query_pattern_search(pattern):
-    prog = re.compile(pattern)
+    prog = re.compile(pattern, re.IGNORECASE)
     return lambda entry: prog.search(entry["data"]) is not None
 
 def create_bdb_from_session_dumps(bdb_file, sessions_dir):
 
     if os.path.isfile(bdb_file):
-        os.remove(bdb_file)
-        #raise ValueError("The file %s exists, please use a different filename." % (bdb_file,))
+        raise ValueError("The file %s exists, please use a different filename." % (bdb_file,))
 
     if not os.path.isdir(sessions_dir):
         raise ValueError("The provided path %s is not a directory." % (sessions_dir,))
 
     features = {}
     features["primary_keyword"] = primary_keyword
-    features["dep_prob"] = create_query_pattern_search("dependence_probability")
+
+    # register feature extractors for each keyword
+    for keyword in keywords:
+        features[keyword] = create_query_pattern_search(keyword)
     entries_iter = _StoredSessionsEntryIterator(sessions_dir, features)
 
     bdb = bayeslite.bayesdb_open(bdb_file, builtin_metamodels=None)
@@ -107,8 +109,6 @@ def create_bdb_from_session_dumps(bdb_file, sessions_dir):
     for row in list(bdb.sql_execute("SELECT primary_keyword,client_ip,dep_prob from entries;")):
         print row
 
+# TODO: remove
 create_bdb_from_session_dumps('sessions_test.bdb', 'dir')
-
-
-
 
