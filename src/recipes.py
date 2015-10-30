@@ -19,6 +19,7 @@ import bdbcontrib
 import bayeslite.core
 import bayeslite.guess
 import bayeslite.metamodels.crosscat
+from collections import defaultdict
 import crosscat
 import crosscat.LocalEngine
 import matplotlib.pyplot as plt
@@ -231,6 +232,38 @@ class BqlRecipes(object):
         self.logger.plot("%s.%s.%s" % (reverse[sel1], reverse[sel2], plotfile),
                          hmap)
         plt.close('all')
+
+  def avg_dependence_probabilities(self):
+    """Average dependence probability of each column with other columns.
+
+    This is one way of quickly approximating the variables with greatest mutual
+    information with other variables in the population.
+
+    Returns:
+      A dict(str: float) = colname: average_depprob_with_other_columns.
+    """
+    deps = self.q('''ESTIMATE DEPENDENCE PROBABILITY
+             FROM PAIRWISE COLUMNS OF %s''' % self.generator_name)
+    sums = defaultdict(float)
+    for rowid in deps.index:
+      (genid, name0, name1, depprob) = deps.ix[rowid]
+      if name0 == name1:
+        continue
+      sums[name0] += depprob
+      sums[name1] += depprob
+    rows = []
+    denominator = 2.0 * len(sums)
+    for k, v in sums.iteritems():
+      sums[k] = v / denominator
+    return sums
+
+  def most_dependent(self, n):
+    """The subset of the average dep probs that has only the top <=n items."""
+    avgs = self.avg_dependence_probabilities()
+    sorted_keys = sorted(avgs.keys(), key=lambda k: avgs[k], reverse=True)
+    top_keys = set(sorted_keys[:n])
+    top_avgs = dict((k, v) for (k, v) in avgs.iteritems() if k in top_keys)
+    return top_avgs
 
   def quick_explore_cols(self, cols, nsimilar=20, plotfile='explore_cols'):
     if len(cols) < 2:

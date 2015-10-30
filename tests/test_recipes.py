@@ -200,6 +200,30 @@ def test_heatmap():
         assert 'F-W.A-E.foobar.png' in names
         assert 'F-W.F-W.foobar.png' in names
 
+def test_avg_dependence_probabilities():
+    with prepare() as (dts, _df):
+        dts.logger.calls = []
+        avgdepprob = dts.avg_dependence_probabilities()
+        assert sorted(['floats_1', 'categorical_1', 'categorical_2',
+                'few_ints_3', 'floats_3', 'many_ints_4', 'skewed_numeric_5',
+                ]) == sorted(avgdepprob.keys())
+        assert all([i >= 0 and i <= 1 for i in avgdepprob.values()])
+        assert 1 < len(set(avgdepprob.values()))  # Possible if unlikely to fail
+
+def test_most_dependent():
+    with prepare() as (dts, _df):
+        avgs = dts.avg_dependence_probabilities()
+        all_avgs = dts.most_dependent(len(avgs)+1)
+        assert avgs == all_avgs
+        assert 3 < len(avgs)
+        top_avgs = dts.most_dependent(3)
+        non_top = set(avgs.keys()) - set(top_avgs.keys())
+        assert 3 == len(top_avgs)
+        for t in top_avgs.keys():
+            for b in non_top:
+                assert avgs[t] == top_avgs[t]
+                assert avgs[t] >= avgs[b]
+
 def test_explore_cols():
     with prepare() as (dts, _df):
         dts.logger.calls = []
