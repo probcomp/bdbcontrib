@@ -83,18 +83,19 @@ def prepare():
     #pytest.set_trace()
     if testvars['dataset'] is None:
         (df, csv_data) = test_plot_utils.dataset(40)
-        name = ''.join(random.choice(ascii_lowercase) for _ in range(32))
-        tempd = tempfile.mkdtemp()
+        tempd = tempfile.mkdtemp(prefix="bdbcontrib-test-recipes")
         csv_path = os.path.join(tempd, "data.csv")
         with open(csv_path, "w") as csv_f:
             csv_f.write(csv_data.getvalue())
         bdb_path = os.path.join(tempd, "data.bdb")
+        name = ''.join(random.choice(ascii_lowercase) for _ in range(32))
         dts = recipes.quickstart(name=name,
                                  csv_path=csv_path, bdb_path=bdb_path,
                                  logger=MyTestLogger())
         ensure_timeout(10, lambda: dts.analyze(models=10, iterations=20))
         testvars['dataset'] = dts
         testvars['input_df'] = df
+
     yield testvars['dataset'], testvars['input_df']
 
 def test_analyze_and_analysis_status_and_reset():
@@ -124,6 +125,12 @@ def test_analyze_and_analysis_status_and_reset():
         assert 'count of models' == resultdf.columns[0], repr(resultdf)
         assert 1 == len(resultdf), repr(resultdf)
         assert 10 == resultdf.ix[20, 0], repr(resultdf)
+
+        # This is the only test that needs the files anymore (for reset),
+        # so now that we're done, clean those up. The rest of the tests can
+        # happen in any order based on the in-memory bdb.
+        import shutil
+        shutil.rmtree(os.path.dirname(dts.csv_path))
 
 def test_q():
     with prepare() as (dts, df):
@@ -270,8 +277,3 @@ def test_similar_rows():
         if len(call_types) > 0:
             call_counts = call_types.iloc[:,0].value_counts()
             assert 'warn' not in call_counts
-
-
-def teardown_module(_module):
-    with prepare() as (dts, _df):
-        os.remove(os.path.dirname(dts.csv_path))
