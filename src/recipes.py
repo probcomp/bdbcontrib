@@ -31,7 +31,7 @@ import traceback
 from bdbcontrib.loggers import BqlLogger
 
 class BqlRecipes(object):
-  def __init__(self, name, csv_path, bdb_path=None, logger=None):
+  def __init__(self, name, csv_path=None, bdb_path=None, logger=None):
     """A set of shortcuts for common ways to use BayesDB.
 
     name : str
@@ -45,6 +45,7 @@ class BqlRecipes(object):
         modules, or anything else that implements the BqlLogger interface.
     """
     assert re.match(r'\w+', name)
+    assert csv_path or bdb_path
     self.name = name
     self.generator_name = name + '_cc'
     self.csv_path = csv_path
