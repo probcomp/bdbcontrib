@@ -232,28 +232,6 @@ class BqlRecipes(object):
                          hmap)
         plt.close('all')
 
-  def most_dependent(self, topn=50, plotfile='most_dependent'):
-    deps = self.q('''ESTIMATE DEPENDENCE PROBABILITY
-             FROM PAIRWISE COLUMNS OF %s''' % self.generator_name)
-    descending = [row[1] for row in deps.sort(
-        columns=['value'], ascending=False).iterrows()]
-    remaining_to_show = topn
-    for (_, cola, colb, probdep) in descending:
-      if remaining_to_show < 1:
-        break
-      if cola >= colb:
-        continue
-      self.logger.result(
-        '''"%s" vs. "%s" with Probability of Dependence = %f''',
-        cola, colb, probdep)
-      query = str('SELECT "%s", "%s" FROM "%s";' %
-                  (str(cola), str(colb), str(self.name)))
-      self.logger.info("BQL: [%s] for %s vs. %s=%f" %
-                       (query, cola, colb, probdep))
-      self.logger.plot(plotfile, bdbcontrib.pairplot(self.bdb, query))
-      plt.close('all')
-      remaining_to_show -= 1
-
   def quick_explore_cols(self, cols, nsimilar=20, plotfile='explore_cols'):
     if len(cols) < 2:
       raise ValueError('Need to explore at least two columns.')
