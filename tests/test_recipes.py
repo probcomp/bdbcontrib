@@ -200,16 +200,6 @@ def test_heatmap():
         assert 'F-W.A-E.foobar.png' in names
         assert 'F-W.F-W.foobar.png' in names
 
-def test_most_dependent():
-    with prepare() as (dts, _df):
-        dts.logger.calls = []
-        dts.most_dependent()
-        call_types = pd.DataFrame([call[0] for call in dts.logger.calls])
-        call_counts = call_types.iloc[:,0].value_counts()
-        assert call_counts['result'] > 0
-        assert call_counts['plot'] > 0
-        assert 'warn' not in call_counts
-
 def test_explore_cols():
     with prepare() as (dts, _df):
         dts.logger.calls = []
