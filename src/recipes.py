@@ -19,6 +19,7 @@ import bdbcontrib
 import bayeslite.core
 import bayeslite.guess
 import bayeslite.metamodels.crosscat
+from collections import defaultdict
 import crosscat
 import crosscat.LocalEngine
 import matplotlib.pyplot as plt
@@ -31,13 +32,23 @@ import traceback
 from bdbcontrib.loggers import BqlLogger
 
 class BqlRecipes(object):
-  def __init__(self, name, csv_path, bdb_path=None, logger=None):
+  def __init__(self, name, csv_path=None, bdb_path=None, logger=None):
     """A set of shortcuts for common ways to use BayesDB.
 
-    name : str
+    name : str  REQUIRED.
         The name of dataset, should use letters and underscores only.
+        This will also be used as a table name, and %t in queries will be
+        replaced by this name.
     csv_path : str
         The path to a comma-separated values file for the data to analyze.
+        If specified, the file must exist and be readable and be in comma-
+        separated values format.
+    bdb_path : str
+        The path to a BayesDb database with analysis of the data in the csv.
+        At least one of csv_path or bdb_path must be specified. If both are
+        specified, the bdb_path will be considered a cache or output location
+        for analysis of the csv, but you may need to .reset() for changes in the
+        csv to be reflected in the bdb.
     logger : object
         Something on which we can call .info or .warn, by default a
         bdbcontrib.loggers.BqlLogger, but could be QuietLogger (only results),
@@ -45,6 +56,7 @@ class BqlRecipes(object):
         modules, or anything else that implements the BqlLogger interface.
     """
     assert re.match(r'\w+', name)
+    assert csv_path or bdb_path
     self.name = name
     self.generator_name = name + '_cc'
     self.csv_path = csv_path
@@ -169,8 +181,9 @@ class BqlRecipes(object):
   # TODO: remove import plot_utils from the __init__.py file -- make it empty.
   # If you want to use it, you should import bdbcontrib.foo.
 
-  # GOTO: bdbcontrib/src/bql_utils.py
   def per_model_analysis_status(self):
+    """Return the number of iterations for each model."""
+    # XXX Move this to bdbcontrib/src/bql_utils.py ?
     try:
       return self.q('''SELECT iterations FROM bayesdb_generator_model
                WHERE generator_id = (
@@ -181,6 +194,7 @@ class BqlRecipes(object):
       return None
 
   def analysis_status(self):
+    """Return the count of models for each number of iterations run."""
     itrs = self.per_model_analysis_status()
     if itrs is None or len(itrs) == 0:
       emt = pd.DataFrame(columns=['count of models'])
@@ -233,6 +247,16 @@ class BqlRecipes(object):
         plt.close('all')
 
   def quick_explore_cols(self, cols, nsimilar=20, plotfile='explore_cols'):
+    """Show dependence probabilities and neighborhoods based on those.
+
+    cols: list of strings
+        At least two column names to look at dependence probabilities of,
+        and to explore neighborhoods of.
+    nsimilar: positive integer
+        The size of the neighborhood to explore.
+    plotfile: string pathname
+        Where to save plots, if not displaying them on console.
+    """
     if len(cols) < 2:
       raise ValueError('Need to explore at least two columns.')
     query_columns = '''"%s"''' % '''", "'''.join(cols)
@@ -270,10 +294,12 @@ class BqlRecipes(object):
                          "strongest dependents:\n%s\n\n", col, neighborhood)
 
   def column_type(self, col):
+    """The statistical type of the given column in the current model."""
     descriptions = self.quick_describe_columns()
     return descriptions[descriptions['name'] == col]['stattype'].iloc[0]
 
   def sql_tracing(self, turn_on=True):
+    """Trace underlying SQL, for debugging."""
     # Always turn off:
     self.bdb.sql_untrace(self.bdb.sql_tracer)
     if turn_on:
@@ -282,6 +308,14 @@ class BqlRecipes(object):
       self.bdb.sql_trace(printer)
 
   def quick_similar_rows(self, identify_row_by, nsimilar=10):
+    """Explore rows similar to the identified one.
+
+    identify_row_by : dict
+        Dictionary of column names to their values. These will be turned into
+        a WHERE clause in BQL, and must identify one unique row.
+    nsimilar : positive integer
+        The number of similar rows to retrieve.
+    """
     import hashlib
     table_name = 'tmptbl_' + hashlib.md5('\x00'.join(
         [repr(identify_row_by), str(self.status)])).hexdigest()
