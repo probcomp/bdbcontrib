@@ -115,7 +115,7 @@ class BqlRecipes(object):
                           re.sub(r'(^|(?<=\s))%g\b',
                                  bayeslite.bql_quote_name(self.generator_name),
                                  query_string))
-    self.logger.info("BQL [%s] [%r]" % (query_string, args))
+    self.logger.info("BQL [%s] [%r]", query_string, args)
     with self.bdb.savepoint():
       try:
         res = self.bdb.execute(query_string, args)
@@ -304,7 +304,7 @@ class BqlRecipes(object):
     self.bdb.sql_untrace(self.bdb.sql_tracer)
     if turn_on:
       printer = lambda query, bindings: self.logger.info(
-          "query: [%s] bindings: [%s]\n\n" % (query, bindings))
+          "query: [%s] bindings: [%s]\n\n", query, bindings)
       self.bdb.sql_trace(printer)
 
   def quick_similar_rows(self, identify_row_by, nsimilar=10):
