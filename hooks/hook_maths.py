@@ -18,12 +18,15 @@ import math
 
 from bayeslite.shell.hook import bayesdb_shell_init
 
+def linfoot(x):
+    return math.sqrt(1. - math.exp(-2.*x))
 
 @bayesdb_shell_init
 def register_bql_math(self):
-    self._bdb.sqlite3.create_function('exp', 1, math.exp)
-    self._bdb.sqlite3.create_function('sqrt', 1, math.sqrt)
-    self._bdb.sqlite3.create_function('pow', 2, pow)
-    self._bdb.sqlite3.create_function('log', 1, math.log)
-    self._bdb.sqlite3.create_function('linfoot', 1,
-        lambda x: math.sqrt(1.-math.exp(-2.*x)))
+    # XXX Should not touch internals of the bdb like this -- should
+    # invent a BQL API for defining BQL functions.
+    self._bdb._sqlite3.createscalarfunction('exp', math.exp, 1)
+    self._bdb._sqlite3.createscalarfunction('sqrt', math.sqrt, 1)
+    self._bdb._sqlite3.createscalarfunction('pow', pow, 2)
+    self._bdb._sqlite3.createscalarfunction('log', math.log, 1)
+    self._bdb._sqlite3.createscalarfunction('linfoot', linfoot, 1)
