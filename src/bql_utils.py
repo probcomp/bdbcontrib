@@ -164,7 +164,7 @@ def query(bdb, bql):
 
 
 def describe_table(bdb, table_name):
-    """Returns a DataFrame cursor containg description of `table_name`.
+    """Returns a DataFrame containing description of `table_name`.
 
     Examples
     --------
@@ -189,7 +189,7 @@ def describe_table(bdb, table_name):
 
 
 def describe_generator(bdb, generator_name):
-    """Returns a DataFrame containg description of `generator_name`.
+    """Returns a DataFrame containing description of `generator_name`.
 
     Examples
     --------
@@ -211,7 +211,7 @@ def describe_generator(bdb, generator_name):
 
 
 def describe_generator_columns(bdb, generator_name):
-    """Returns a DataFrame containg description of the columns
+    """Returns a DataFrame containing description of the columns
     modeled by `generator_name`.
 
     Examples
@@ -245,7 +245,7 @@ def describe_generator_columns(bdb, generator_name):
 
 
 def describe_generator_models(bdb, generator_name):
-    """Returns a DataFrame containg description of the models
+    """Returns a DataFrame containing description of the models
     in `generator_name`.
 
     Examples
