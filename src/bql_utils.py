@@ -164,7 +164,7 @@ def query(bdb, bql):
 
 
 def describe_table(bdb, table_name):
-    """Returns a SQLite3 cursor containg description of `table_name`.
+    """Returns a DataFrame containing description of `table_name`.
 
     Examples
     --------
@@ -184,11 +184,12 @@ def describe_table(bdb, table_name):
             WHERE tabname=?
             ORDER BY tabname ASC, colno ASC
         '''
-    return bdb.sql_execute(sql, bindings=(table_name,))
+    curs = bdb.sql_execute(sql, bindings=(table_name,))
+    return cursor_to_df(curs)
 
 
 def describe_generator(bdb, generator_name):
-    """Returns a SQLite3 cursor containg description of `generator_name`.
+    """Returns a DataFrame containing description of `generator_name`.
 
     Examples
     --------
@@ -205,11 +206,12 @@ def describe_generator(bdb, generator_name):
                 FROM bayesdb_generator
                 WHERE name = ?
         '''
-    return bdb.sql_execute(sql, bindings=(generator_name,))
+    curs = bdb.sql_execute(sql, bindings=(generator_name,))
+    return cursor_to_df(curs)
 
 
 def describe_generator_columns(bdb, generator_name):
-    """Returns a SQLite3 cursor containg description of the columns
+    """Returns a DataFrame containing description of the columns
     modeled by `generator_name`.
 
     Examples
@@ -238,11 +240,12 @@ def describe_generator_columns(bdb, generator_name):
     '''
     generator_id = bayeslite.core.bayesdb_get_generator_default(bdb,
         generator_name)
-    return bdb.sql_execute(sql, bindings=(generator_id,))
+    curs = bdb.sql_execute(sql, bindings=(generator_id,))
+    return cursor_to_df(curs)
 
 
 def describe_generator_models(bdb, generator_name):
-    """Returns a SQLite3 cursor containg description of the models
+    """Returns a DataFrame containing description of the models
     in `generator_name`.
 
     Examples
@@ -261,7 +264,8 @@ def describe_generator_models(bdb, generator_name):
         '''
     generator_id = bayeslite.core.bayesdb_get_generator_default(bdb,
         generator_name)
-    return bdb.sql_execute(sql, bindings=(generator_id,))
+    curs = bdb.sql_execute(sql, bindings=(generator_id,))
+    return cursor_to_df(curs)
 
 
 ###############################################################################
