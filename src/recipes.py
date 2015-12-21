@@ -98,8 +98,7 @@ class BqlRecipes(object):
 
   def quick_describe_columns(self):
     self.check_representation()
-    return bdbcontrib.cursor_to_df(bdbcontrib.describe_generator_columns(
-        self.bdb, self.generator_name))
+    return bdbcontrib.describe_generator_columns(self.bdb, self.generator_name)
 
   def q(self, query_string, *args):
     """Query the database. Use %t for the data table and %g for the generator.
