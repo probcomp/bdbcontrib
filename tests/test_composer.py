@@ -456,10 +456,10 @@ def test_composer_integration_slow():
 
     bdb.execute('INITIALIZE 2 MODELS FOR t1')
     # Check number of models.
-    curs = bdbcontrib.describe_generator_models(bdb, 't1')
-    assert len(curs.fetchall()) == 2
-    curs = bdbcontrib.describe_generator_models(bdb, 't1_cc')
-    assert len(curs.fetchall()) == 2
+    df = bdbcontrib.describe_generator_models(bdb, 't1')
+    assert len(df) == 2
+    df = bdbcontrib.describe_generator_models(bdb, 't1_cc')
+    assert len(df) == 2
 
     # -------------------
     # TEST ANALYZE MODELS
@@ -467,12 +467,12 @@ def test_composer_integration_slow():
 
     bdb.execute('ANALYZE t1 FOR 2 ITERATIONS WAIT;')
     # Check number of iterations of composer.
-    curs = bdbcontrib.describe_generator_models(bdb, 't1')
-    for modelno, iterations in curs:
+    df = bdbcontrib.describe_generator_models(bdb, 't1')
+    for index, modelno, iterations in df.itertuples():
         assert iterations == 2
     # Check number of iterations of composer_cc.
-    curs = bdbcontrib.describe_generator_models(bdb, 't1_cc')
-    for modelno, iterations in curs:
+    df = bdbcontrib.describe_generator_models(bdb, 't1_cc')
+    for index, modelno, iterations in df.itertuples():
         assert iterations == 2
 
     # ----------------------------------
