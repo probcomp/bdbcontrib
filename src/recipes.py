@@ -71,6 +71,9 @@ class BqlRecipes(object):
       return
     self.bdb = bayeslite.bayesdb_open(self.bdb_path)
     if not bayeslite.core.bayesdb_has_table(self.bdb, self.name):
+      if not self.csv_path:
+        raise ValueError("No bdb in [%s/%s] and no csv_path specified." %
+                         (os.getcwd(), self.bdb_path))
       bayeslite.bayesdb_read_csv_file(
           self.bdb, self.name, self.csv_path,
           header=True, create=True, ifnotexists=True)
