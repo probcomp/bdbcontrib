@@ -1,0 +1,136 @@
+12/23/2015 07:06:54 PM INFO: Reading notebook examples/satellites/Satellites.ipynb
+12/23/2015 07:06:55 PM INFO: Running cell:
+# Load the bayeslite client library
+import bayeslite
+import bdbcontrib
+from bdbcontrib.recipes import quickstart
+
+# Load the satellites snapshot into a local instance of bayeslite
+satellites = quickstart(name='satellites', bdb_path='satellites.bdb')
+
+q = satellites.q
+
+12/23/2015 07:06:56 PM INFO: Cell returned
+12/23/2015 07:06:56 PM INFO: Running cell:
+# Activate session-saving:
+# Use tr.send_session_data() to send all session data to probcomp for research purposes
+# also see tr.start_saving_sessions(), tr.stop_saving_sessions(), tr.clear_all_sessions()
+import bayeslite.sessions
+tr = bayeslite.sessions.SessionOrchestrator(satellites.bdb)
+
+12/23/2015 07:06:56 PM INFO: Cell returned
+12/23/2015 07:06:56 PM INFO: Running cell:
+q("SELECT * FROM satellites WHERE Name LIKE 'International Space Station%'").transpose()
+
+12/23/2015 07:06:56 PM INFO: Cell returned
+12/23/2015 07:06:56 PM INFO: Running cell:
+q('SELECT COUNT(*) FROM satellites;')
+
+12/23/2015 07:06:56 PM INFO: Cell returned
+12/23/2015 07:06:56 PM INFO: Running cell:
+q("SELECT * FROM satellites WHERE Name LIKE '%GPS%'").transpose()
+
+12/23/2015 07:06:56 PM INFO: Cell returned
+12/23/2015 07:06:56 PM INFO: Running cell:
+q('SELECT name, dry_mass_kg, period_minutes, class_of_orbit FROM satellites ORDER BY period_minutes LIMIT 10;')
+
+12/23/2015 07:06:56 PM INFO: Cell returned
+12/23/2015 07:06:56 PM INFO: Running cell:
+import matplotlib.pyplot as plt
+%matplotlib inline
+bdbcontrib.histogram(satellites.bdb, 'SELECT dry_mass_kg, class_of_orbit FROM satellites', bins=35, normed=True);
+
+12/23/2015 07:06:57 PM INFO: Cell returned
+12/23/2015 07:06:57 PM INFO: Running cell:
+q('''
+CREATE TEMP TABLE satellite_purpose AS
+SIMULATE country_of_operator, purpose FROM satellites_cc
+GIVEN Class_of_orbit = 'GEO', Dry_mass_kg = 500 
+LIMIT 1000;
+''');
+
+12/23/2015 07:08:44 PM INFO: Cell returned
+12/23/2015 07:08:44 PM INFO: Running cell:
+bdbcontrib.barplot(satellites.bdb, '''
+SELECT country_of_operator || "--" || purpose AS "Country-Purpose", 
+COUNT("Country-Purpose") AS frequency
+FROM satellite_purpose
+GROUP BY "Country-Purpose"
+ORDER BY frequency DESC
+LIMIT 20;
+''');
+
+12/23/2015 07:08:45 PM INFO: Cell returned
+12/23/2015 07:08:45 PM INFO: Running cell:
+q('''SELECT country_of_operator, purpose, Class_of_orbit, Dry_mass_kg
+FROM satellites
+WHERE Class_of_orbit = 'GEO'
+AND Dry_Mass_kg BETWEEN 400 AND 600''')
+
+12/23/2015 07:08:45 PM INFO: Cell returned
+12/23/2015 07:08:45 PM INFO: Running cell:
+q('''SELECT country_of_operator, purpose, Class_of_orbit, Dry_mass_kg
+FROM satellites
+WHERE Class_of_orbit = 'GEO'
+AND Dry_Mass_kg BETWEEN 300 AND 700''')
+
+12/23/2015 07:08:45 PM INFO: Cell returned
+12/23/2015 07:08:45 PM INFO: Running cell:
+bdbcontrib.heatmap(satellites.bdb,
+                   '''ESTIMATE DEPENDENCE PROBABILITY
+                   FROM PAIRWISE COLUMNS OF satellites_cc;''');
+
+12/23/2015 07:09:31 PM INFO: Cell returned
+12/23/2015 07:09:31 PM INFO: Running cell:
+# WARNING: This may take a couple minutes.
+
+bdbcontrib.heatmap(satellites.bdb, 'ESTIMATE CORRELATION FROM PAIRWISE COLUMNS OF satellites_cc;');
+
+12/23/2015 07:10:51 PM INFO: Cell returned
+12/23/2015 07:10:51 PM INFO: Running cell:
+q('SELECT COUNT(*) FROM satellites WHERE type_of_orbit IS NULL;')
+
+12/23/2015 07:10:51 PM INFO: Cell returned
+12/23/2015 07:10:51 PM INFO: Running cell:
+q('''
+CREATE TEMP TABLE inferred_orbit AS
+INFER EXPLICIT
+anticipated_lifetime, perigee_km, period_minutes, class_of_orbit,
+PREDICT type_of_orbit AS inferred_orbit_type
+CONFIDENCE inferred_orbit_type_conf
+FROM satellites_cc
+WHERE type_of_orbit IS NULL;
+''')
+
+12/23/2015 07:16:31 PM INFO: Cell returned
+12/23/2015 07:16:31 PM INFO: Running cell:
+q('SELECT * FROM inferred_orbit limit 30;')
+
+12/23/2015 07:16:31 PM INFO: Cell returned
+12/23/2015 07:16:31 PM INFO: Running cell:
+bdbcontrib.pairplot(satellites.bdb,'''
+SELECT inferred_orbit_type, inferred_orbit_type_conf, class_of_orbit FROM inferred_orbit;
+''', colorby='class_of_orbit');
+
+12/23/2015 07:16:32 PM INFO: Cell returned
+12/23/2015 07:16:32 PM INFO: Running cell:
+q('''
+CREATE TEMP TABLE unlikely_periods AS ESTIMATE name, class_of_orbit, period_minutes,
+PREDICTIVE PROBABILITY OF period_minutes AS "Relative Probability of Period"
+FROM satellites_cc;
+''')
+
+12/23/2015 07:22:23 PM INFO: Cell returned
+12/23/2015 07:22:23 PM INFO: Running cell:
+q('''
+SELECT * FROM unlikely_periods
+WHERE class_of_orbit = 'GEO' AND period_minutes IS NOT NULL
+ORDER BY "Relative Probability of Period" ASC LIMIT 10;
+''')
+
+12/23/2015 07:22:23 PM INFO: Cell returned
+12/23/2015 07:22:23 PM INFO: Running cell:
+
+
+12/23/2015 07:22:23 PM INFO: Cell returned
+12/23/2015 07:22:23 PM INFO: Shutdown kernel

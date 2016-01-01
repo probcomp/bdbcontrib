@@ -201,8 +201,8 @@ def doit(out_dir, num_models, num_iters, checkpoint_freq, seed):
         # create a diagnostics plot
         plot_file_name = out_file_name('satellites', '-logscores.pdf')
         log('writing diagnostic plot to %s' % plot_file_name)
-        fig = bdbcontrib.plot_crosscat_chain_diagnostics(bdb, 'logscore',
-            'satellites_cc')
+        _fig = bdbcontrib.plot_crosscat_chain_diagnostics(bdb, 'logscore',
+                                                          'satellites_cc')
         plt.savefig(plot_file_name)
         final_metadata_file = out_file_name('satellites', '-meta.txt')
         report(bdb_file, final_metadata_file,

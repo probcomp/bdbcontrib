@@ -1,0 +1,44 @@
+12/23/2015 07:53:59 PM INFO: Reading notebook examples/satellites/Satellites.ipynb
+12/23/2015 07:54:01 PM INFO: Running cell:
+# Load the bayeslite client library
+import bayeslite
+import bdbcontrib
+from bdbcontrib.recipes import quickstart
+
+# Load the satellites snapshot into a local instance of bayeslite
+satellites = quickstart(name='satellites', bdb_path='satellites.bdb')
+
+q = satellites.q
+
+12/23/2015 07:54:02 PM INFO: Cell raised uncaught exception: 
+[0;31m---------------------------------------------------------------------------[0m
+[0;31mValueError[0m                                Traceback (most recent call last)
+[0;32m<ipython-input-1-a328664c558e>[0m in [0;36m<module>[0;34m()[0m
+[1;32m      5[0m [0;34m[0m[0m
+[1;32m      6[0m [0;31m# Load the satellites snapshot into a local instance of bayeslite[0m[0;34m[0m[0;34m[0m[0m
+[0;32m----> 7[0;31m [0msatellites[0m [0;34m=[0m [0mquickstart[0m[0;34m([0m[0mname[0m[0;34m=[0m[0;34m'satellites'[0m[0;34m,[0m [0mbdb_path[0m[0;34m=[0m[0;34m'satellites.bdb'[0m[0;34m)[0m[0;34m[0m[0m
+[0m[1;32m      8[0m [0;34m[0m[0m
+[1;32m      9[0m [0mq[0m [0;34m=[0m [0msatellites[0m[0;34m.[0m[0mq[0m[0;34m[0m[0m
+
+[0;32m/Users/probcomp/pc/bdbcontrib/build/lib/bdbcontrib/recipes.pyc[0m in [0;36mquickstart[0;34m(*args, **kwargs)[0m
+[1;32m    347[0m [0;34m[0m[0m
+[1;32m    348[0m [0;32mdef[0m [0mquickstart[0m[0;34m([0m[0;34m*[0m[0margs[0m[0;34m,[0m [0;34m**[0m[0mkwargs[0m[0;34m)[0m[0;34m:[0m[0;34m[0m[0m
+[0;32m--> 349[0;31m     [0;32mreturn[0m [0mBqlRecipes[0m[0;34m([0m[0;34m*[0m[0margs[0m[0;34m,[0m [0;34m**[0m[0mkwargs[0m[0;34m)[0m[0;34m[0m[0m
+[0m
+[0;32m/Users/probcomp/pc/bdbcontrib/build/lib/bdbcontrib/recipes.pyc[0m in [0;36m__init__[0;34m(self, name, csv_path, bdb_path, logger)[0m
+[1;32m     65[0m     [0mself[0m[0;34m.[0m[0mbdb[0m [0;34m=[0m [0mNone[0m[0;34m[0m[0m
+[1;32m     66[0m     [0mself[0m[0;34m.[0m[0mstatus[0m [0;34m=[0m [0mNone[0m[0;34m[0m[0m
+[0;32m---> 67[0;31m     [0mself[0m[0;34m.[0m[0minitialize[0m[0;34m([0m[0;34m)[0m[0;34m[0m[0m
+[0m[1;32m     68[0m [0;34m[0m[0m
+[1;32m     69[0m   [0;32mdef[0m [0minitialize[0m[0;34m([0m[0mself[0m[0;34m)[0m[0;34m:[0m[0;34m[0m[0m
+
+[0;32m/Users/probcomp/pc/bdbcontrib/build/lib/bdbcontrib/recipes.pyc[0m in [0;36minitialize[0;34m(self)[0m
+[1;32m     74[0m       [0;32mif[0m [0;32mnot[0m [0mself[0m[0;34m.[0m[0mcsv_path[0m[0;34m:[0m[0;34m[0m[0m
+[1;32m     75[0m         raise ValueError("No bdb in [%s/%s] and no csv_path specified." %
+[0;32m---> 76[0;31m                          (os.getcwd(), self.bdb_path))
+[0m[1;32m     77[0m       bayeslite.bayesdb_read_csv_file(
+[1;32m     78[0m           [0mself[0m[0;34m.[0m[0mbdb[0m[0;34m,[0m [0mself[0m[0;34m.[0m[0mname[0m[0;34m,[0m [0mself[0m[0;34m.[0m[0mcsv_path[0m[0;34m,[0m[0;34m[0m[0m
+
+[0;31mValueError[0m: No bdb in [/Users/probcomp/GoogleDrive/ProbComp/bdbcontrib/examples/satellites/satellites.bdb] and no csv_path specified.
+12/23/2015 07:54:02 PM INFO: Shutdown kernel
+12/23/2015 07:54:03 PM WARNING: Exiting with nonzero exit status
