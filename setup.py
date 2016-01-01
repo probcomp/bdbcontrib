@@ -109,11 +109,12 @@ setup(
         'bayeslite>=0.1.2',
         'ipython[notebook]>=3',
         'markdown2',
-        'matplotlib',
-        'numpy',
+        'matplotlib==1.4.3',  # See bdbcontrib/issues/94
+        'numpy==1.8.2',       # See bdbcontrib/issues/94
         'numpydoc',
         'pandas',
         'seaborn>=0.6',
+        'scipy==0.15.1',      # See bdbcontrib/issues/94
         'sklearn',
         'sklearn-pandas',
         'sphinx',
