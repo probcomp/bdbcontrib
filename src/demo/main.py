@@ -200,7 +200,7 @@ def download_demo(demo_uri, pubkey):
         except Exception:
             fail('parsing failed')
         if 'compatible' not in demo:
-            fail('no compatbility information in demo')
+            fail('no compatibility information in demo')
         if not isinstance(demo['compatible'], list):
             fail('invalid compatible list')
         if 1 not in demo['compatible']:
