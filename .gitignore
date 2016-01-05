@@ -1,3 +1,5 @@
 /build/
 /examples/build/
 /src/version.py
+dist
+bdbcontrib.egg-info
