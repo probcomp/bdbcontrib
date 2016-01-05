@@ -19,6 +19,7 @@ from __future__ import print_function
 import IPython.utils.warn
 import logging
 import matplotlib.pyplot as plt
+import re
 import sys
 import traceback
 
@@ -36,10 +37,14 @@ class BqlLogger(object):
   '''
   def info(self, msg_format, *values):
     '''For progress and other informative messages.'''
-    print(msg_format % values)
+    if len(values) > 0:
+      msg_format = msg_format % values
+    print(msg_format)
   def warn(self, msg_format, *values):
     '''For warnings or non-fatal errors.'''
-    print(msg_format % values, file=sys.stderr)
+    if len(values) > 0:
+      msg_format = msg_format % values
+    print(msg_format, file=sys.stderr)
   def plot(self, _suggested_name, figure):
     '''For plotting.
 
@@ -54,7 +59,9 @@ class BqlLogger(object):
     figure.show()
   def result(self, msg_format, *values):
     '''For formatted text results. In unix, this would be stdout.'''
-    print(msg_format % values)
+    if len(values) > 0:
+      msg_format = msg_format % values
+    print(msg_format)
   def debug(self, _msg_format, *_values):
     '''For debugging information.'''
     pass
@@ -65,6 +72,10 @@ class BqlLogger(object):
     if exc_type:
       lines = traceback.format_exception(exc_type, exc_value, exc_traceback)
       self.warn('\n'.join(lines))
+  def format_escape(str):
+    str = re.sub(r"%([^\(])", r"%%\1", str)
+    str = re.sub(r"%$", r"%%", str)  # There was a % at the end?
+    return str
 
 class DebugLogger(BqlLogger):
   def debug(self, msg_format, *values):
