@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-#   Copyright (c) 2010-2015, MIT Probabilistic Computing Project
+#   Copyright (c) 2010-2016, MIT Probabilistic Computing Project
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -18,12 +18,8 @@ from bdbcontrib.bql_utils import cursor_to_df
 import multiprocessing as mp
 from bayeslite import bayesdb_open
 
-# Imports for debug printing
-import sys
-from datetime import datetime
 
-
-def _query_into_queue(query_string, queue, bdb_file, verbose=False):
+def _query_into_queue(query_string, queue, bdb_file):
     """
     Estimate pairwise similarity of a certain subset of the bdb according to
     query_string; place it in the multiprocessing Manager.Queue().
@@ -31,59 +27,37 @@ def _query_into_queue(query_string, queue, bdb_file, verbose=False):
     For two technical reasons, this function is defined as a toplevel class and
     independently creates a bdb handle:
 
-    1) Multiprocessing workers must be able to be pickled, and thus must be
+    1) Multiprocessing workers must be pickleable, and thus must be
        declared as toplevel functions;
     2) Multiple threads cannot access the same bdb handle, lest concurrency
        issues arise with corrupt data.
 
     Parameters
     ----------
-    query_stirng : str
+    query_string : str
         Name of the query to execute, determined by estimate_similarity_mp.
     queue : multiprocessing.Manager.Queue
         Queue to place results into
     bdb_file : str
         File location of the BayesDB database. This function will
         independently open a new BayesDB handler.
-    verbose : bool
-        Print notifications of running and completion. Default False.
     """
-    # Shorten the debug message.
-    debug_str = "ESTIMATE...LIMIT{}".format(
-        query_string.split('LIMIT')[1]
-    )
-    debug_print("RUN: " + debug_str, verbose)
-    # Flush results since output from child threads aren't necessarily
-    # displayed immediately
-    sys.stdout.flush()
-
     bdb = bayesdb_open(pathname=bdb_file)
     res = bdb.execute(query_string)
     queue.put(cursor_to_df(res))
 
-    debug_print("DONE: " + debug_str, verbose)
-    sys.stdout.flush()
 
-
-# From Ned Batchelder
 def _chunks(l, n):
     """Yield successive n-sized chunks from l."""
     for i in xrange(0, len(l), n):
         yield l[i:i+n]
 
 
-def debug_print(msg, verbose=True):
-    """Print message with timestamp only if verbose flag is true."""
-    if verbose:
-        now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        print "{}: {}".format(now, msg)
-
-
 def estimate_similarity_mp(bdb_file, table, model, sim_table=None, cores=None,
-                           N=None, overwrite=False, verbose=False):
+                           N=None, overwrite=False):
     """
     Estimate pairwise similarity from the given model, splitting processing
-    across multiple processors.
+    across multiple processors, and save results into sim_table.
 
     Because called methods in this function must also open up separate BayesDB
     instances, this function accepts a BayesDB filename, rather than an actual
@@ -95,55 +69,48 @@ def estimate_similarity_mp(bdb_file, table, model, sim_table=None, cores=None,
         File location of the BayesDB database object. This function will
         handle opening the file with bayeslite.bayesdb_open.
     table : str
-        Name of the table containing the raw data
+        Name of the table containing the raw data.
     model : str
-        Name of the model to estimate from
+        Name of the metamodel to estimate from.
     sim_table : str
         Name of the table to insert similarity results into. Defaults to
-        table name + '_sim'.
+        table name + '_similarity'.
     cores : int
-        Number of processors to use. Cannot be more than the number of cores
-        as identified by multiprocessing.num_cores(); defaults to that number.
+        Number of processors to use. Defaults to the number of cores as
+        identified by multiprocessing.num_cores.
     N : int
-        Number of similarities to estimate. Usually used just for testing small
+        Number of rows for which to estimate pairwise similarities (so
+        N^2 calculations are done). Should be used just to test small
         batches; currently, there is no control over what specific pairwise
         similarities are estimated with this parameter.
     overwrite : bool
         Whether to overwrite the sim_table if it already exists. If
         overwrite=False and the table exists, function will raise
         sqlite3.OperationalError. Default True.
-    verbose : bool
-        Print additional output in function and in _query_into_queue to
-        monitor progress of processing.
     """
     bdb = bayesdb_open(pathname=bdb_file)
 
-    num_cpus = mp.cpu_count()
     if cores is None:
-        cores = num_cpus
+        cores = mp.cpu_count()
 
     if cores < 1:
         raise ValueError(
-            "Invalid number of cores {}".format(cores, num_cpus)
+            "Invalid number of cores {}".format(cores)
         )
 
-    if cores == 1:
-        debug_print("Warning: no advantage to using 1 core", verbose)
-
-    debug_print("Computing similarity with {} cores".format(cores), verbose)
-
     if sim_table is None:
-        sim_table = table + '_sim'
+        sim_table = table + '_similarity'
 
     # Get number of occurrences in the database
-    count_query = bdb.execute('SELECT COUNT(*) FROM {}'.format(table))
     if N is None:
+        count_query = bdb.execute('SELECT COUNT(*) FROM {}'.format(table))
         N = int(cursor_to_df(count_query)['"COUNT"(*)'][0])
 
-    debug_print("Found {} rows, so {} comparisons".format(N, N * N), verbose)
+    # Calculate the size (# of similarities to compute) and
+    # offset (where to start) calculation for each worker query.
 
+    # Divide sizes evenly, and make the last job finish the remainder
     sizes = [(N * N) / cores for i in range(cores)]
-    # Make the last job finish the remainder
     sizes[-1] += (N * N) % cores
 
     total = 0
@@ -152,15 +119,10 @@ def estimate_similarity_mp(bdb_file, table, model, sim_table=None, cores=None,
         total += size
         offsets.append(total)
 
-    # Format sizes and offsets later
     q_template = ('ESTIMATE SIMILARITY FROM PAIRWISE {} '.format(model) +
-                  'LIMIT {} OFFSET {}')
+                  'LIMIT {} OFFSET {}')  # Format sizes/offsets later
 
     queries = [q_template.format(*so) for so in zip(sizes, offsets)]
-
-    debug_print(
-        "Queries to complete:\n\t{}".format('\n\t'.join(queries)), verbose
-    )
 
     # Create the similarity table. Assumes original table has rowid column.
     # XXX: tables from verbnet bdb don't necessarily have an
@@ -170,9 +132,8 @@ def estimate_similarity_mp(bdb_file, table, model, sim_table=None, cores=None,
     # would have to be changed first. For now, we eliminate
     # REFERENCE {table}(foreign_key) from the name0 and name1 col specs.
     if overwrite:
-        debug_print("DROP: table {}".format(sim_table), verbose)
         bdb.sql_execute('DROP TABLE IF EXISTS {}'.format(sim_table))
-    debug_print("CREATE: table {}".format(sim_table), verbose)
+
     bdb.sql_execute('''
         CREATE TABLE {sim_table} (
             name0 INTEGER NOT NULL,
@@ -181,8 +142,7 @@ def estimate_similarity_mp(bdb_file, table, model, sim_table=None, cores=None,
         )
     '''.format(sim_table=sim_table))
 
-    # Define the callback which inserts data into table once each process is
-    # done
+    # Define the helper which inserts data into table in batches
     def insert_into_sim(df):
         """
         Use the main thread bdb handle to successively insert results of
@@ -190,15 +150,11 @@ def estimate_similarity_mp(bdb_file, table, model, sim_table=None, cores=None,
         """
         # Because the bayeslite implementation of sqlite3 doesn't allow
         # inserts of > 500 rows at a time (else sqlite3.OperationalError),
-        # we split the list into _chunks of size 500 and perform multiple
+        # we split the list into chunks of size 500 and perform multiple
         # insert statements.
         rows = map(list, df.values)
         rows_str = ['({})'.format(','.join(map(str, r))) for r in rows]
         for rows_chunk in _chunks(rows_str, 500):
-            debug_print(
-                "INSERT: {}...{}".format(rows_chunk[0], rows_chunk[-1]),
-                verbose
-            )
             insert_str = '''
                 INSERT INTO {} (name0, name1, value) VALUES {};
             '''.format(sim_table, ','.join(rows_chunk))
@@ -211,7 +167,7 @@ def estimate_similarity_mp(bdb_file, table, model, sim_table=None, cores=None,
 
     for query in queries:
         pool.apply_async(
-            _query_into_queue, args=(query, queue, bdb_file, verbose)
+            _query_into_queue, args=(query, queue, bdb_file)
         )
 
     # Close pool and wait for processes to finish
@@ -225,5 +181,3 @@ def estimate_similarity_mp(bdb_file, table, model, sim_table=None, cores=None,
     while not queue.empty():
         df = queue.get()
         insert_into_sim(df)
-
-    debug_print("Done", verbose)
