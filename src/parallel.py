@@ -53,8 +53,8 @@ def _chunks(l, n):
         yield l[i:i+n]
 
 
-def estimate_similarity_mp(bdb_file, table, model, sim_table=None, cores=None,
-                           N=None, overwrite=False):
+def estimate_pairwise_similarity(bdb_file, table, model, sim_table=None,
+                                 cores=None, N=None, overwrite=False):
     """
     Estimate pairwise similarity from the given model, splitting processing
     across multiple processors, and save results into sim_table.
