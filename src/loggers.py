@@ -56,7 +56,10 @@ class BqlLogger(object):
     Figure : a matplotlib object
       on which .show or .savefig might be called.
     '''
-    figure.show()
+    if (hasattr(figure, 'show')):
+      figure.show()
+    else:
+      print(repr(figure))
   def result(self, msg_format, *values):
     '''For formatted text results. In unix, this would be stdout.'''
     if len(values) > 0:
