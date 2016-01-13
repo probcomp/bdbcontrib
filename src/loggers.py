@@ -75,6 +75,7 @@ class BqlLogger(object):
     if exc_type:
       lines = traceback.format_exception(exc_type, exc_value, exc_traceback)
       self.warn('\n'.join(lines))
+  @classmethod
   def format_escape(str):
     str = re.sub(r"%([^\(])", r"%%\1", str)
     str = re.sub(r"%$", r"%%", str)  # There was a % at the end?
