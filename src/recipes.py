@@ -16,6 +16,7 @@
 
 import bayeslite
 import bdbcontrib
+import bdbcontrib.plot_utils
 import bayeslite.core
 import bayeslite.guess
 import bayeslite.metamodels.crosscat
@@ -233,18 +234,18 @@ class BqlRecipes(object):
     **kwargs : dict
         Passed to zmatrix: vmin, vmax, row_ordering, col_ordering
     '''
+    hmap = plt.figure()
     if selectors is None:
-      self.logger.plot(plotfile,
-                       bdbcontrib.heatmap(self.bdb, df=deps, **kwargs))
-      plt.close('all')
+      cmap = bdbcontrib.heatmap(self.bdb, df=deps, **kwargs)
+      self.logger.plot(plotfile, cmap)
     else:
       selfns = [selectors[k] for k in sorted(selectors.keys())]
       reverse = dict([(v, k) for (k, v) in selectors.items()])
-      for (hmap, sel1, sel2) in bdbcontrib.plot_utils.selected_heatmaps(
+      for (cmap, sel1, sel2) in bdbcontrib.plot_utils.selected_heatmaps(
           self.bdb, df=deps, selectors=selfns, **kwargs):
         self.logger.plot("%s.%s.%s" % (reverse[sel1], reverse[sel2], plotfile),
-                         hmap)
-        plt.close('all')
+                         cmap)
+    return hmap
 
   def quick_explore_cols(self, cols, nsimilar=20, plotfile='explore_cols'):
     """Show dependence probabilities and neighborhoods based on those.
