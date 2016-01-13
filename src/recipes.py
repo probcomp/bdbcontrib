@@ -83,10 +83,8 @@ class BqlRecipes(object):
     else:
       old_wizmode = ""
     os.environ["BAYESDB_WIZARD_MODE"] = "1"
-    crosscat_engine = crosscat.LocalEngine.LocalEngine(seed=0)
-    bayeslite.metamodels.crosscat.CrosscatMetamodel(crosscat_engine)
-    bayeslite.guess.bayesdb_guess_generator(
-        self.bdb, self.generator_name, self.name, 'crosscat', ifnotexists=True)
+    self.q('''
+        CREATE GENERATOR %g IF NOT EXISTS FOR %t USING crosscat( GUESS(*) )''')
     os.environ["BAYESDB_WIZARD_MODE"] = old_wizmode
 
   def check_representation(self):
