@@ -137,6 +137,10 @@ class BqlRecipes(object):
         self.logger.exception('FROM BQL [%s] [%r]' % (query_string, args))
         raise
 
+  def nullify(self, value):
+    """Wraps bdbcontrib.nullify by passing bdb and name.\n%s""" % (bdbcontrib.nullify.__doc__,)
+    bdbcontrib.nullify(self.bdb, self.name, value)
+
   def analyze(self, models=100, minutes=0, iterations=0, checkpoint=0):
     '''Run analysis.
 
