@@ -169,7 +169,7 @@ def test_heatmap():
         dts.logger.calls = []
         deps = dts.q('ESTIMATE DEPENDENCE PROBABILITY'
                      ' FROM PAIRWISE COLUMNS OF %g')
-        dts.heatmap(deps)
+        dts.heatmap(deps, plotfile='heatmap')
         plots = [c for c in dts.logger.calls if c[0] == 'plot']
         assert 1 == len(plots)
         thecall = plots[0]

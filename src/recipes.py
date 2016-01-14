@@ -217,7 +217,14 @@ class BqlRecipes(object):
     self.status = vcs
     return vcs
 
-  def heatmap(self, deps, selectors=None, plotfile='heatmap', **kwargs):
+  def pairplot(self, cols, plotfile=None):
+    """Wrap bdbcontrib.pairplot to show the given columns."""
+    self.logger.plot(plotfile,
+                     bdbcontrib.pairplot(self.bdb, '''SELECT %s FROM %s''' %
+                                         (cols, self.name),
+                                         generator_name=self.generator_name))
+
+  def heatmap(self, deps, selectors=None, plotfile=None, **kwargs):
     '''Show heatmaps for the given dependencies
 
     Parameters
@@ -271,11 +278,7 @@ class BqlRecipes(object):
     if len(cols) < 2:
       raise ValueError('Need to explore at least two columns.')
     query_columns = '''"%s"''' % '''", "'''.join(cols)
-    self.logger.plot(plotfile,
-                     bdbcontrib.pairplot(self.bdb, '''SELECT %s FROM %s''' %
-                                         (query_columns, self.name),
-                                         generator_name=self.generator_name))
-    plt.close('all')
+    self.pairplot(query_columns)
     deps = self.q('''ESTIMATE DEPENDENCE PROBABILITY
                      FROM PAIRWISE COLUMNS OF %s
                      FOR %s;''' % (self.generator_name, query_columns))
@@ -283,7 +286,7 @@ class BqlRecipes(object):
     self.heatmap(deps, plotfile=plotfile)
     deps.columns = ['genid', 'name0', 'name1', 'value']
     triangle = deps[deps['name0'] < deps['name1']]
-    triangle = triangle.sort(ascending=False, columns=['value'])
+    triangle = triangle.sort_values(ascending=False, by=['value'])
     self.logger.result("Pairwise dependence probability for: %s\n%s\n\n",
                        query_columns, triangle)
 
