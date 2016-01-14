@@ -33,7 +33,7 @@ import traceback
 from bdbcontrib.loggers import BqlLogger
 
 class BqlRecipes(object):
-  def __init__(self, name, csv_path=None, bdb_path=None, logger=None):
+  def __init__(self, name, csv_path=None, bdb_path=None, df=None, logger=None):
     """A set of shortcuts for common ways to use BayesDB.
 
     name : str  REQUIRED.
@@ -41,15 +41,15 @@ class BqlRecipes(object):
         This will also be used as a table name, and %t in queries will be
         replaced by this name.
     csv_path : str
-        The path to a comma-separated values file for the data to analyze.
-        If specified, the file must exist and be readable and be in comma-
-        separated values format.
+        The path to a comma-separated values file. If specified, will be used
+        to populate the bdb. It must exist and be both readable and non-empty.
+    df : pandas.DataFrame
+        If specified, these data will be used to populate the bdb, superseding
+        any csv_path. It must not be empty.
     bdb_path : str
-        The path to a BayesDb database with analysis of the data in the csv.
-        At least one of csv_path or bdb_path must be specified. If both are
-        specified, the bdb_path will be considered a cache or output location
-        for analysis of the csv, but you may need to .reset() for changes in the
-        csv to be reflected in the bdb.
+        If specified, store data and analysis at this location. If no other
+        data source (csv or df) is specified, then it must already have been
+        populated. If not specified, we will use a volatile in-memory bdb.
     logger : object
         Something on which we can call .info or .warn, by default a
         bdbcontrib.loggers.BqlLogger, but could be QuietLogger (only results),
@@ -57,11 +57,12 @@ class BqlRecipes(object):
         modules, or anything else that implements the BqlLogger interface.
     """
     assert re.match(r'\w+', name)
-    assert csv_path or bdb_path
+    assert df is not None or csv_path or bdb_path
     self.name = name
     self.generator_name = name + '_cc'
     self.csv_path = csv_path
-    self.bdb_path = bdb_path if bdb_path else (self.name + ".bdb")
+    self.df = df
+    self.bdb_path = bdb_path
     self.logger = BqlLogger() if logger is None else logger
     self.bdb = None
     self.status = None
@@ -72,13 +73,18 @@ class BqlRecipes(object):
       return
     self.bdb = bayeslite.bayesdb_open(self.bdb_path)
     if not bayeslite.core.bayesdb_has_table(self.bdb, self.name):
-      if not self.csv_path:
-        raise ValueError("No bdb in [%s/%s] and no csv_path specified." %
-                         (os.getcwd(), self.bdb_path))
-      bayeslite.bayesdb_read_csv_file(
+      if self.df is not None:
+        bayeslite.read_pandas.bayesdb_read_pandas_df(
+          self.bdb, self.name, self.df, create=True, ifnotexists=True)
+      elif self.csv_path:
+        bayeslite.bayesdb_read_csv_file(
           self.bdb, self.name, self.csv_path,
           header=True, create=True, ifnotexists=True)
+      else:
+        raise ValueError("No data sources specified, and an empty bdb.")
     bdbcontrib.nullify(self.bdb, self.name, "")
+    size = self.q('''SELECT COUNT(*) FROM %t''').ix(0, 0)
+    assert 0 < size
     if "BAYESDB_WIZARD_MODE" in os.environ:
       old_wizmode = os.environ["BAYESDB_WIZARD_MODE"]
     else:
