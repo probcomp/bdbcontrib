@@ -121,6 +121,7 @@ setup(
         'tornado>=4.0',
     ],
     tests_require=[
+        'flaky',  # for bdb-experiments
         'mock',
         'pillow',
         'pytest',
