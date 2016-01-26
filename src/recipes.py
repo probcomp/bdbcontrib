@@ -205,8 +205,8 @@ class BqlRecipes(object):
     # XXX Move this to bdbcontrib/src/bql_utils.py ?
     try:
       return self.q('''SELECT iterations FROM bayesdb_generator_model
-               WHERE generator_id = (
-                 SELECT id FROM bayesdb_generator WHERE name = ?)''',
+                       WHERE generator_id = (
+                         SELECT id FROM bayesdb_generator WHERE name = ?)''',
                     self.generator_name)
     except ValueError:
       # Because, e.g. there is no generator yet, for an empty db.
