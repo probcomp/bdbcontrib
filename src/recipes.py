@@ -84,7 +84,6 @@ class BqlRecipes(object):
           header=True, create=True, ifnotexists=True)
       else:
         raise ValueError("No data sources specified, and an empty bdb.")
-    bdbcontrib.nullify(self.bdb, self.name, "")
     size = self.q('''SELECT COUNT(*) FROM %t''').ix(0, 0)
     assert 0 < size
     if "BAYESDB_WIZARD_MODE" in os.environ:
