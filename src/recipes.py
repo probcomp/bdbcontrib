@@ -113,7 +113,7 @@ class BqlRecipes(object):
     self.check_representation()
     return bdbcontrib.describe_generator_columns(self.bdb, self.generator_name)
 
-  def q(self, query_string, *args):
+  def q(self, query_string, *bindings):
     """Query the database. Use %t for the data table and %g for the generator.
 
     %t and %g work only with word boundaries. E.g., 'LIKE "%table%"' is fine.
@@ -127,19 +127,19 @@ class BqlRecipes(object):
                           re.sub(r'(^|(?<=\s))%g\b',
                                  bayeslite.bql_quote_name(self.generator_name),
                                  query_string))
-    self.logger.info("BQL [%s] [%r]", query_string, args)
+    self.logger.info("BQL [%s] [%r]", query_string, bindings)
     with self.bdb.savepoint():
       try:
-        res = self.bdb.execute(query_string, args)
+        res = self.bdb.execute(query_string, bindings)
         assert res is not None and res.description is not None
         self.logger.debug("BQL [%s] [%r] has returned a cursor." %
-                          (query_string, args))
+                          (query_string, bindings))
         df = bdbcontrib.cursor_to_df(res)
         self.logger.debug("BQL [%s] [%r] has created a dataframe." %
-                            (query_string, args))
+                            (query_string, bindings))
         return df
       except:
-        self.logger.exception('FROM BQL [%s] [%r]' % (query_string, args))
+        self.logger.exception('FROM BQL [%s] [%r]' % (query_string, bindings))
         raise
 
   @helpsub('bdbcontrib_nullify_doc', bdbcontrib.nullify.__doc__)
