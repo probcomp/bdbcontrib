@@ -102,9 +102,14 @@ def estimate_pairwise_similarity(bdb_file, table, model, sim_table=None,
         sim_table = table + '_similarity'
 
     # Get number of occurrences in the database
+    count_cursor = bdb.execute('SELECT COUNT(*) FROM {}'.format(table))
+    table_count = int(cursor_to_df(count_cursor)['"COUNT"(*)'][0])
     if N is None:
-        count_query = bdb.execute('SELECT COUNT(*) FROM {}'.format(table))
-        N = int(cursor_to_df(count_query)['"COUNT"(*)'][0])
+        N = table_count
+    elif N > table_count:
+        raise ValueError(
+            "Asked for N={} rows but {} rows in table".format(N, table_count)
+        )
 
     # Calculate the size (# of similarities to compute) and
     # offset (where to start) calculation for each worker query.
@@ -136,8 +141,8 @@ def estimate_pairwise_similarity(bdb_file, table, model, sim_table=None,
 
     bdb.sql_execute('''
         CREATE TABLE {sim_table} (
-            name0 INTEGER NOT NULL,
-            name1 INTEGER NOT NULL,
+            rowid0 INTEGER NOT NULL,
+            rowid1 INTEGER NOT NULL,
             value DOUBLE NOT NULL
         )
     '''.format(sim_table=sim_table))
@@ -156,7 +161,7 @@ def estimate_pairwise_similarity(bdb_file, table, model, sim_table=None,
         rows_str = ['({})'.format(','.join(map(str, r))) for r in rows]
         for rows_chunk in _chunks(rows_str, 500):
             insert_str = '''
-                INSERT INTO {} (name0, name1, value) VALUES {};
+                INSERT INTO {} (rowid0, rowid1, value) VALUES {};
             '''.format(sim_table, ','.join(rows_chunk))
             bdb.sql_execute(insert_str)
 
