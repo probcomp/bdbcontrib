@@ -15,11 +15,12 @@
 #   limitations under the License.
 
 import bayeslite
-import bdbcontrib
-import bdbcontrib.plot_utils
 import bayeslite.core
 import bayeslite.guess
+from bayeslite.loggers import BqlLogger, logged_query
 import bayeslite.metamodels.crosscat
+import bdbcontrib
+import bdbcontrib.plot_utils
 from py_utils import helpsub
 
 from collections import defaultdict
@@ -32,7 +33,6 @@ import pandas as pd
 import sys
 import traceback
 
-from bdbcontrib.loggers import BqlLogger, logged_query
 
 class BqlRecipes(object):
   def __init__(self, name, csv_path=None, bdb_path=None, df=None, logger=None,
@@ -55,7 +55,7 @@ class BqlRecipes(object):
         populated. If not specified, we will use a volatile in-memory bdb.
     logger : object
         Something on which we can call .info or .warn, by default a
-        bdbcontrib.loggers.BqlLogger, but could be QuietLogger (only results),
+        bayeslite.loggers.BqlLogger, but could be QuietLogger (only results),
         SilentLogger (nothing), IpyLogger, or LoggingLogger to use those
         modules, or anything else that implements the BqlLogger interface.
     session_capture_name : String

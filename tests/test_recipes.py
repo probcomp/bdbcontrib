@@ -38,8 +38,8 @@ import tempfile
 import test_plot_utils
 
 from bayeslite.read_csv import bayesdb_read_csv
+from bayeslite.loggers import BqlLogger
 from bdbcontrib import recipes
-from bdbcontrib.loggers import BqlLogger
 
 testvars = {'dataset': None, 'input_df': None}
 
