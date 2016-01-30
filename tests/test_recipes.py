@@ -91,7 +91,8 @@ def prepare():
         name = ''.join(random.choice(ascii_lowercase) for _ in range(32))
         dts = recipes.quickstart(name=name,
                                  csv_path=csv_path, bdb_path=bdb_path,
-                                 logger=MyTestLogger())
+                                 logger=MyTestLogger(),
+                                 session_capture_name="test_recipes.py")
         ensure_timeout(10, lambda: dts.analyze(models=10, iterations=20))
         testvars['dataset'] = dts
         testvars['input_df'] = df
@@ -134,20 +135,20 @@ def test_analyze_and_analysis_status_and_reset():
 
 def test_q():
     with prepare() as (dts, df):
-        resultdf = dts.q('SELECT COUNT(*) FROM %t;')
+        resultdf = dts.query('SELECT COUNT(*) FROM %t;')
         #resultdf.to_csv(sys.stderr, header=True)
         assert 1 == len(resultdf)
         assert 1 == len(resultdf.columns)
         assert '"COUNT"(*)' == resultdf.columns[0]
         assert len(df) == resultdf.iloc[0, 0]
-        resultdf = dts.q(dedent('''\
+        resultdf = dts.query(dedent('''\
             ESTIMATE DEPENDENCE PROBABILITY OF
             floats_1 WITH categorical_1 BY %g'''))
         resultdf.to_csv(sys.stderr, header=True)
 
 def test_quick_describe_columns_and_column_type():
     with prepare() as (dts, _df):
-        resultdf = dts.q('SELECT * from %t LIMIT 1')
+        resultdf = dts.query('SELECT * from %t LIMIT 1')
         assert ['index', 'floats_1', 'categorical_1', 'categorical_2',
                 'few_ints_3', 'floats_3', 'many_ints_4', 'skewed_numeric_5',
                 ] == list(resultdf.columns)
@@ -165,17 +166,11 @@ def test_quick_describe_columns_and_column_type():
             assert re.match(expected_type, dts.column_type(column))
 
 def test_heatmap():
+    import sys
     with prepare() as (dts, _df):
         dts.logger.calls = []
-        deps = dts.q('ESTIMATE DEPENDENCE PROBABILITY'
-                     ' FROM PAIRWISE COLUMNS OF %g')
-        dts.heatmap(deps, plotfile='heatmap')
-        plots = [c for c in dts.logger.calls if c[0] == 'plot']
-        assert 1 == len(plots)
-        thecall = plots[0]
-        assert ('plot', 'heatmap') == thecall[:2]
-
-        dts.logger.calls = []
+        deps = dts.query('ESTIMATE DEPENDENCE PROBABILITY'
+                         ' FROM PAIRWISE COLUMNS OF %g')
         dts.heatmap(deps, plotfile='foobar.png')
         plots = [c for c in dts.logger.calls if c[0] == 'plot']
         assert 1 == len(plots)
@@ -224,7 +219,7 @@ def test_explore_cols():
 def test_similar_rows():
     with prepare() as (dts, _df):
         dts.logger.calls = []
-        the_real_q = dts.q
+        the_real_queryfn = dts.query
         count = [0]
         q_calls = []
         results = [pd.DataFrame([[0]]),  # Count of matching rows.
@@ -233,12 +228,12 @@ def test_similar_rows():
                    None,                 # Call with temp table creation.
                    'similar rows',       # Similarity result.
                    ]
-        def my_test_q(fmt_str, *args):
+        def my_test_queryfn(fmt_str, *args):
             q_calls.append((fmt_str, args))
             count[0] += 1
             return results[count[0] - 1]
         try:
-            dts.q = my_test_q
+            dts.query = my_test_queryfn
             try:
                 dts.quick_similar_rows(identify_row_by={})
                 assert False, "Expected death due to no rows."
@@ -260,7 +255,7 @@ def test_similar_rows():
             assert (['b', 'd'],) == q_calls[-2][1]
             assert 'SELECT * FROM' == q_calls[-1][0][:13]
         finally:
-            dts.q = the_real_q
+            dts.query = the_real_queryfn
 
 
         call_types = pd.DataFrame([call[0] for call in dts.logger.calls])
