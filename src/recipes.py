@@ -32,10 +32,11 @@ import pandas as pd
 import sys
 import traceback
 
-from bdbcontrib.loggers import BqlLogger
+from bdbcontrib.loggers import BqlLogger, logged_query
 
 class BqlRecipes(object):
-  def __init__(self, name, csv_path=None, bdb_path=None, df=None, logger=None):
+  def __init__(self, name, csv_path=None, bdb_path=None, df=None, logger=None,
+               session_capture_name=None):
     """A set of shortcuts for common ways to use BayesDB.
 
     name : str  REQUIRED.
@@ -57,6 +58,14 @@ class BqlRecipes(object):
         bdbcontrib.loggers.BqlLogger, but could be QuietLogger (only results),
         SilentLogger (nothing), IpyLogger, or LoggingLogger to use those
         modules, or anything else that implements the BqlLogger interface.
+    session_capture_name : String
+        None by default. If you want to send your session logs (perhaps
+        including underlying data!) automatically to the Probabilistic
+        Computing group for research purposes, possibly putting those logs and
+        data into the public domain, then please set this value to a name that
+        we might recognize you by. If the name is not self-evident, then please
+        send that name in an email to bayesdb@mit.edu to help us connect your
+        sessions to you.
     """
     assert re.match(r'\w+', name)
     assert df is not None or csv_path or bdb_path
@@ -68,6 +77,7 @@ class BqlRecipes(object):
     self.logger = BqlLogger() if logger is None else logger
     self.bdb = None
     self.status = None
+    self.session_capture_name = session_capture_name
     self.initialize()
 
   def initialize(self):
@@ -84,14 +94,14 @@ class BqlRecipes(object):
           header=True, create=True, ifnotexists=True)
       else:
         raise ValueError("No data sources specified, and an empty bdb.")
-    size = self.q('''SELECT COUNT(*) FROM %t''').ix(0, 0)
+    size = self.query('''SELECT COUNT(*) FROM %t''').ix(0, 0)
     assert 0 < size
     if "BAYESDB_WIZARD_MODE" in os.environ:
       old_wizmode = os.environ["BAYESDB_WIZARD_MODE"]
     else:
       old_wizmode = ""
     os.environ["BAYESDB_WIZARD_MODE"] = "1"
-    self.q('''
+    self.query('''
         CREATE GENERATOR %g IF NOT EXISTS FOR %t USING crosscat( GUESS(*) )''')
     os.environ["BAYESDB_WIZARD_MODE"] = old_wizmode
 
@@ -100,8 +110,8 @@ class BqlRecipes(object):
 
   def reset(self):
     self.check_representation()
-    self.q('drop generator if exists %s' % self.generator_name)
-    self.q('drop table if exists %s' % self.name)
+    self.query('drop generator if exists %s' % self.generator_name)
+    self.query('drop table if exists %s' % self.name)
     self.bdb = None
     self.initialize()
 
@@ -113,14 +123,20 @@ class BqlRecipes(object):
     self.check_representation()
     return bdbcontrib.describe_generator_columns(self.bdb, self.generator_name)
 
-  def q(self, query_string, *bindings):
-    """Query the database. Use %t for the data table and %g for the generator.
+  help_for_query = (
+      """Query the database. Use %t for the data table and %g for the generator.
 
-    %t and %g work only with word boundaries. E.g., 'LIKE "%table%"' is fine.
+      %t and %g work only with word boundaries. E.g., 'LIKE "%table%"' is fine.
 
-    Returns a pandas.DataFrame with the results, rather than the cursor that
-    the underlying bdb would return, so LIMIT your queries if you need to.
-    """
+      Returns a pandas.DataFrame with the results, rather than the cursor that
+      the underlying bdb would return, so LIMIT your queries if you need to.
+      """)
+
+  @helpsub(r'help_for_query', help_for_query)
+  def query(self, query_string, *bindings):
+    '''Basic querying without session capture or reporting.
+
+    help_for_query'''
     self.check_representation()
     query_string = re.sub(r'(^|(?<=\s))%t\b',
                           bayeslite.bql_quote_name(self.name),
@@ -141,6 +157,12 @@ class BqlRecipes(object):
       except:
         self.logger.exception('FROM BQL [%s] [%r]' % (query_string, bindings))
         raise
+
+  @helpsub(r'help_for_query', help_for_query)
+  def q(self, query_string, *bindings):
+    '''help_for_query'''
+    with logged_query(query_string, bindings, name=self.session_capture_name):
+      return self.query(query_string, *bindings)
 
   @helpsub('bdbcontrib_nullify_doc', bdbcontrib.nullify.__doc__)
   def nullify(self, value):
@@ -166,24 +188,27 @@ class BqlRecipes(object):
         and other info about model stability.
     '''
     self.check_representation()
-    if models > 0:
-      self.q('INITIALIZE %d MODELS IF NOT EXISTS FOR %s' %
-             (models, self.generator_name))
-      assert minutes == 0 or iterations == 0
-    else:
-      models = self.analysis_status().sum()
-    if minutes > 0:
-      if checkpoint == 0:
-        checkpoint = max(1, int(minutes * models / 200))
-      self.q('ANALYZE %s FOR %d MINUTES CHECKPOINT %d ITERATION WAIT' %
-             (self.generator_name, minutes, checkpoint))
-    elif iterations > 0:
-      if checkpoint == 0:
-        checkpoint = max(1, int(iterations * models / 20))
-      self.q('''ANALYZE %s FOR %d ITERATIONS CHECKPOINT %d ITERATION WAIT''' %
-             (self.generator_name, iterations, checkpoint))
-    else:
-      raise NotImplementedError('No default analysis strategy yet. Please specify minutes or iterations.')
+    with logged_query(query_string='recipes.analyze',
+                      name=self.session_capture_name):
+      if models > 0:
+        self.query('INITIALIZE %d MODELS IF NOT EXISTS FOR %s' %
+              (models, self.generator_name))
+        assert minutes == 0 or iterations == 0
+      else:
+        models = self.analysis_status().sum()
+      if minutes > 0:
+        if checkpoint == 0:
+          checkpoint = max(1, int(minutes * models / 200))
+        self.query('ANALYZE %s FOR %d MINUTES CHECKPOINT %d ITERATION WAIT' %
+              (self.generator_name, minutes, checkpoint))
+      elif iterations > 0:
+        if checkpoint == 0:
+          checkpoint = max(1, int(iterations * models / 20))
+        self.query(
+            '''ANALYZE %s FOR %d ITERATIONS CHECKPOINT %d ITERATION WAIT''' % (
+              self.generator_name, iterations, checkpoint))
+      else:
+        raise NotImplementedError('No default analysis strategy yet. Please specify minutes or iterations.')
     # itrs = self.per_model_analysis_status()
     # models_with_fewest_iterations =
     #    itrs[itrs['iterations'] == itrs.min('index').head(0)[0]].index.tolist()
@@ -204,10 +229,10 @@ class BqlRecipes(object):
     """Return the number of iterations for each model."""
     # XXX Move this to bdbcontrib/src/bql_utils.py ?
     try:
-      return self.q('''SELECT iterations FROM bayesdb_generator_model
-                       WHERE generator_id = (
-                         SELECT id FROM bayesdb_generator WHERE name = ?)''',
-                    self.generator_name)
+      return self.query('''SELECT iterations FROM bayesdb_generator_model
+                           WHERE generator_id = (
+                            SELECT id FROM bayesdb_generator WHERE name = ?)''',
+                        self.generator_name)
     except ValueError:
       # Because, e.g. there is no generator yet, for an empty db.
       return None
@@ -232,10 +257,12 @@ class BqlRecipes(object):
     Specifies bdb, query with the given columns, and generator_name:
     bdbcontrib_pairplot
     """
-    self.logger.plot(plotfile,
-                     bdbcontrib.pairplot(self.bdb, '''SELECT %s FROM %s''' %
-                                         (cols, self.name),
-                                         generator_name=self.generator_name))
+    with logged_query(query_string='pairplot cols=?', bindings=(cols,),
+                      name=self.session_capture_name):
+      self.logger.plot(plotfile,
+                       bdbcontrib.pairplot(self.bdb, '''SELECT %s FROM %s''' %
+                                             (cols, self.name),
+                                           generator_name=self.generator_name))
 
   def heatmap(self, deps, selectors=None, plotfile=None, **kwargs):
     '''Show heatmaps for the given dependencies
@@ -264,18 +291,22 @@ class BqlRecipes(object):
     **kwargs : dict
         Passed to zmatrix: vmin, vmax, row_ordering, col_ordering
     '''
-    hmap = plt.figure()
-    if selectors is None:
-      cmap = bdbcontrib.heatmap(self.bdb, df=deps, **kwargs)
-      self.logger.plot(plotfile, cmap)
-    else:
-      selfns = [selectors[k] for k in sorted(selectors.keys())]
-      reverse = dict([(v, k) for (k, v) in selectors.items()])
-      for (cmap, sel1, sel2) in bdbcontrib.plot_utils.selected_heatmaps(
-          self.bdb, df=deps, selectors=selfns, **kwargs):
-        self.logger.plot("%s.%s.%s" % (reverse[sel1], reverse[sel2], plotfile),
-                         cmap)
-    return hmap
+    with logged_query(query_string='heatmap(deps, selectors)',
+                      bindings=(str(deps), repr(selectors)),
+                      name=self.session_capture_name):
+      hmap = plt.figure()
+      if selectors is None:
+        cmap = bdbcontrib.plot_utils.heatmap(self.bdb, df=deps, **kwargs)
+        self.logger.plot(plotfile, cmap)
+      else:
+        selfns = [selectors[k] for k in sorted(selectors.keys())]
+        reverse = dict([(v, k) for (k, v) in selectors.items()])
+        for (cmap, sel1, sel2) in bdbcontrib.plot_utils.selected_heatmaps(
+             self.bdb, df=deps, selectors=selfns, **kwargs):
+          self.logger.plot("%s.%s.%s" % (
+              reverse[sel1], reverse[sel2], plotfile),
+                           cmap)
+      return hmap
 
   def quick_explore_cols(self, cols, nsimilar=20, plotfile='explore_cols'):
     """Show dependence probabilities and neighborhoods based on those.
@@ -290,35 +321,38 @@ class BqlRecipes(object):
     """
     if len(cols) < 2:
       raise ValueError('Need to explore at least two columns.')
-    query_columns = '''"%s"''' % '''", "'''.join(cols)
-    self.pairplot(query_columns)
-    deps = self.q('''ESTIMATE DEPENDENCE PROBABILITY
-                     FROM PAIRWISE COLUMNS OF %s
-                     FOR %s;''' % (self.generator_name, query_columns))
-    deps.columns = ['genid', 'name0', 'name1', 'value']
-    self.heatmap(deps, plotfile=plotfile)
-    deps.columns = ['genid', 'name0', 'name1', 'value']
-    triangle = deps[deps['name0'] < deps['name1']]
-    triangle = triangle.sort_values(ascending=False, by=['value'])
-    self.logger.result("Pairwise dependence probability for: %s\n%s\n\n",
-                       query_columns, triangle)
-
-    for col in cols:
-      neighborhood = self.q('''ESTIMATE *, DEPENDENCE PROBABILITY WITH "%s"
-                               AS "Probability of Dependence with %s"
-                               FROM COLUMNS OF %s
-                               ORDER BY "Probability of Dependence with %s"
-                               DESC LIMIT %d;'''
-                            % (col, col, self.generator_name, col, nsimilar))
-      neighbor_columns = ('''"%s"''' %
-                          '''", "'''.join(neighborhood["name"].tolist()))
-      deps = self.q('''ESTIMATE DEPENDENCE PROBABILITY
-               FROM PAIRWISE COLUMNS OF %s
-               FOR %s;''' % (self.generator_name, neighbor_columns))
+    with logged_query(query_string='quick_explore_cols', bindings=(cols,),
+                      name=self.session_capture_name):
+      query_columns = '''"%s"''' % '''", "'''.join(cols)
+      self.pairplot(query_columns)
+      deps = self.query('''ESTIMATE DEPENDENCE PROBABILITY
+                           FROM PAIRWISE COLUMNS OF %s
+                           FOR %s;''' % (self.generator_name, query_columns))
       deps.columns = ['genid', 'name0', 'name1', 'value']
-      self.heatmap(deps, plotfile=(plotfile + "-" + col))
-      self.logger.result("Pairwise dependence probability of %s with its " +
-                         "strongest dependents:\n%s\n\n", col, neighborhood)
+      self.heatmap(deps, plotfile=plotfile)
+      deps.columns = ['genid', 'name0', 'name1', 'value']
+      triangle = deps[deps['name0'] < deps['name1']]
+      triangle = triangle.sort_values(ascending=False, by=['value'])
+      self.logger.result("Pairwise dependence probability for: %s\n%s\n\n",
+                         query_columns, triangle)
+
+      for col in cols:
+        neighborhood = self.query(
+        '''ESTIMATE *, DEPENDENCE PROBABILITY WITH "%s"
+           AS "Probability of Dependence with %s"
+           FROM COLUMNS OF %s
+           ORDER BY "Probability of Dependence with %s"
+           DESC LIMIT %d;'''
+           % (col, col, self.generator_name, col, nsimilar))
+        neighbor_columns = ('''"%s"''' %
+                            '''", "'''.join(neighborhood["name"].tolist()))
+        deps = self.query('''ESTIMATE DEPENDENCE PROBABILITY
+            FROM PAIRWISE COLUMNS OF %s
+            FOR %s;''' % (self.generator_name, neighbor_columns))
+        deps.columns = ['genid', 'name0', 'name1', 'value']
+        self.heatmap(deps, plotfile=(plotfile + "-" + col))
+        self.logger.result("Pairwise dependence probability of %s with its " +
+                           "strongest dependents:\n%s\n\n", col, neighborhood)
 
   def column_type(self, col):
     """The statistical type of the given column in the current model."""
@@ -343,32 +377,35 @@ class BqlRecipes(object):
     nsimilar : positive integer
         The number of similar rows to retrieve.
     """
-    import hashlib
-    table_name = 'tmptbl_' + hashlib.md5('\x00'.join(
-        [repr(identify_row_by), str(self.status)])).hexdigest()
-    column_name = 'similarity_to_' + "__".join(
-        re.sub(r'\W', '_', str(val)) for val in identify_row_by.values())
-    query_params = []
-    query_columns = []
-    for k, v in identify_row_by.iteritems():
+    with logged_query(query_string='quick_similar_rows(id_by, n)',
+                      bindings=(identify_row_by, nsimilar),
+                      name=self.session_capture_name):
+      import hashlib
+      table_name = 'tmptbl_' + hashlib.md5('\x00'.join(
+          [repr(identify_row_by), str(self.status)])).hexdigest()
+      column_name = 'similarity_to_' + "__".join(
+          re.sub(r'\W', '_', str(val)) for val in identify_row_by.values())
+      query_params = []
+      query_columns = []
+      for k, v in identify_row_by.iteritems():
         query_columns.append('''%s = ? ''' % bayeslite.bql_quote_name(k))
         query_params.append(v)
-    query_attrs = ' and '.join(query_columns)
+      query_attrs = ' and '.join(query_columns)
 
-    with self.bdb.savepoint():
-      row_exists = self.q('SELECT COUNT(*) FROM %s WHERE %s;' %
-                          (self.name, query_attrs))
-      if row_exists.ix[0][0] != 1:
-        raise NotImplementedError(
-            'identify_row_by found %d rows instead of exactly 1 in %s.' %
-            (row_exists.ix[0][0], self.csv_path))
-      creation_query = ('''CREATE TEMP TABLE IF NOT EXISTS %s AS ESTIMATE *,
-                           SIMILARITY TO (%s) AS %s FROM %%g LIMIT %d;''' %
-                        (table_name, query_attrs, column_name, nsimilar))
-      self.q(creation_query, query_params)
-      result = self.q('''SELECT * FROM %s ORDER BY %s DESC;''' %
-                      (table_name, column_name))
-    return result
+      with self.bdb.savepoint():
+        row_exists = self.query('SELECT COUNT(*) FROM %s WHERE %s;' %
+                                (self.name, query_attrs))
+        if row_exists.ix[0][0] != 1:
+          raise NotImplementedError(
+              'identify_row_by found %d rows instead of exactly 1 in %s.' %
+              (row_exists.ix[0][0], self.csv_path))
+        creation_query = ('''CREATE TEMP TABLE IF NOT EXISTS %s AS ESTIMATE *,
+                             SIMILARITY TO (%s) AS %s FROM %%g LIMIT %d;''' %
+                          (table_name, query_attrs, column_name, nsimilar))
+        self.query(creation_query, query_params)
+        result = self.query('''SELECT * FROM %s ORDER BY %s DESC;''' %
+                            (table_name, column_name))
+      return result
 
 def quickstart(*args, **kwargs):
     return BqlRecipes(*args, **kwargs)
