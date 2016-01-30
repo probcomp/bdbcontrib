@@ -31,7 +31,8 @@ class StubCallable:
         if self.sleep:
             time.sleep(self.sleep)
         if self.throw:
-            raise self.throw
+            raise self.throw  # pylint: disable=raising-bad-type
+            # https://github.com/PyCQA/pylint/issues/157
 
 def test_failstub():
     failstub = StubCallable(throw=NotImplementedError('foo'))
@@ -83,7 +84,7 @@ def test_logged_query_success():
 
 def test_logged_query_successful_log_failure():
     okstub = StubCallable()
-    failstub = StubCallable(throw=NotImplementedError())
+    failstub = StubCallable(throw=NotImplementedError('foo'))
     lgr = loggers.CallHomeStatusLogger(post=failstub)
     with loggers.logged_query(logger=lgr, **THE_USUAL):
         okstub('inside')
@@ -91,6 +92,7 @@ def test_logged_query_successful_log_failure():
     assert "[(('inside',), {})]" == str(okstub.calls)
     # There will have been a failure on another thread,
     # and it will have been ignored.
+    time.sleep(0.2) # To let the other thread run, so this is less flaky.
     assert 1 == len(failstub.calls)
     check_logcall(failstub.calls[0])
 
