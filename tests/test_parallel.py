@@ -36,8 +36,8 @@ def test_estimate_pairwise_similarity():
         with tempfile.NamedTemporaryFile() as temp:
             temp.write(test_utils.csv_data)
             temp.seek(0)
-            bayeslite.bayesdb_read_csv_file(bdb, 't', temp.name,
-                                            header=True, create=True)
+            bayeslite.bayesdb_read_csv_file(
+                bdb, 't', temp.name, header=True, create=True)
 
         bdb.execute('''
             CREATE GENERATOR t_cc FOR t USING crosscat (
@@ -102,8 +102,8 @@ def test_estimate_pairwise_similarity():
 
         # The data from two successive parallel pairwise estimates should be
         # identical to each other...
-        assert_frame_equal(parallel_sim, parallel_sim_2,
-                           check_column_type=True)
+        assert_frame_equal(
+            parallel_sim, parallel_sim_2, check_column_type=True)
         # ...and to a standard estimate pairwise similarity.
         std_sim = cursor_to_df(
             bdb.execute('ESTIMATE SIMILARITY FROM PAIRWISE t_cc')
@@ -143,8 +143,8 @@ def test_estimate_pairwise_similarity_long():
             # n = 40 -> 40**2 -> 1600 rows total
             temp.write(_bigger_csv_data(40))
             temp.seek(0)
-            bayeslite.bayesdb_read_csv_file(bdb, 't', temp.name,
-                                            header=True, create=True)
+            bayeslite.bayesdb_read_csv_file(
+                bdb, 't', temp.name, header=True, create=True)
         bdb.execute('''
             CREATE GENERATOR t_cc FOR t USING crosscat (
                 GUESS(*),
