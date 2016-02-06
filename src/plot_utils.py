@@ -225,14 +225,15 @@ def barplot(bdb, bql):
     bdb : bayeslite.BayesDB
         Active BayesDB instance.
     bql : str
-        The BQL to run and histogram.
+        The BQL to run and histogram. Must have a two-column result.
 
     Returns
     ----------
     figure: matplotlib.figure.Figure
     """
     df = bqlu.cursor_to_df(bdb.execute(bql))
-
+    if df.shape[1] != 2:
+        raise ValueError('Need two columns of output from SELECT for barplot.')
     height_inches = df.shape[0] / 2.0
     figure, ax = plt.subplots(figsize=(height_inches, 5))
 
