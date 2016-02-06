@@ -112,7 +112,7 @@ setup(
         'matplotlib==1.4.3',  # See bdbcontrib/issues/94
         'numpy==1.8.2',       # See bdbcontrib/issues/94
         'numpydoc',
-        'pandas',
+        'pandas>=0.17.0',
         'seaborn>=0.6',
         'scipy==0.15.1',      # See bdbcontrib/issues/94
         'sklearn',
