@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-#   Copyright (c) 2010-2015, MIT Probabilistic Computing Project
+#   Copyright (c) 2010-2016, MIT Probabilistic Computing Project
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -204,7 +204,7 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
 
     def create_generator(self, bdb, table, schema, instantiate):
         # Parse the schema.
-        (columns, lcols, _fcols, fcol_to_pcols, fcol_to_fpred,
+        (columns, lcols, _fcols, fcol_to_pcols, fcol_to_fpred, fcol_imputation,
             dependencies) = self.parse(schema)
         # Instantiate **this** generator.
         genid, bdbcolumns = instantiate(columns.items())
@@ -897,12 +897,15 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
         DIRECTIVES = ['crosscat', 'default', 'dependent', 'independent'] + \
             self.predictor_builder.keys()
         STATTYPES = ['numerical', 'categorical']
+        FPDIRECTIVES = ['generate', 'given', 'impute']
+        IMPUTATIONS = ['none', 'default', 'full']
         # Data structures to return.
         columns = {}
         lcols = []
         fcols = []
         fcol_to_pcols = dict()
         fcol_to_fpred = dict()
+        fcol_imputation = dict()
         dependencies = []
         # Parse!
         for block in schema:
@@ -943,24 +946,33 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
                     dep.append(c)
                 dependencies.append((True, dep))
             elif directive in self.predictor_builder:
-                c = casefold(commands.pop(0))
-                s = casefold(commands.pop(0))
-                if s not in STATTYPES:
-                    raise ValueError('Invalid stattype "{}".'.format(s))
-                columns[c] = s
-                given = casefold(commands.pop(0))
-                if given != 'given':
-                    raise ValueError('Execpted GIVEN keyword, received: {}.'\
-                            .format(given))
-                conditions = []
                 while commands:
-                    r = casefold(commands.pop(0))
-                    if r == ',':
-                        continue
-                    conditions.append(r)
-                fcols.append(c)
-                fcol_to_pcols[c] = conditions
-                fcol_to_fpred[c] = directive
+                    fp_directive = commands.pop(0)
+                    if casefold(fp_directive) not in FPDIRECTIVES:
+                        raise ValueError(
+                            'Invalid FP directive "{}"'.format(fp_directive))
+                    elif casefold(fp_directive) == 'generate':
+                        [c, s] = commands.pop(0)
+                        c = casefold(c)
+                        s = casefold(s)
+                        if s not in STATTYPES:
+                            raise ValueError('Invalid stattype "{}".'.format(s))
+                        columns[c] = s
+                        fcols.append(c)
+                        fcol_to_fpred[c] = directive
+                        print columns
+                        print fcol_to_fpred[c]
+                    elif casefold(fp_directive) == 'given':
+                        conditions = commands.pop(0)
+                        conditions.remove(',')
+                        conditions = [casefold(d) for d in conditions]
+                        fcol_to_pcols[c] = conditions
+                    elif casefold(fp_directive) == 'impute':
+                        imputation = commands.pop(0)[0]
+                        if casefold(imputation) not in IMPUTATIONS:
+                            raise ValueError(
+                                'Invalid imputation "{}"'.format(imputation))
+                fcol_imputation[c] = imputation
         # Unique lcols.
         if len(lcols) != len(set(lcols)):
             raise ValueError('Duplicate default columns enountered: {}.'\
@@ -988,7 +1000,7 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
                         'must have default model.'.format(col))
         # Return the hodgepodge.
         return (columns, lcols, fcols, fcol_to_pcols, fcol_to_fpred,
-            dependencies)
+            fcol_imputation, dependencies)
 
     @staticmethod
     def topological_sort(graph):
