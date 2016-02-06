@@ -203,7 +203,7 @@ class BqlRecipes(object):
               (self.generator_name, minutes, checkpoint))
       elif iterations > 0:
         if checkpoint == 0:
-          checkpoint = max(1, int(iterations * models / 20))
+          checkpoint = max(1, int(iterations / 20))
         self.query(
             '''ANALYZE %s FOR %d ITERATIONS CHECKPOINT %d ITERATION WAIT''' % (
               self.generator_name, iterations, checkpoint))
