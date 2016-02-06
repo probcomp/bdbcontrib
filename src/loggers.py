@@ -14,11 +14,30 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
+import cgi
+import sys
+import traceback
+import IPython.display
 import IPython.utils.warn
+
+from bayeslite.exception import BayesDBException
 from bayeslite.loggers import BqlLogger
 
 class IpyLogger(BqlLogger):
   def info(self, msg_format, *values):
-    IPython.utils.warn.info(msg_format % values)
+    message = msg_format % values
+    html = ('<dib class="inner_cell" style="background-color:#F7F8E0">' +
+            cgi.escape(message) + '</div>')
+    IPython.display.display_html(html, raw=True)
   def warn(self, msg_format, *values):
     IPython.utils.warn.warn(msg_format % values)
+  def exception(self, msg_format, *values):
+    exc_type, exc_value, exc_traceback = sys.exc_info()
+    if exc_type:
+      if isinstance(exc_value, (BayesDBException, ValueError)):
+        IPython.utils.warn.error(msg_format + '\n' + str(exc_value), *values)
+      else:
+        lines = traceback.format_exception(exc_type, exc_value, exc_traceback)
+        IPython.utils.warn.error('\n'.join(lines))
+    else:
+      self.warn("ERROR: " + msg_format, *values)
