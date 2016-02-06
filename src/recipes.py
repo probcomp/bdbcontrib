@@ -155,8 +155,7 @@ class BqlRecipes(object):
                             (query_string, bindings))
         return df
       except:
-        self.logger.exception('FROM BQL [%s] [%r]' % (query_string, bindings))
-        raise
+        self.logger.exception("")
 
   @helpsub(r'help_for_query', help_for_query)
   def q(self, query_string, *bindings):
