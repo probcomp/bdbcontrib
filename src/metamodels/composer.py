@@ -959,18 +959,19 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
                             raise ValueError('Invalid stattype "{}".'.format(s))
                     elif casefold(fp_directive) == 'given':
                         conditions = commands.pop(0)
-                        conditions.remove(',')
+                        while ',' in conditions:
+                            conditions.remove(',')
                         conditions = map(casefold, conditions)
                     elif casefold(fp_directive) == 'impute':
                         imputation = commands.pop(0)[0]
                         if casefold(imputation) not in IMPUTATIONS:
                             raise ValueError(
                                 'Invalid imputation "{}"'.format(imputation))
+                        fcol_imputation[c] = imputation
                 columns[c] = s
                 fcols.append(c)
                 fcol_to_fpred[c] = directive
                 fcol_to_pcols[c] = conditions
-                fcol_imputation[c] = imputation
         # Unique lcols.
         if len(lcols) != len(set(lcols)):
             raise ValueError('Duplicate default columns enountered: {}.'\

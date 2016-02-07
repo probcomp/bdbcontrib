@@ -78,7 +78,7 @@ def test_create_generator_schema():
                     Apogee_km NUMERICAL, Eccentricity NUMERICAL
                 ),
                 random_forest (
-                    Apogee_km NUMERICAL GIVEN Operator_Owner
+                    GENERATE (Apogee_km NUMERICAL) GIVEN (Operator_Owner)
                 )
             );''')
     # Unregistered foreign predictor should crash.
@@ -92,7 +92,7 @@ def test_create_generator_schema():
                     Apogee_km NUMERICAL, Eccentricity NUMERICAL
                 ),
                 random_forest (
-                    Apogee_km NUMERICAL GIVEN Operator_Owner
+                    GENERATE (Apogee_km NUMERICAL) GIVEN (Operator_Owner)
                 )
             );''')
     # Registered foreign predictor should work.
@@ -106,7 +106,7 @@ def test_create_generator_schema():
                 Eccentricity NUMERICAL
             ),
             random_forest (
-                Apogee_km NUMERICAL GIVEN Operator_Owner
+                GENERATE (Apogee_km NUMERICAL) GIVEN (Operator_Owner)
             )
         );''')
     # Wrong stattype in predictor should crash.
@@ -120,7 +120,7 @@ def test_create_generator_schema():
                     Apogee_km NUMERICAL, Eccentricity NUMERICAL
                 ),
                 random_forest (
-                    Apogee_km RADIAL GIVEN Operator_Owner
+                    GENERATE (Apogee_km RADIAL) GIVEN (Operator_Owner)
                 )
             );''')
     # Missing GIVEN keyword should crash.
@@ -134,7 +134,7 @@ def test_create_generator_schema():
                     Apogee_km NUMERICAL, Eccentricity NUMERICAL
                 ),
                 random_forest (
-                    Apogee_km NUMERICAL, Operator_Owner
+                    GENERATE (Apogee_km NUMERICAL) Operator_Owner
                 )
             );''')
     # Missing conditions in random forest conditions should crash.
@@ -148,7 +148,7 @@ def test_create_generator_schema():
                     Apogee_km NUMERICAL, Eccentricity NUMERICAL
                 ),
                 random_forest (
-                    Apogee_km NUMERICAL GIVEN Operator_Owner
+                    GENERATE (Apogee_km NUMERICAL) GIVEN (Operator_Owner)
                 )
             );''')
     # Test duplicate declarations.
@@ -162,7 +162,7 @@ def test_create_generator_schema():
                     Apogee_km NUMERICAL, Eccentricity NUMERICAL
                 ),
                 random_forest (
-                    Class_of_orbit CATEGORICAL GIVEN Operator_Owner
+                    GENERATE (Class_of_orbit CATEGORICAL) GIVEN (Operator_Owner)
                 )
             );''')
     # Arbitrary DAG with foreign predictors.
@@ -175,10 +175,11 @@ def test_create_generator_schema():
                 Class_of_orbit CATEGORICAL, Perigee_km NUMERICAL,
             ),
             random_forest (
-                Apogee_km NUMERICAL GIVEN Operator_Owner, Users
+                GENERATE (Apogee_km NUMERICAL) GIVEN (Operator_Owner, Users)
             ),
             multiple_regression (
-                Eccentricity NUMERICAL GIVEN Apogee_km, Users, Perigee_km
+                GENERATE (Eccentricity NUMERICAL)
+                    GIVEN (Apogee_km, Users, Perigee_km)
             )
         );''')
     # Duplicate declarations in foreign predictors should crash.
@@ -192,10 +193,10 @@ def test_create_generator_schema():
                     Apogee_km NUMERICAL, Eccentricity NUMERICAL
                 ),
                 random_forest (
-                    Perigee_km NUMERICAL GIVEN Purpose
+                    GENERATE (Perigee_km NUMERICAL) GIVEN (Purpose)
                 ),
                 multiple_regression (
-                    Perigee_km NUMERICAL GIVEN Operator_Owner
+                    GENERATE (Perigee_km NUMERICAL) GIVEN (Operator_Owner)
                 )
             );''')
     # MML for default models should work.
@@ -207,10 +208,11 @@ def test_create_generator_schema():
                 Class_of_orbit CATEGORICAL, Apogee_km NUMERICAL
             )
             random_forest (
-                Perigee_km NUMERICAL GIVEN Purpose
+                GENERATE (Perigee_km NUMERICAL) GIVEN (Purpose)
             )
             multiple_regression (
-                Eccentricity NUMERICAL GIVEN Operator_Owner, Class_of_orbit
+                GENERATE (Eccentricity NUMERICAL)
+                    GIVEN (Operator_Owner, Class_of_orbit)
             )
             DEPENDENT(Apogee_km, Perigee_km, Purpose),
             INDEPENDENT(Country_of_Operator, Purpose)
@@ -226,10 +228,11 @@ def test_create_generator_schema():
                     Apogee_km NUMERICAL
                 ),
                 random_forest (
-                    Perigee_km NUMERICAL GIVEN Purpose
+                    GENERATE (Perigee_km NUMERICAL) GIVEN (Purpose)
                 ),
                 multiple_regression (
-                    Eccentricity NUMERICAL GIVEN Operator_Owner, Class_of_orbit
+                    GENERATE (Eccentricity NUMERICAL)
+                        GIVEN (Operator_Owner, Class_of_orbit)
                 )
                 DEPENDENT(Apogee_km, Eccentricity, Country_of_Operator),
                 INDEPENDENT(Perigee_km, Purpose)
@@ -253,18 +256,18 @@ def test_create_generator_schema():
                 Inclination_radians NUMERICAL,
             ),
             random_forest (
-                Type_of_Orbit CATEGORICAL
-                    GIVEN Apogee_km, Perigee_km,
-                        Eccentricity, Period_minutes, Launch_Mass_kg,
-                        Power_watts, Anticipated_Lifetime, Class_of_orbit
+                GENERATE (Type_of_Orbit CATEGORICAL)
+                    GIVEN (Apogee_km, Perigee_km, Eccentricity, Period_minutes,
+                        Launch_Mass_kg, Power_watts, Anticipated_Lifetime,
+                        Class_of_orbit)
             ),
             keplers_law (
-                Period_minutes NUMERICAL
-                    GIVEN Perigee_km, Apogee_km
+                GENERATE (Period_minutes NUMERICAL)
+                    GIVEN (Perigee_km, Apogee_km)
             ),
             multiple_regression (
-                Anticipated_Lifetime NUMERICAL
-                    GIVEN Dry_Mass_kg, Power_watts, Launch_Mass_kg, Contractor
+                GENERATE (Anticipated_Lifetime NUMERICAL)
+                    GIVEN (Dry_Mass_kg, Power_watts, Launch_Mass_kg, Contractor)
             ),
             DEPENDENT(Apogee_km, Perigee_km, Eccentricity),
             INDEPENDENT(Country_of_Operator, longitude_radians_of_geo)
@@ -351,19 +354,19 @@ def test_drop_generator():
                 Inclination_radians NUMERICAL,
             ),
             random_forest (
-                Type_of_Orbit CATEGORICAL
-                    GIVEN Apogee_km, Perigee_km,
+                GENERATE (Type_of_Orbit CATEGORICAL)
+                    GIVEN (Apogee_km, Perigee_km,
                         Eccentricity, Period_minutes, Launch_Mass_kg,
-                        Power_watts, Anticipated_Lifetime, Class_of_orbit
+                        Power_watts, Anticipated_Lifetime, Class_of_orbit)
             ),
             keplers_law (
-                Period_minutes NUMERICAL
-                    GIVEN Perigee_km, Apogee_km
+                GENERATE (Period_minutes NUMERICAL)
+                    GIVEN (Perigee_km, Apogee_km)
             ),
             multiple_regression (
-                Anticipated_Lifetime NUMERICAL
-                    GIVEN Dry_Mass_kg, Power_watts, Launch_Mass_kg,
-                    Contractor
+                GENERATE (Anticipated_Lifetime NUMERICAL)
+                    GIVEN (Dry_Mass_kg, Power_watts, Launch_Mass_kg,
+                        Contractor)
             ),
             DEPENDENT(Apogee_km, Perigee_km, Eccentricity),
             DEPENDENT(Contractor, Country_of_Contractor),
@@ -430,19 +433,19 @@ def test_composer_integration_slow():
                 Inclination_radians NUMERICAL,
             ),
             random_forest (
-                Type_of_Orbit CATEGORICAL
-                    GIVEN Apogee_km, Perigee_km,
+                GENERATE (Type_of_Orbit CATEGORICAL)
+                    GIVEN (Apogee_km, Perigee_km,
                         Eccentricity, Period_minutes, Launch_Mass_kg,
-                        Power_watts, Anticipated_Lifetime, Class_of_orbit
+                        Power_watts, Anticipated_Lifetime, Class_of_orbit)
             ),
             keplers_law (
-                Period_minutes NUMERICAL
-                    GIVEN Perigee_km, Apogee_km
+                GENERATE (Period_minutes NUMERICAL)
+                    GIVEN (Perigee_km, Apogee_km)
             ),
             multiple_regression (
-                Anticipated_Lifetime NUMERICAL
-                    GIVEN Dry_Mass_kg, Power_watts, Launch_Mass_kg,
-                    Contractor
+                GENERATE (Anticipated_Lifetime NUMERICAL)
+                    GIVEN (Dry_Mass_kg, Power_watts, Launch_Mass_kg,
+                    Contractor)
             ),
             DEPENDENT(Apogee_km, Perigee_km, Eccentricity),
             DEPENDENT(Contractor, Country_of_Contractor),
