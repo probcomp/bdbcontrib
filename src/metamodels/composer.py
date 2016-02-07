@@ -386,6 +386,202 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
                     for m in modelnos) / float(len(modelnos))
         return p
 
+    def column_mutual_information(self, bdb, genid, modelno, colno0, colno1,
+            numsamples=None):
+        if numsamples is None:
+            numsamples = self.n_samples
+        # XXX Aggregator only.
+        row_id = core.bayesdb_generator_fresh_row_id(bdb, genid)
+        X = [(row_id, colno0)]
+        W = [(row_id, colno1)]
+        Z = Y = []
+        if modelno is None:
+            modelnos = core.bayesdb_generator_modelnos(bdb, genid)
+        else:
+            modelnos = [modelno]
+        with bdb.savepoint():
+            mi = sum(self.conditional_mutual_information(
+                      bdb, genid, modelno, X, W, Z, Y)
+                     for modelno in modelnos) / float(len(modelnos))
+        return mi
+
+    def row_similarity(self, bdb, genid, modelno, rowid, target_rowid,
+            colnos):
+        # XXX Delegate to CrossCat always.
+        cc_colnos = self.cc_colnos(bdb, genid, colnos)
+        return self.cc(bdb, genid).row_similarity(bdb, self.cc_id(bdb, genid),
+            modelno, rowid, target_rowid, cc_colnos)
+
+    def predict_confidence(self, bdb, genid, modelno, colno, rowid,
+            numsamples=None):
+        with bdb.savepoint():
+            return self._predict_confidence(bdb, genid, modelno, colno, rowid,
+                numsamples=numsamples)
+
+    def conditional_mutual_information(self, bdb, genid, modelno, X, W, Z, Y,
+            numsamples=None):
+        with bdb.savepoint():
+            return self._conditional_mutual_information(
+                bdb, genid, modelno, X, W, Z, Y, numsamples=numsamples)
+
+    def simulate_joint(self, bdb, generator_id, targets, constraints, modelno,
+            num_predictions=1):
+        with bdb.savepoint():
+            return self._simulate(bdb, generator_id, modelno, targets,
+                constraints, numpredictions=num_predictions)
+
+    def logpdf_joint(self, bdb, generator_id, targets, constraints, modelno):
+        if modelno is None:
+            modelnos = core.bayesdb_generator_modelnos(bdb, generator_id)
+        else:
+            modelnos = [modelno]
+        with bdb.savepoint():
+            return logmeanexp([self._joint_logpdf(bdb, generator_id, modelno,
+                targets, constraints) for modelno in modelnos])
+
+    # --------------------------------------------------------------------------
+    # Internal
+
+    def _weighted_sample(self, bdb, genid, modelno, row_id, Y, n_samples=None):
+        # Returns a pairs of parallel lists ([sample ...], [weight ...])
+        # Each `sample` is a dict {col:v} of values for all nodes in
+        # the network for one row. Y specifies evidence nodes as (row,
+        # col, value) triples: all returned samples have constrained
+        # values at the evidence nodes.
+        # `weight` is the likelihood of the evidence Y under s\Y.
+        if n_samples is None:
+            n_samples = self.n_samples
+        # Create n_samples dicts, each entry is weighted sample from joint.
+        samples = [{c:v for r,c,v in Y if r == row_id}
+                   for _ in xrange(n_samples)]
+        weights = []
+        w0 = 0
+        # Assess likelihood of evidence at root.
+        Y_cc = [(r, c, v) for r,c,v in Y if c in self.lcols(bdb, genid)]
+        if Y_cc:
+            w0 += self.cc(bdb, genid).logpdf_joint(bdb, self.cc_id(bdb, genid),
+                Y_cc, [], modelno)
+        # Simulate unobserved ccs.
+        Q_cc = [(row_id, c)
+                for c in self.lcols(bdb, genid) if c not in samples[0]]
+        V_cc = self.cc(bdb, genid).simulate_joint(bdb, self.cc_id(bdb, genid),
+            Q_cc, Y_cc, modelno, num_predictions=n_samples)
+        for k in xrange(n_samples):
+            w = w0
+            # Add simulated Q_cc.
+            samples[k].update({c:v for (_, c), v in zip(Q_cc, V_cc[k])})
+            for fcol in self.topo(bdb, genid):
+                pcols = self.pcols(bdb, genid, fcol)
+                predictor = self.predictor(bdb, genid, fcol)
+                # All parents of FP known (evidence or simulated)?
+                assert pcols.issubset(set(samples[k]))
+                conditions = {core.bayesdb_generator_column_name(
+                    bdb, genid, c):v for c,v in samples[k].iteritems()
+                        if c in pcols}
+                if fcol in samples[k]:
+                    # f is evidence: compute likelihood weight.
+                    w += predictor.logpdf(samples[k][fcol], conditions)
+                else:
+                    # f is latent: simulate from conditional distribution.
+                    samples[k][fcol] = predictor.simulate(1, conditions)[0]
+            weights.append(w)
+        return samples, weights
+
+    def _simulate(self, bdb, genid, modelno, targets, constraints,
+            numpredictions=1):
+        # Delegate to crosscat if colnos+constraints all lcols.
+        colnos = [c for _,c in targets]
+        all_cols = [c for _,c,_ in constraints] + colnos
+        if all(f not in all_cols for f in self.fcols(bdb, genid)):
+            Y_cc = [(r, self.cc_colno(bdb, genid, c), v)
+                for r, c, v in constraints]
+            Q_cc = [(r, self.cc_colno(bdb, genid, c)) for r,c in targets]
+            return self.cc(bdb, genid).simulate_joint(bdb,
+                self.cc_id(bdb, genid), Q_cc, Y_cc, modelno,
+                num_predictions=numpredictions)
+        # Solve inference problem by sampling-importance resampling.
+        result = []
+        for r,_ in targets:
+            assert r == targets[0][0], "Cannot simulate more than one row, "\
+                "%s and %s requested" % (targets[0][0], r)
+        for _ in xrange(numpredictions):
+            samples, weights = self._weighted_sample(bdb, genid, modelno,
+                targets[0][0], constraints)
+            p = np.exp(np.asarray(weights) - np.max(weights))
+            p /= np.sum(p)
+            draw = np.nonzero(bdb.np_prng.multinomial(1,p))[0][0]
+            s = [samples[draw].get(col) for col in colnos]
+            result.append(s)
+        return result
+
+    def _joint_logpdf(self, bdb, genid, modelno, Q, Y, n_samples=None):
+        # XXX Computes the joint probability of query Q given evidence Y
+        # for a single model. The function is a likelihood weighted
+        # integrator.
+        # XXX Determine.
+        if n_samples is None:
+            n_samples = self.n_samples
+        # Validate inputs.
+        if modelno is None:
+            raise ValueError('Invalid modelno None, integer requried.')
+        if len(Q) == 0:
+            raise ValueError('Invalid query Q: len(Q) == 0.')
+        # Ensure consistency of any duplicates in Q and Y.
+        Q = self._queries_consistent_with_constraints(Q, Y)
+        if Q is None:
+            return float('-inf')
+        for r, _, _ in Q+Y:
+            assert r == Q[0][0], "Cannot assess more than one row, "\
+                "%s and %s requested" % (Q[0][0], r)
+        # (Q,Y) marginal joint density.
+        _, QY_weights = self._weighted_sample(bdb, genid, modelno,
+            Q[0][0], Q+Y, n_samples=n_samples)
+        # Y marginal density.
+        _, Y_weights = self._weighted_sample(bdb, genid, modelno,
+            Q[0][0], Y, n_samples=n_samples)
+        # XXX TODO Keep sampling until logpQY <= logpY
+        logpQY = logmeanexp(QY_weights)
+        logpY = logmeanexp(Y_weights)
+        return logpQY - logpY
+
+    def _conditional_mutual_information(self, bdb, genid, modelno, X, W, Z, Y,
+            numsamples=None):
+        # WARNING: SUPER EXPERIMENTAL.
+        # Computes the conditional mutual information I(X:W|Z,Y=y), defined
+        # defined as the expectation E_z~Z{X:W|Z=z,Y=y}.
+        # X, W, and Z must each be a list [(rowid, colno), ..].
+        # Y is an evidence list [(rowid,colno,val), ..].
+        if numsamples is None:
+            numsamples = self.n_samples
+        # All sets must be disjoint.
+        all_cols = X + W + Z + [(r,c) for r,c,_ in Y]
+        if len(all_cols) != len(set(all_cols)):
+            raise ValueError('Duplicate cells received in '
+                'conditional_mutual_information.\n'
+                'X: {}\nW: {}\nZ: {}\nY: {}'.format(X, W, Z, Y))
+        # Simulate from joint.
+        XWZ_samples = self._simulate(bdb, genid, modelno, X+W+Z,
+            Y, numpredictions=numsamples)
+        # Simple Monte Carlo
+        mi = logpz = logpxwz = logpxz = logpwz = 0
+        for s in XWZ_samples:
+            Qx = [(r,c,v) for ((r,c),v) in zip(X, s[:len(X)])]
+            Qw = [(r,c,v) for ((r,c),v) in zip(W, s[len(X):len(X)+len(W)])]
+            Qz = [(r,c,v) for ((r,c),v) in zip(Z, s[len(X)+len(W):])]
+            if Z:
+                logpz = self._joint_logpdf(bdb, genid, modelno, Qz, Y)
+            else:
+                logpz = 0
+            logpxwz = self._joint_logpdf(bdb, genid, modelno, Qx+Qw+Qz, Y)
+            logpxz = self._joint_logpdf(bdb, genid, modelno, Qx+Qz, Y)
+            logpwz = self._joint_logpdf(bdb, genid, modelno, Qw+Qz, Y)
+            mi += logpz + logpxwz - logpxz - logpwz
+        # TODO: linfoot?
+        # TODO: If negative, report to user that reliable answer cannot be
+        # returned with current `numsamples`.
+        # Averaging is in direct space is correct.
+        return mi/numsamples
+
     def _column_dependence_probability(self, bdb, genid, modelno, colno0,
             colno1):
         # XXX Computes the dependence probability for a single model.
@@ -433,108 +629,6 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
                 pcol0, pcol1) for pcol0 in self.pcols(bdb, genid, colno0)
                 for pcol1 in self.pcols(bdb, genid, colno1))
 
-    def column_mutual_information(self, bdb, genid, modelno, colno0, colno1,
-            numsamples=None):
-        if numsamples is None:
-            numsamples = self.n_samples
-        # XXX Aggregator only.
-        row_id = core.bayesdb_generator_fresh_row_id(bdb, genid)
-        X = [(row_id, colno0)]
-        W = [(row_id, colno1)]
-        Z = Y = []
-        if modelno is None:
-            modelnos = core.bayesdb_generator_modelnos(bdb, genid)
-        else:
-            modelnos = [modelno]
-        with bdb.savepoint():
-            mi = sum(self.conditional_mutual_information(
-                      bdb, genid, modelno, X, W, Z, Y)
-                     for modelno in modelnos) / float(len(modelnos))
-        return mi
-
-    def conditional_mutual_information(self, bdb, genid, modelno, X, W, Z, Y,
-            numsamples=None):
-        with bdb.savepoint():
-            return self._conditional_mutual_information(
-                bdb, genid, modelno, X, W, Z, Y, numsamples=numsamples)
-
-    def _conditional_mutual_information(self, bdb, genid, modelno, X, W, Z, Y,
-            numsamples=None):
-        # WARNING: SUPER EXPERIMENTAL.
-        # Computes the conditional mutual information I(X:W|Z,Y=y), defined
-        # defined as the expectation E_z~Z{X:W|Z=z,Y=y}.
-        # X, W, and Z must each be a list [(rowid, colno), ..].
-        # Y is an evidence list [(rowid,colno,val), ..].
-        if numsamples is None:
-            numsamples = self.n_samples
-        # All sets must be disjoint.
-        all_cols = X + W + Z + [(r,c) for r,c,_ in Y]
-        if len(all_cols) != len(set(all_cols)):
-            raise ValueError('Duplicate cells received in '
-                'conditional_mutual_information.\n'
-                'X: {}\nW: {}\nZ: {}\nY: {}'.format(X, W, Z, Y))
-        # Simulate from joint.
-        XWZ_samples = self.simulate(bdb, genid, modelno, X+W+Z,
-            Y, numpredictions=numsamples)
-        # Simple Monte Carlo
-        mi = logpz = logpxwz = logpxz = logpwz = 0
-        for s in XWZ_samples:
-            Qx = [(r,c,v) for ((r,c),v) in zip(X, s[:len(X)])]
-            Qw = [(r,c,v) for ((r,c),v) in zip(W, s[len(X):len(X)+len(W)])]
-            Qz = [(r,c,v) for ((r,c),v) in zip(Z, s[len(X)+len(W):])]
-            if Z:
-                logpz = self._joint_logpdf(bdb, genid, modelno, Qz, Y)
-            else:
-                logpz = 0
-            logpxwz = self._joint_logpdf(bdb, genid, modelno, Qx+Qw+Qz, Y)
-            logpxz = self._joint_logpdf(bdb, genid, modelno, Qx+Qz, Y)
-            logpwz = self._joint_logpdf(bdb, genid, modelno, Qw+Qz, Y)
-            mi += logpz + logpxwz - logpxz - logpwz
-        # TODO: linfoot?
-        # TODO: If negative, report to user that reliable answer cannot be
-        # returned with current `numsamples`.
-        # Averaging is in direct space is correct.
-        return mi/numsamples
-
-    def logpdf_joint(self, bdb, generator_id, targets, constraints, modelno):
-        if modelno is None:
-            modelnos = core.bayesdb_generator_modelnos(bdb, generator_id)
-        else:
-            modelnos = [modelno]
-        with bdb.savepoint():
-            return logmeanexp([self._joint_logpdf(bdb, generator_id, modelno,
-                targets, constraints) for modelno in modelnos])
-
-    def _joint_logpdf(self, bdb, genid, modelno, Q, Y, n_samples=None):
-        # XXX Computes the joint probability of query Q given evidence Y
-        # for a single model. The function is a likelihood weighted
-        # integrator.
-        # XXX Determine.
-        if n_samples is None:
-            n_samples = self.n_samples
-        # Validate inputs.
-        if modelno is None:
-            raise ValueError('Invalid modelno None, integer requried.')
-        if len(Q) == 0:
-            raise ValueError('Invalid query Q: len(Q) == 0.')
-        # Ensure consistency of any duplicates in Q and Y.
-        Q = self._queries_consistent_with_constraints(Q, Y)
-        if Q is None:
-            return float('-inf')
-        for r, _, _ in Q+Y:
-            assert r == Q[0][0], "Cannot assess more than one row, "\
-                "%s and %s requested" % (Q[0][0], r)
-        # (Q,Y) marginal joint density.
-        _, QY_weights = self._weighted_sample(bdb, genid, modelno,
-            Q[0][0], Q+Y, n_samples=n_samples)
-        # Y marginal density.
-        _, Y_weights = self._weighted_sample(bdb, genid, modelno,
-            Q[0][0], Y, n_samples=n_samples)
-        # XXX TODO Keep sampling until logpQY <= logpY
-        logpQY = logmeanexp(QY_weights)
-        logpY = logmeanexp(Y_weights)
-        return logpQY - logpY
-
     def _queries_consistent_with_constraints(self, Q, Y):
         queries = dict()
         for (row, col, val) in Q:
@@ -553,12 +647,6 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
                     return None
             constraints.add((row, col))
         return [(r, c, v) for r,c,v in Q if (r,c) not in ignore]
-
-    def predict_confidence(self, bdb, genid, modelno, colno, rowid,
-            numsamples=None):
-        with bdb.savepoint():
-            return self._predict_confidence(bdb, genid, modelno, colno, rowid,
-                numsamples=numsamples)
 
     def _predict_confidence(self, bdb, genid, modelno, colno, rowid,
             numsamples=None):
@@ -588,7 +676,7 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
                 Q = [(rowid, colno)]
                 Y = [(rowid, c, v) for c,v in zip(colnos, row)
                      if c != colno and v is not None]
-                samples = self.simulate(bdb, genid, modelno, Q, Y,
+                samples = self._simulate(bdb, genid, modelno, Q, Y,
                     numpredictions=numsamples)
                 samples = [s[0] for s in samples]
         # Predicting fcol.
@@ -637,91 +725,6 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
             raise ValueError('Unknown stattype "{}" for a foreign predictor '
                 'column encountered in predict_confidence.'.format(stattype))
         return imp_val, imp_conf * parent_conf
-
-    def simulate_joint(self, bdb, generator_id, targets, constraints, modelno,
-            num_predictions=1):
-        with bdb.savepoint():
-            return self.simulate(bdb, generator_id, modelno, targets,
-                constraints, numpredictions=num_predictions)
-
-    def simulate(self, bdb, genid, modelno, targets, constraints,
-            numpredictions=1):
-        # Delegate to crosscat if colnos+constraints all lcols.
-        colnos = [c for _,c in targets]
-        all_cols = [c for _,c,_ in constraints] + colnos
-        if all(f not in all_cols for f in self.fcols(bdb, genid)):
-            Y_cc = [(r, self.cc_colno(bdb, genid, c), v)
-                for r, c, v in constraints]
-            Q_cc = [(r, self.cc_colno(bdb, genid, c)) for r,c in targets]
-            return self.cc(bdb, genid).simulate_joint(bdb,
-                self.cc_id(bdb, genid), Q_cc, Y_cc, modelno,
-                num_predictions=numpredictions)
-        # Solve inference problem by sampling-importance resampling.
-        result = []
-        for r,_ in targets:
-            assert r == targets[0][0], "Cannot simulate more than one row, "\
-                "%s and %s requested" % (targets[0][0], r)
-        for _ in xrange(numpredictions):
-            samples, weights = self._weighted_sample(bdb, genid, modelno,
-                targets[0][0], constraints)
-            p = np.exp(np.asarray(weights) - np.max(weights))
-            p /= np.sum(p)
-            draw = np.nonzero(bdb.np_prng.multinomial(1,p))[0][0]
-            s = [samples[draw].get(col) for col in colnos]
-            result.append(s)
-        return result
-
-    def row_similarity(self, bdb, genid, modelno, rowid, target_rowid,
-            colnos):
-        # XXX Delegate to CrossCat always.
-        cc_colnos = self.cc_colnos(bdb, genid, colnos)
-        return self.cc(bdb, genid).row_similarity(bdb, self.cc_id(bdb, genid),
-            modelno, rowid, target_rowid, cc_colnos)
-
-    def _weighted_sample(self, bdb, genid, modelno, row_id, Y, n_samples=None):
-        # Returns a pairs of parallel lists ([sample ...], [weight ...])
-        # Each `sample` is a dict {col:v} of values for all nodes in
-        # the network for one row. Y specifies evidence nodes as (row,
-        # col, value) triples: all returned samples have constrained
-        # values at the evidence nodes.
-        # `weight` is the likelihood of the evidence Y under s\Y.
-        if n_samples is None:
-            n_samples = self.n_samples
-        # Create n_samples dicts, each entry is weighted sample from joint.
-        samples = [{c:v for r,c,v in Y if r == row_id}
-                   for _ in xrange(n_samples)]
-        weights = []
-        w0 = 0
-        # Assess likelihood of evidence at root.
-        Y_cc = [(r, c, v) for r,c,v in Y if c in self.lcols(bdb, genid)]
-        if Y_cc:
-            w0 += self.cc(bdb, genid).logpdf_joint(bdb, self.cc_id(bdb, genid),
-                Y_cc, [], modelno)
-        # Simulate unobserved ccs.
-        Q_cc = [(row_id, c)
-                for c in self.lcols(bdb, genid) if c not in samples[0]]
-        V_cc = self.cc(bdb, genid).simulate_joint(bdb, self.cc_id(bdb, genid),
-            Q_cc, Y_cc, modelno, num_predictions=n_samples)
-        for k in xrange(n_samples):
-            w = w0
-            # Add simulated Q_cc.
-            samples[k].update({c:v for (_, c), v in zip(Q_cc, V_cc[k])})
-            for fcol in self.topo(bdb, genid):
-                pcols = self.pcols(bdb, genid, fcol)
-                predictor = self.predictor(bdb, genid, fcol)
-                # All parents of FP known (evidence or simulated)?
-                assert pcols.issubset(set(samples[k]))
-                conditions = {core.bayesdb_generator_column_name(
-                    bdb, genid, c):v for c,v in samples[k].iteritems()
-                        if c in pcols}
-                if fcol in samples[k]:
-                    # f is evidence: compute likelihood weight.
-                    w += predictor.logpdf(samples[k][fcol], conditions)
-                else:
-                    # f is latent: simulate from conditional distribution.
-                    samples[k][fcol] = predictor.simulate(1, conditions)[0]
-            weights.append(w)
-        return samples, weights
 
     def cc_colno(self, bdb, genid, colno):
         return self.cc_colnos(bdb, genid, [colno])[0]
