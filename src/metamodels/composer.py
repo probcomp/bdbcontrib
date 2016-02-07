@@ -805,35 +805,26 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
 
             CREATE GENERATOR foo FOR satellites USING composer(
                 default (
-                    Country_of_Operator CATEGORICAL, Operator_Owner
-                    CATEGORICAL, Users CATEGORICAL, Purpose CATEGORICAL,
-                    Class_of_orbit CATEGORICAL, Perigee_km NUMERICAL, Apogee_km
-                    NUMERICAL, Eccentricity NUMERICAL, Launch_Mass_kg NUMERICAL,
-                    Dry_Mass_kg NUMERICAL, Power_watts NUMERICAL, Date_of_Launch
-                    NUMERICAL, Anticipated_Lifetime NUMERICAL, Contractor
-                    CATEGORICAL, Country_of_Contractor CATEGORICAL, Launch_Site
-                    CATEGORICAL, Launch_Vehicle CATEGORICAL,
-                    Source_Used_for_Orbital_Data CATEGORICAL,
-                    longitude_radians_of_geo NUMERICAL, Inclination_radians
-                    NUMERICAL
+                    Eccentricity NUMERICAL, Period_minutes NUMERICAL,
+                    Launch_Mass_kg NUMERICAL, Perigee_km NUMERICAL,
+                    Apogee_km NUMERICAL, Dry_Mass_kg NUMERICAL,
+                    Purpose NUMERICAL
                 ),
                 random_forest (
-                    Type_of_Orbit CATEGORICAL
-                        GIVEN Apogee_km, Perigee_km,
-                            Eccentricity, Period_minutes, Launch_Mass_kg,
-                            Power_watts, Anticipated_Lifetime, Class_of_orbit
+                    GENERATE (Type_of_Orbit CATEGORICAL)
+                        GIVEN (Eccentricity, Period_minutes, Launch_Mass_kg)
                 ),
                 keplers_law (
-                    Period_minutes NUMERICAL
-                        GIVEN Perigee_km, Apogee_km
+                    GENERATE (Period_minutes NUMERICAL)
+                        GIVEN (Perigee_km, Apogee_km)
                 ),
                 multiple_regression (
-                    Anticipated_Lifetime NUMERICAL
-                        GIVEN Dry_Mass_kg, Launch_Mass_kg, Purpose
+                    GENERATE (Anticipated_Lifetime NUMERICAL)
+                        GIVEN (Dry_Mass_kg, Launch_Mass_kg, Purpose)
                 ),
-                dependent(Launch_Mass_kg, Dry_Mass_kg, Power_watts),
-                dependent(Perigee_km, Apogee_km),
-                independent(Operator_Owner, Inclination_radians)
+                DEPENDENT(Launch_Mass_kg, Dry_Mass_kg, Power_watts),
+                DEPENDENT(Perigee_km, Apogee_km),
+                INDEPENDENT(Operator_Owner, Inclination_radians)
             );
 
         The schema must adhere to the following rules:
@@ -855,7 +846,9 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
 
         The grammar inside foreign predictor directives is::
 
-            <target> <stattype> GIVEN <condition> [...[condition]]
+            GENERATE (<target> <stattype>)
+                GIVEN (<condition> [...[condition]])
+            [DIRECTIVE (...) ...]
 
         All columns specified in `dependent` and `independent`
         directives must be modeled by the `default` metamodel.
@@ -868,27 +861,30 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
         Returns
         -------
         columns : dict(str:str)
-            A dict(colname:stattype) mapping every `colname` declared in
-            `schema` to its `stattype`.
+            dict[colname] -> stattype, i.e. {'apogee':'numerical'}
 
         lcols : list<str>
-            A list of columns modeled by `default` model.
+            List of columns modeled by `default` model.
 
         fcols : list<str>
-            A list of columns modeled by foreign predictor.
+            List of columns modeled by foreign predictors.
 
-        fcol_to_pcols : dict(str:list<str>)
-            A dict(fcol:conditions) mapping `fcol` to a list of its parent
-            columns.
+        fcol_to_pcols : dict{str:list<str>}
+            dict[fcol] -> list of parents, i.e. {'period':['perigee','apogee']}
 
         fcol_to_fpred : dict(str:str)
-            A dict(fcol:fpred) mapping `fcol` to the name of its foreign
-            predictor. The values in the dictionary are keys in
-            `self.predictor_builder`.
+            dict[fcol] -> name of its foreign predictor, i.e
+            {'period':'keplers_law'}. The values in the dictionary are keys
+            in `self.predictor_builder`.
+
+        fcol_to_imputation : dict(str:str)
+            dict[fcol] -> {'none','mean','median','full'} where the imputation
+            strategy tells the composer whether and how to impute missing pcols
+            of fcol before analysis.
 
         dependencies : list(<tuple(<bool>,<list<str>)>)
             A list of dependency constraints. Each entry in the list
-            is a tuple.  For example, (True, ['foo', 'bar', 'baz'])
+            is a tuple, i.e. the entry (True, ['foo', 'bar', 'baz'])
             means the three variables are mutually and pairwise
             *dependent*.
 
