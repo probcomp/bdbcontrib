@@ -24,7 +24,7 @@ import tempfile
 root = os.path.dirname(os.path.dirname(__file__))
 sats_path = os.path.join(root, "examples", "satellites")
 
-def test_stability_check_integration_smoke():
+def test_stability_check_integration_smoke__ci_because_43s_is_too_slow():
     bdbs_dir = None
     plots_dir = None
     old_path = copy.copy(sys.path)
