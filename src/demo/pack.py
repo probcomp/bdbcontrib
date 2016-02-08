@@ -54,5 +54,6 @@ def main():
     sys.stdout.write(payload)
     sys.stdout.flush()
 
-if __name__ == '__main__':
-    main()
+if __name__ != '__main__':
+    raise Exception('pack is standalone only')
+main()
