@@ -29,9 +29,7 @@ import zlib
 from ..version import __version__
 
 DEMO_URI = 'http://probcomp.csail.mit.edu/bayesdb/demo/current'
-PUBKEYS = ('\x93\xca\x8f\xedds\x934B\xf8\xac\xee\x91A\x1d\xa9-\xf5\xfb\xe3\xbf\xe4\xea\xba\nG\xa5>z=\xc4\x8b', # Riastradh
-           '\xBA\x16\xBE\x86\xF4\xC2\x45\x78\xB4\xE6\x78\x5C\x63\x24\xF9\xB6\x27\xD0\x75\x83\x00\x39\xC1\xDB\x51\xDE\x88\xFD\x64\x0D\xE3\x6A',  # Gremio
-           )
+PUBKEY = '\x93\xca\x8f\xedds\x934B\xf8\xac\xee\x91A\x1d\xa9-\xf5\xfb\xe3\xbf\xe4\xea\xba\nG\xa5>z=\xc4\x8b'
 
 short_options = 'hu:v'
 long_options = [
@@ -49,7 +47,7 @@ def main():
         usage(sys.stderr)
         sys.exit(2)
     demo_uri = DEMO_URI
-    pubkeys = PUBKEYS
+    pubkey = PUBKEY
     for o, a in opts:
         if o in ('-v', '--version'):
             version(sys.stdout)
@@ -96,7 +94,7 @@ def main():
         nretry = 3
         while 0 < nretry:
             try:
-                demo = download_demo(demo_uri, pubkeys)
+                demo = download_demo(demo_uri, pubkey)
             except Exception as e:
                 sys.stderr.write('%s: %s\n' % (progname(), str(e)))
                 nretry -= 1
@@ -151,11 +149,11 @@ def selftest():
         fail('compression self-test failed')
     sig = 'R6i&2\x911)\xce9Y\x0b&\xd2\xb0-<\xa5\rw\xc4)\xd6\xd4\x89\x03\x10\x8a;\x1e)\xfe\xb0\x92\xca?\xc3\x17\x0c\xc1\x84\xdd\xe6\xb2\xbfDZ\xe7Z\xd6*y\xe99\x9fk\x1e\xb9\x0f`\x07\xc0\x83\x08'
     try:
-        ed25519.checkvalid(sig, payload, PUBKEYS)
+        ed25519.checkvalid(sig, payload, PUBKEY)
     except:
         fail('crypto self-test failed')
 
-def download_demo(demo_uri, pubkeys):
+def download_demo(demo_uri, pubkey):
     with note('Requesting') as progress:
         headers = {
             'User-Agent': 'bdbcontrib demo'
@@ -188,7 +186,7 @@ def download_demo(demo_uri, pubkeys):
     with note('Verifying'):
         selftest()
         try:
-            ed25519.checkvalid(sig, payload, pubkeys)
+            ed25519.checkvalid(sig, payload, pubkey)
         except Exception:
             bad('signature verification failed')
     with note('Decompressing'):

@@ -93,14 +93,12 @@ def decodepoint(s):
   if not isoncurve(P): raise Exception("decoding point that is not on curve")
   return P
 
-def checkvalid(s,m,pks):
+def checkvalid(s,m,pk):
   if len(s) != b/4: raise Exception("signature length is wrong")
-  for pk in pks:
-    if len(pk) != b/8: raise Exception("public-key length is wrong")
-    R = decodepoint(s[0:b/8])
-    A = decodepoint(pk)
-    S = decodeint(s[b/8:b/4])
-    h = Hint(encodepoint(R) + pk + m)
-    if scalarmult(B,S) == edwards(R,scalarmult(A,h)):
-      return
-  raise Exception("signature does not pass verification")
+  if len(pk) != b/8: raise Exception("public-key length is wrong")
+  R = decodepoint(s[0:b/8])
+  A = decodepoint(pk)
+  S = decodeint(s[b/8:b/4])
+  h = Hint(encodepoint(R) + pk + m)
+  if scalarmult(B,S) != edwards(R,scalarmult(A,h)):
+    raise Exception("signature does not pass verification")
