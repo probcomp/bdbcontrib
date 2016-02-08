@@ -20,7 +20,7 @@ import traceback
 import IPython.display
 import IPython.utils.warn
 
-from bayeslite.exception import BayesDBException
+from bayeslite.exception import BayesLiteException
 from bayeslite.loggers import BqlLogger
 
 class IpyLogger(BqlLogger):
@@ -34,7 +34,7 @@ class IpyLogger(BqlLogger):
   def exception(self, msg_format, *values):
     exc_type, exc_value, exc_traceback = sys.exc_info()
     if exc_type:
-      if isinstance(exc_value, (BayesDBException, ValueError)):
+      if isinstance(exc_value, (BayesLiteException, ValueError)):
         IPython.utils.warn.error(msg_format + '\n' + str(exc_value), *values)
       else:
         lines = traceback.format_exception(exc_type, exc_value, exc_traceback)
