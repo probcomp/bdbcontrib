@@ -1,0 +1,45 @@
+* BayesDB demo
+
+This directory implements the bayesdb-demo program to download the most
+up-to-date ipython notebooks demonstrating BayesDB and launch ipython
+with them.
+
+* For developers
+
+To create a demo pack file at /tmp/demo.pack, you must have a secret
+signing key, say /path/to/seckey.  Enter a directory containing all the
+files you want to distribute in the demo, and run
+
+    python /path/to/bdbcontrib/src/demo/pack.py \
+        'I am a human on a single-user machine' \
+        /path/to/seckey \
+        > /tmp/demo.pack
+
+You must type this in as a human, on a single-user machine.  If you're
+not sure what that means, ask.  If pack.py fails, it will try to print
+an error message to stderr and return nonzero.  If pack.py succeeds, it
+will print nothing and return zero.
+
+* For wizards
+
+To create your own distributable auto-downloading demo program that
+will reject any demos you did not sign, you must generate a key pair.
+Run
+
+    python keygen.py seckey pubkey
+
+Then the file `seckey' will hold a secret signing key: put it somewhere
+nobody else can get at it.  The file `pubkey' will hold a Python
+expression that evaluates to a public verification key: put it in the
+source code for your application (e.g., main.py) to verify packs signed
+by the secret key.  Do not use the secret key or the public key for any
+other purpose.
+
+Please do not automate this process.  If you want to scale this up in
+any way, please talk to me (riastradh+probcomp@csail.mit.edu) first.
+This demo gizmo enables automatic arbitrary code execution for
+unsuspecting users.  We have a responsibility not to expose users to
+malware via that vector.  We can make changes and scale it up -- we
+just need to consciously consider the consequences of changes and make
+them carefully.  Or we can discard the functionality altogether and not
+attempt any automatic arbitrary code execution for users.
