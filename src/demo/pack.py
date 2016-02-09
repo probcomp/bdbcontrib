@@ -16,6 +16,7 @@
 
 import base64
 import ed25519
+import hashlib
 import json
 import os
 import sys
@@ -29,9 +30,26 @@ def main():
         sys.stderr.write('%s: This program is vulnerable'
             ' to timing side channels.\n' % (progname(),))
         sys.exit(1)
-    with open(sys.argv[2], 'rb') as f:
-        seckey = f.read()
-    pubkey = ed25519.publickey(seckey)
+    fd = os.open(sys.argv[2], os.O_RDONLY)
+    try:
+        if os.fstat(fd).st_size != 64:
+            raise IOError('secret key file must be 64 bytes')
+        seckey = os.read(fd, 32)
+        cksum = os.read(fd, 32)
+        assert os.lseek(fd, 0, os.SEEK_CUR) == 64
+        pubkey = ed25519.publickey(seckey)
+        cksum_ctx = hashlib.sha256()
+        cksum_ctx.update(seckey)
+        cksum_ctx.update(pubkey)
+        cksum_ctx.update('This is a bayesdb-demo version 2 signing key.')
+        if cksum != cksum_ctx.digest():
+            raise IOError('bad checksum')
+    except Exception as e:
+        sys.stderr.write('%s: Error reading secret key file: %s\n' %
+            (progname(), str(e)))
+        sys.exit(1)
+    finally:
+        os.close(fd)
     demo = {}
     demo['compatible'] = [1]
     demo['files'] = {}
