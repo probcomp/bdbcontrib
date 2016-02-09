@@ -26,8 +26,8 @@ def main():
         sys.stderr.write('Usage: %s <magic> <seckey>\n' % (progname(),))
         sys.exit(1)
     if sys.argv[1] != 'I am a human on a single-user machine':
-        sys.stderr.write(
-            'This program is vulnerable to timing side channels.')
+        sys.stderr.write('%s: This program is vulnerable'
+            ' to timing side channels.\n' % (progname(),))
         sys.exit(1)
     with open(sys.argv[2], 'rb') as f:
         seckey = f.read()
@@ -46,7 +46,7 @@ def main():
     assert len(sig) == 64
     size = len(sig) + len(payload)
     if size > 64*1024*1024:
-        sys.stderr.write('%s: pack too large after compression: %d bytes,'
+        sys.stderr.write('%s: Pack is too large after compression: %d bytes,'
             ' limit is %d bytes\n' %
             (progname(), size, 64*1024*1024))
         sys.exit(1)
