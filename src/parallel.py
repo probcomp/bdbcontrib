@@ -17,10 +17,11 @@
 from bayeslite.exception import BayesLiteException as BLE
 from bdbcontrib.bql_utils import cursor_to_df
 import multiprocessing as mp
-from bayeslite import bayesdb_open
+from bayeslite import bayesdb_open, bql_quote_name
+from bayeslite.util import cursor_value
 
 
-def _query_into_queue(query_string, queue, bdb_file):
+def _query_into_queue(query_string, params, queue, bdb_file):
     """
     Estimate pairwise similarity of a certain subset of the bdb according to
     query_string; place it in the multiprocessing Manager.Queue().
@@ -44,7 +45,7 @@ def _query_into_queue(query_string, queue, bdb_file):
         independently open a new BayesDB handler.
     """
     bdb = bayesdb_open(pathname=bdb_file)
-    res = bdb.execute(query_string)
+    res = bdb.execute(query_string, params)
     queue.put(cursor_to_df(res))
 
 
@@ -102,8 +103,10 @@ def estimate_pairwise_similarity(bdb_file, table, model, sim_table=None,
         sim_table = table + '_similarity'
 
     # Get number of occurrences in the database
-    count_cursor = bdb.execute('SELECT COUNT(*) FROM {}'.format(table))
-    table_count = int(cursor_to_df(count_cursor)['"COUNT"(*)'][0])
+    count_cursor = bdb.execute(
+        'SELECT COUNT(*) FROM {}'.format(bql_quote_name(table))
+    )
+    table_count = cursor_value(count_cursor)
     if N is None:
         N = table_count
     elif N > table_count:
@@ -123,28 +126,25 @@ def estimate_pairwise_similarity(bdb_file, table, model, sim_table=None,
         total += size
         offsets.append(total)
 
-    q_template = ('ESTIMATE SIMILARITY FROM PAIRWISE {} '.format(model) +
-                  'LIMIT {} OFFSET {}')  # Format sizes/offsets later
-
-    queries = [q_template.format(*so) for so in zip(sizes, offsets)]
-
     # Create the similarity table. Assumes original table has rowid column.
-    # XXX: tables from verbnet bdb don't necessarily have an
-    # autoincrementing primary key other than rowid (doesn't work).
-    # So we ought to ask for a foreign key, but ESTIMATE SIMILARITY
-    # returns numerical values rather than row names, so that code
-    # would have to be changed first. For now, we eliminate
-    # REFERENCE {table}(foreign_key) from the name0 and name1 col specs.
+    # XXX: tables don't necessarily have an autoincrementing primary key
+    # other than rowid, which is implicit and can't be set as a foreign key.
+    # We ought to ask for an optional user-specified foreign key, but
+    # ESTIMATE SIMILARITY returns numerical values rather than row names, so
+    # changing numerical rownames into that foreign key would be finicky. For
+    # now, we eliminate REFERENCE {table}(foreign_key) from the rowid0 and
+    # rowid1 specs.
+    sim_table_q = bql_quote_name(sim_table)
     if overwrite:
-        bdb.sql_execute('DROP TABLE IF EXISTS {}'.format(sim_table))
+        bdb.sql_execute('DROP TABLE IF EXISTS {}'.format(sim_table_q))
 
     bdb.sql_execute('''
-        CREATE TABLE {sim_table} (
+        CREATE TABLE {} (
             rowid0 INTEGER NOT NULL,
             rowid1 INTEGER NOT NULL,
             value DOUBLE NOT NULL
         )
-    '''.format(sim_table=sim_table))
+    '''.format(sim_table_q))
 
     # Define the helper which inserts data into table in batches
     def insert_into_sim(df):
@@ -152,26 +152,29 @@ def estimate_pairwise_similarity(bdb_file, table, model, sim_table=None,
         Use the main thread bdb handle to successively insert results of
         ESTIMATEs into the table.
         """
-        # Because the bayeslite implementation of sqlite3 doesn't allow
-        # inserts of > 500 rows at a time (else sqlite3.OperationalError),
-        # we split the list into chunks of size 500 and perform multiple
-        # insert statements.
         rows = map(list, df.values)
-        rows_str = ['({})'.format(','.join(map(str, r))) for r in rows]
-        for rows_chunk in _chunks(rows_str, 500):
-            insert_str = '''
-                INSERT INTO {} (rowid0, rowid1, value) VALUES {};
-            '''.format(sim_table, ','.join(rows_chunk))
-            bdb.sql_execute(insert_str)
+        insert_sql = '''
+            INSERT INTO {} (rowid0, rowid1, value) VALUES (?, ?, ?)
+        '''.format(sim_table_q)
+        # Avoid sqlite3 500-insert limit by grouping insert statements
+        # into one transaction.
+        with bdb.transaction():
+            for row in rows:
+                bdb.sql_execute(insert_sql, row)
 
     pool = mp.Pool(processes=cores)
 
     manager = mp.Manager()
     queue = manager.Queue()
 
-    for query in queries:
+    # Construct the estimate query template.
+    q_template = '''
+        ESTIMATE SIMILARITY FROM PAIRWISE {} LIMIT ? OFFSET ?
+    ''' .format(bql_quote_name(model))
+
+    for so in zip(sizes, offsets):
         pool.apply_async(
-            _query_into_queue, args=(query, queue, bdb_file)
+            _query_into_queue, args=(q_template, so, queue, bdb_file)
         )
 
     # Close pool and wait for processes to finish

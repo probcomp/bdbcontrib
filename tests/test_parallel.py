@@ -16,7 +16,6 @@
 
 import bayeslite
 from bayeslite.exception import BayesLiteException as BLE
-import os
 import random
 import test_utils
 import tempfile
@@ -25,13 +24,12 @@ import pytest
 from bdbcontrib import cursor_to_df, parallel
 from apsw import SQLError
 
+
 def test_estimate_pairwise_similarity():
     """
     Tests basic estimate pairwise similarity functionality against
     existing BQL estimate queries.
     """
-    os.environ['BAYESDB_WIZARD_MODE'] = '1'
-
     with tempfile.NamedTemporaryFile(suffix='.bdb') as bdb_file:
         bdb = bayeslite.bayesdb_open(bdb_file.name)
         with tempfile.NamedTemporaryFile() as temp:
@@ -136,8 +134,6 @@ def test_estimate_pairwise_similarity_long():
     Tests larger queries that need to be broken into batch inserts of 500
     values each, as well as the N parameter.
     """
-    os.environ['BAYESDB_WIZARD_MODE'] = '1'
-
     with tempfile.NamedTemporaryFile(suffix='.bdb') as bdb_file:
         bdb = bayeslite.bayesdb_open(bdb_file.name)
         with tempfile.NamedTemporaryFile() as temp:
