@@ -22,8 +22,8 @@ import sys
 import zlib
 
 def main():
-    if len(sys.argv) < 3:
-        sys.stderr.write('Usage: %s <magic> <seckey>\n' % (sys.argv[0],))
+    if len(sys.argv) != 3:
+        sys.stderr.write('Usage: %s <magic> <seckey>\n' % (progname(),))
         sys.exit(1)
     if sys.argv[1] != 'I am a human on a single-user machine':
         sys.stderr.write(
@@ -48,11 +48,14 @@ def main():
     if size > 64*1024*1024:
         sys.stderr.write('%s: pack too large after compression: %d bytes,'
             ' limit is %d bytes\n' %
-            (sys.argv[0], size, 64*1024*1024))
+            (progname(), size, 64*1024*1024))
         sys.exit(1)
     sys.stdout.write(sig)
     sys.stdout.write(payload)
     sys.stdout.flush()
+
+def progname():
+    return os.path.basename(sys.argv[0])
 
 if __name__ != '__main__':
     raise Exception('pack is standalone only')
