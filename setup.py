@@ -130,8 +130,6 @@ setup(
         'bdbcontrib',
         'bdbcontrib.predictors',
         'bdbcontrib.metamodels',
-        'bdbcontrib.demo',
-        'bdbcontrib.demo.ed25519',
         'bdbcontrib.experiments',
     ],
     package_dir={
