@@ -25,6 +25,8 @@ include examples/Makefile
 include examples/kepler/bayesdb_kepler.ipynb
 include examples/kepler/kepler.py
 include examples/kepler/plots.py
+include examples/ma-school-districts/ma-school-districts.csv
+include examples/ma-school-districts/MASchoolDistricts.ipynb
 include examples/malawi/malawi.bql
 include examples/malawi/malawi.csv
 include examples/on-stability-testing.md
