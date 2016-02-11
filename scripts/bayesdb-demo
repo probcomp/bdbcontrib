@@ -47,7 +47,7 @@ def progname():
     return os.path.basename(sys.argv[0])
 
 def fetch(directory):
-    bdbcontribdir = os.path.dirname(os.path.dirname(__file__))
+    bdbcontribdir = os.path.dirname(bdbcontrib.version.__file__)
     source = os.path.join(bdbcontribdir, "examples")
     print "Copying", source, "to", directory
     shutil.copytree(source, directory)

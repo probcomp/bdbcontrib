@@ -29,6 +29,22 @@ except ImportError:
 with open('VERSION', 'rU') as f:
     version = f.readline().strip()
 
+from distutils.command.install import INSTALL_SCHEMES
+for scheme in INSTALL_SCHEMES.values():
+    scheme['data'] = scheme['purelib']
+example_files = {}
+import os
+import re
+with open('MANIFEST.in', 'r') as manifest:
+    for line in manifest:
+        line = line.strip()
+        if line.startswith('include examples'):
+            line = line[len("include "):]
+            dirname = os.path.join('bdbcontrib', os.path.dirname(line))
+            if dirname not in example_files:
+                example_files[dirname] = []
+            example_files[dirname].append(line)
+
 # Append the Git commit id if this is a development version.
 if version.endswith('+'):
     tag = 'v' + version[:-1]
@@ -135,6 +151,7 @@ setup(
     package_dir={
         'bdbcontrib': 'src',
     },
+    data_files=example_files.items(),
     scripts=[
         'scripts/bayesdb-demo',
     ],
