@@ -16,7 +16,85 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
-from bdbcontrib.demo import main
+import getopt
+import os
+import shutil
+import StringIO
+import sys
+import bdbcontrib.version
+import bayeslite.version
+import crosscat.version
+
+def usage(out):
+    out.write('Usage: %s [options]\n' % (progname(),))
+    out.write('          Fetch if needed, then launch.\n')
+    out.write('       %s [options] fetch\n' % (progname(),))
+    out.write('          Copy demos below the destination directory.\n')
+    out.write('       %s [options] maybefetch\n' % (progname(),))
+    out.write('          Copy demos if they are not already present.\n')
+    out.write('       %s [options] launch\n' % (progname(),))
+    out.write('          Start an ipython notebook in the example directory.\n')
+
+def version(out):
+    out.write('Bayeslite distribution (bdbcontrib) version: %s\n' %
+              (bdbcontrib.version.__version__,))
+    out.write('   Bayeslite core version: %s\n' %
+              (bayeslite.version.__version__,))
+    out.write('   Default metamodel (CrossCat) version: %s\n' %
+              (crosscat.version.__version__,))
+
+def progname():
+    return os.path.basename(sys.argv[0])
+
+def fetch(directory):
+    bdbcontribdir = os.path.dirname(os.path.dirname(__file__))
+    source = os.path.join(bdbcontribdir, "examples")
+    print "Copying", source, "to", directory
+    shutil.copytree(source, directory)
+
+def launch(directory):
+    try:
+        os.execlp('ipython', 'ipython', 'notebook', directory)
+    except Exception as e:
+        sys.stderr.write('%s: %s\n' % (progname(), str(e)))
+        sys.stderr.write('%s: failed to launch ipython\n' % (progname(),))
+        sys.exit(1)
+
+
+def main():
+    import optparse
+    usage_text = StringIO.StringIO()
+    usage(usage_text)
+    parser = optparse.OptionParser(usage=usage_text.getvalue())
+    # -h or --help is automatic with usage= above.
+    parser.add_option('-v', '--version',
+                      help='Print the software and component versions.',
+                      dest='version', default=False, action='store_true')
+    parser.add_option('-d', '--destination',
+                      help='Parent directory for the examples.',
+                      dest='destination', default='.', action='store')
+    options, args = parser.parse_args()
+
+    if options.version:
+        version(sys.stderr)
+        sys.exit(0)
+
+    if not args:
+        args = ("maybefetch", "launch")
+
+    bayesname = "Bayeslite-v%s" % (bdbcontrib.version.__version__,)
+    destination = os.path.join(options.destination, bayesname)
+    for arg in args:
+        if arg == "maybefetch":
+            if not os.path.exists(destination):
+                fetch(destination)
+        elif arg == "fetch":
+            fetch(destination)
+        elif arg == "launch":
+            launch(destination)
+        else:
+            usage(sys.stderr)
+            sys.exit(1)
 
 assert __name__ == '__main__'
 main()
