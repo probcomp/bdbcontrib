@@ -406,5 +406,7 @@ class BqlRecipes(object):
                             (table_name, column_name))
       return result
 
+@helpsub('__init__', BqlRecipes.__init__.__doc__)
 def quickstart(*args, **kwargs):
-    return BqlRecipes(*args, **kwargs)
+  '''__init__'''
+  return BqlRecipes(*args, **kwargs)
