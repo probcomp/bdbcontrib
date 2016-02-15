@@ -47,10 +47,21 @@ def progname():
     return os.path.basename(sys.argv[0])
 
 def fetch(directory):
-    bdbcontribdir = os.path.dirname(bdbcontrib.version.__file__)
-    source = os.path.join(bdbcontribdir, "examples")
-    print "Copying", source, "to", directory
-    shutil.copytree(source, directory)
+    lib_bdbcontrib = os.path.dirname(bdbcontrib.version.__file__)
+    venv_bdbcontrib = os.path.join(os.path.dirname(os.path.dirname(__file__)),
+                                   "bdbcontrib")
+    path = [lib_bdbcontrib, venv_bdbcontrib]
+    found = False
+    for bdbcontribdir in path:
+        source = os.path.join(bdbcontribdir, "examples")
+        if os.path.exists(source):
+            found = True
+            print "Copying", source, "to", directory
+            shutil.copytree(source, directory)
+            break
+    if not found:
+        raise ValueError("Did not find the bdbcontrib/examples directory in " +
+                         repr(path))
 
 def launch(directory):
     try:
