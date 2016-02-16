@@ -69,9 +69,9 @@ def fetch(directory):
 
 import fnmatch
 def oswalk_find(fnpattern, path):
-    for root, dirs, files in os.walk(path):
+    for root, dirs, files in os.walk(path, followlinks=True):
         for name in files:
-            if fnmatch.fnmatch(name, pattern):
+            if fnmatch.fnmatch(name, fnpattern):
                 yield os.path.join(root, name)
 
 import subprocess
