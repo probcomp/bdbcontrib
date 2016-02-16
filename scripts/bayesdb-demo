@@ -36,11 +36,11 @@ def usage(out):
     out.write('          Start an ipython notebook in the example directory.\n')
 
 def version(out):
-    out.write('Bayeslite distribution (bdbcontrib) version: %s\n' %
+    out.write('Bayeslite distribution (bdbcontrib) version:\t%s\n' %
               (bdbcontrib.version.__version__,))
-    out.write('   Bayeslite core version: %s\n' %
+    out.write('   Bayeslite core version:\t%s\n' %
               (bayeslite.version.__version__,))
-    out.write('   Default metamodel (CrossCat) version: %s\n' %
+    out.write('   Default metamodel (CrossCat) version:\t%s\n' %
               (crosscat.version.__version__,))
 
 def progname():
