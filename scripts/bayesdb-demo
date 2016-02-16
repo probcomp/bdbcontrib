@@ -42,6 +42,10 @@ def version(out):
               (bayeslite.version.__version__,))
     out.write('   Default metamodel (CrossCat) version:\t%s\n' %
               (crosscat.version.__version__,))
+    import inspect
+    out.write('   bdbcontrib from:\t%s\n' % (inspect.getfile(bdbcontrib),))
+    out.write('   bayeslite from:\t%s\n' % (inspect.getfile(bayeslite),))
+    out.write('   crosscat from:\t%s\n' % (inspect.getfile(crosscat),))
 
 def progname():
     return os.path.basename(sys.argv[0])
