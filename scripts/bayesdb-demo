@@ -78,7 +78,7 @@ import subprocess
 def launch(directory, options):
     try:
         if options.runipy:
-            for notebook in oswalk_find("*.ipynb"):
+            for notebook in oswalk_find("*.ipynb", directory):
                 basename = notebook[:-6]
                 with open(basename + '-out.ipynb', 'wb') as outnb:
                     with open(basename + '-err.log', 'wb') as errlog:
