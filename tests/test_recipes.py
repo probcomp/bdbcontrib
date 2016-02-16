@@ -224,11 +224,6 @@ def test_pairplot():
             assert False, "Should raise a ValueError because empty columns."
         except ValueError:
             pass
-        try:
-            dts.pairplot(['floats_1'])
-            assert False, "Should raise a ValueError because only one column."
-        except ValueError:
-            pass
 
         pt = dts.pairplot(
             ['floats_1', 'floats_3', 'many_ints_4', 'categorical_1'])

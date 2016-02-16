@@ -256,8 +256,8 @@ class BqlRecipes(object):
     Specifies bdb, query with the given columns, and generator_name:
     bdbcontrib_pairplot
     """
-    if len(cols) < 2:
-        raise ValueError('Pairplot at least two variables.')
+    if len(cols) < 1:
+        raise ValueError('Pairplot at least one variable.')
     query_columns = '''"%s"''' % '''", "'''.join(cols)
     with logged_query(query_string='pairplot cols=?', bindings=(query_columns,),
                       name=self.session_capture_name):
