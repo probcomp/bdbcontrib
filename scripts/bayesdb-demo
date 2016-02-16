@@ -67,12 +67,29 @@ def fetch(directory):
         raise ValueError("Did not find the bdbcontrib/examples directory in " +
                          repr(path))
 
-def launch(directory):
+import fnmatch
+def oswalk_find(fnpattern, path):
+    for root, dirs, files in os.walk(path):
+        for name in files:
+            if fnmatch.fnmatch(name, pattern):
+                yield os.path.join(root, name)
+
+import subprocess
+def launch(directory, options):
     try:
-        os.execlp('ipython', 'ipython', 'notebook', directory)
+        if options.runipy:
+            for notebook in oswalk_find("*.ipynb"):
+                basename = notebook[:-6]
+                with open(basename + '-out.ipynb', 'wb') as outnb:
+                    with open(basename + '-err.log', 'wb') as errlog:
+                        subprocess.check_call(
+                            ['runipy', '--stdout', '--', notebook],
+                            stdout=outnb, stderr=errlog, shell=False)
+        else:
+            os.execlp('ipython', 'ipython', 'notebook', '--', directory)
     except Exception as e:
         sys.stderr.write('%s: %s\n' % (progname(), str(e)))
-        sys.stderr.write('%s: failed to launch ipython\n' % (progname(),))
+        sys.stderr.write('%s: failed.\n' % (progname(),))
         sys.exit(1)
 
 
@@ -82,6 +99,10 @@ def main():
     usage(usage_text)
     parser = optparse.OptionParser(usage=usage_text.getvalue())
     # -h or --help is automatic with usage= above.
+    parser.add_option('--runipy',
+                      help=("Instead of running an interactive notebook server,"
+                            + " run each notebook via runipy --stdout"),
+                      dest='runipy', default=False, action='store_true')
     parser.add_option('-v', '--version',
                       help='Print the software and component versions.',
                       dest='version', default=False, action='store_true')
@@ -106,7 +127,7 @@ def main():
         elif arg == "fetch":
             fetch(destination)
         elif arg == "launch":
-            launch(destination)
+            launch(destination, options)
         else:
             usage(sys.stderr)
             sys.exit(1)
