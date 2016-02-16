@@ -83,7 +83,8 @@ def launch(directory, options):
                 with open(basename + '-out.ipynb', 'wb') as outnb:
                     with open(basename + '-err.log', 'wb') as errlog:
                         subprocess.check_call(
-                            ['runipy', '--stdout', '--', notebook],
+                            ['runipy', '--stdout', '--matplotlib',
+                             '--', notebook],
                             stdout=outnb, stderr=errlog, shell=False)
         else:
             os.execlp('ipython', 'ipython', 'notebook', '--', directory)
