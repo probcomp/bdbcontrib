@@ -256,11 +256,14 @@ class BqlRecipes(object):
     Specifies bdb, query with the given columns, and generator_name:
     bdbcontrib_pairplot
     """
-    with logged_query(query_string='pairplot cols=?', bindings=(cols,),
+    if len(cols) < 2:
+        raise ValueError('Pairplot at least two variables.')
+    query_columns = '''"%s"''' % '''", "'''.join(cols)
+    with logged_query(query_string='pairplot cols=?', bindings=(query_columns,),
                       name=self.session_capture_name):
       self.logger.plot(plotfile,
                        bdbcontrib.pairplot(self.bdb, '''SELECT %s FROM %s''' %
-                                             (cols, self.name),
+                                             (query_columns, self.name),
                                            generator_name=self.generator_name))
 
   def heatmap(self, deps, selectors=None, plotfile=None, **kwargs):
@@ -322,8 +325,8 @@ class BqlRecipes(object):
       raise ValueError('Need to explore at least two columns.')
     with logged_query(query_string='quick_explore_cols', bindings=(cols,),
                       name=self.session_capture_name):
+      self.pairplot(cols)
       query_columns = '''"%s"''' % '''", "'''.join(cols)
-      self.pairplot(query_columns)
       deps = self.query('''ESTIMATE DEPENDENCE PROBABILITY
                            FROM PAIRWISE COLUMNS OF %s
                            FOR %s;''' % (self.generator_name, query_columns))

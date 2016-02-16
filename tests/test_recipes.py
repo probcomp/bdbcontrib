@@ -216,6 +216,27 @@ def test_explore_cols():
         assert call_counts['plot'] > 0
         assert 'warn' not in call_counts
 
+def test_pairplot():
+    with prepare() as (dts, _df):
+        dts.logger.calls = []
+        try:
+            dts.pairplot([])
+            assert False, "Should raise a ValueError because empty columns."
+        except ValueError:
+            pass
+        try:
+            dts.pairplot(['floats_1'])
+            assert False, "Should raise a ValueError because only one column."
+        except ValueError:
+            pass
+
+        pt = dts.pairplot(
+            ['floats_1', 'floats_3', 'many_ints_4', 'categorical_1'])
+        call_types = pd.DataFrame([call[0] for call in dts.logger.calls])
+        call_counts = call_types.iloc[:,0].value_counts()
+        assert call_counts['plot'] > 0
+        assert 'warn' not in call_counts
+
 def test_similar_rows():
     with prepare() as (dts, _df):
         dts.logger.calls = []
