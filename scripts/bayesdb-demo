@@ -52,7 +52,9 @@ def progname():
 
 import fnmatch
 def oswalk_find(fnpattern, path):
+    excludedirs = (".ipynb_checkpoints", ".git")
     for root, dirs, files in os.walk(path, followlinks=True):
+        dirs[:] = [d for d in dirs if d not in excludedirs]
         for name in files:
             if fnmatch.fnmatch(name, fnpattern):
                 yield os.path.join(root, name)
@@ -90,9 +92,9 @@ def launch(options):
         if options.runipy:
             for notebook in oswalk_find("*.ipynb", options.destination):
                 basename = notebook[:-6]
-                with open(basename + '-out.ipynb', 'wb') as outnb:
+                with open(basename + '-out_ipynb', 'wb') as outnb:
                     with open(basename + '-err.log', 'wb') as errlog:
-                        print "Running", notebook, "2>", errlog.name
+                        print "Running", notebook, ">", outnb.name, "2>", errlog.name
                         subprocess.check_call(
                             ['runipy', '--stdout', '--matplotlib',
                              '--', notebook],
