@@ -29,7 +29,7 @@ def usage(out):
     out.write('Usage: %s [options]\n' % (progname(),))
     out.write('          Fetch if needed, then launch.\n')
     out.write('       %s [options] fetch\n' % (progname(),))
-    out.write('          Copy demos below the destination directory.\n')
+    out.write('          Copy demos to the destination directory.\n')
     out.write('       %s [options] maybefetch\n' % (progname(),))
     out.write('          Copy demos if they are not already present.\n')
     out.write('       %s [options] launch\n' % (progname(),))
@@ -50,23 +50,6 @@ def version(out):
 def progname():
     return os.path.basename(sys.argv[0])
 
-def fetch(directory):
-    lib_bdbcontrib = os.path.dirname(bdbcontrib.version.__file__)
-    venv_bdbcontrib = os.path.join(os.path.dirname(os.path.dirname(__file__)),
-                                   "bdbcontrib")
-    path = [lib_bdbcontrib, venv_bdbcontrib]
-    found = False
-    for bdbcontribdir in path:
-        source = os.path.join(bdbcontribdir, "examples")
-        if os.path.exists(source):
-            found = True
-            print "Copying", source, "to", directory
-            shutil.copytree(source, directory)
-            break
-    if not found:
-        raise ValueError("Did not find the bdbcontrib/examples directory in " +
-                         repr(path))
-
 import fnmatch
 def oswalk_find(fnpattern, path):
     for root, dirs, files in os.walk(path, followlinks=True):
@@ -74,20 +57,49 @@ def oswalk_find(fnpattern, path):
             if fnmatch.fnmatch(name, fnpattern):
                 yield os.path.join(root, name)
 
+def fetch(options):
+    if options.source is None:
+        lib_bdbcontrib = os.path.dirname(bdbcontrib.version.__file__)
+        venv_bdbcontrib = os.path.join(
+            os.path.dirname(os.path.dirname(__file__)), "bdbcontrib")
+        path = [lib_bdbcontrib, venv_bdbcontrib]
+        found = False
+        for bdbcontribdir in path:
+            source = os.path.join(bdbcontribdir, "examples")
+            if os.path.exists(source):
+                options.source = source
+                found = True
+                break
+    else:
+        found = os.path.exists(options.source)
+    if not found:
+        raise ValueError("Did not find the bdbcontrib/examples directory in " +
+                         repr(path))
+    if os.path.exists(options.destination):
+        raise ValueError("Destination %s must not yet exist." %
+                         (options.destination,))
+    print "Copying", options.source, "to", options.destination
+    if (os.path.dirname(options.destination) and
+        not os.path.exists(os.path.dirname(options.destination))):
+        os.makedirs(os.path.dirname(options.destination))
+    shutil.copytree(options.source, options.destination)
+
 import subprocess
-def launch(directory, options):
+def launch(options):
     try:
         if options.runipy:
-            for notebook in oswalk_find("*.ipynb", directory):
+            for notebook in oswalk_find("*.ipynb", options.destination):
                 basename = notebook[:-6]
                 with open(basename + '-out.ipynb', 'wb') as outnb:
                     with open(basename + '-err.log', 'wb') as errlog:
+                        print "Running", notebook, "2>", errlog.name
                         subprocess.check_call(
                             ['runipy', '--stdout', '--matplotlib',
                              '--', notebook],
                             stdout=outnb, stderr=errlog, shell=False)
         else:
-            os.execlp('ipython', 'ipython', 'notebook', '--', directory)
+            os.execlp('ipython', 'ipython', 'notebook', '--',
+                      options.destination)
     except Exception as e:
         sys.stderr.write('%s: %s\n' % (progname(), str(e)))
         sys.stderr.write('%s: failed.\n' % (progname(),))
@@ -107,8 +119,13 @@ def main():
     parser.add_option('-v', '--version',
                       help='Print the software and component versions.',
                       dest='version', default=False, action='store_true')
+    parser.add_option('-s', '--source',
+                      help="A directory that has the example sources.",
+                      dest='source', default=None)
     parser.add_option('-d', '--destination',
-                      help='Parent directory for the examples.',
+                      help=('Parent directory for the examples. '
+                            'If exists, a new version-labelled directory will '
+                            'be created inside.'),
                       dest='destination', default='.', action='store')
     options, args = parser.parse_args()
 
@@ -120,15 +137,17 @@ def main():
         args = ("maybefetch", "launch")
 
     bayesname = "Bayeslite-v%s" % (bdbcontrib.version.__version__,)
-    destination = os.path.join(options.destination, bayesname)
+    if (os.path.exists(options.destination) and
+        os.path.basename(options.destination) != bayesname):
+        options.destination = os.path.join(options.destination, bayesname)
     for arg in args:
         if arg == "maybefetch":
-            if not os.path.exists(destination):
-                fetch(destination)
+            if not os.path.exists(options.destination):
+                fetch(options)
         elif arg == "fetch":
-            fetch(destination)
+            fetch(options)
         elif arg == "launch":
-            launch(destination, options)
+            launch(options)
         else:
             usage(sys.stderr)
             sys.exit(1)
