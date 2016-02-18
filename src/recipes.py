@@ -250,7 +250,7 @@ class BqlRecipes(object):
     return vcs
 
   @helpsub('bdbcontrib_pairplot', bdbcontrib.plot_utils.pairplot.__doc__)
-  def pairplot(self, cols, plotfile=None):
+  def pairplot(self, cols, plotfile=None, colorby=None, **kwargs):
     """Wrap bdbcontrib.plot_utils.pairplot to show the given columns.
 
     Specifies bdb, query with the given columns, and generator_name:
@@ -258,13 +258,16 @@ class BqlRecipes(object):
     """
     if len(cols) < 1:
         raise ValueError('Pairplot at least one variable.')
-    query_columns = '''"%s"''' % '''", "'''.join(cols)
+    qcols = cols if colorby is None else set(cols + [colorby])
+    query_columns = '''"%s"''' % '''", "'''.join(qcols)
     with logged_query(query_string='pairplot cols=?', bindings=(query_columns,),
                       name=self.session_capture_name):
       self.logger.plot(plotfile,
                        bdbcontrib.pairplot(self.bdb, '''SELECT %s FROM %s''' %
                                              (query_columns, self.name),
-                                           generator_name=self.generator_name))
+                                           generator_name=self.generator_name,
+                                           colorby=colorby,
+                                           **kwargs))
 
   def heatmap(self, deps, selectors=None, plotfile=None, **kwargs):
     '''Show heatmaps for the given dependencies

@@ -226,7 +226,8 @@ def test_pairplot():
             pass
 
         pt = dts.pairplot(
-            ['floats_1', 'floats_3', 'many_ints_4', 'categorical_1'])
+            ['floats_1', 'floats_3', 'many_ints_4', 'categorical_1'],
+            colorby='categorical_2')
         call_types = pd.DataFrame([call[0] for call in dts.logger.calls])
         call_counts = call_types.iloc[:,0].value_counts()
         assert call_counts['plot'] > 0
