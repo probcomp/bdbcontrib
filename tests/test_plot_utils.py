@@ -170,6 +170,37 @@ def test_selected_heatmaps():
     assert (s_fw, s_ae) in seen
     assert (s_fw, s_fw) in seen
 
+
+def get_plot_text(obj):
+    texts = []
+    stack = [obj]
+    while stack:
+        item = stack.pop()
+        d = set(dir(item))
+        if 'get_children' in d:
+            stack += item.get_children()
+        if 'get_text' in d:
+            texts.append(item.get_text())
+    return texts
+
+def test_gen_collapsed_legend_from_dict():
+    hl_colors_dict = {'roses': 'red',
+                      'violets': 'blue',
+                      'lilies': 'white',
+                      'poppies': 'red'}
+    # http://matplotlib.org/api/pyplot_api.html#matplotlib.pyplot.legend
+    loc = 10  # center
+    title = 'Doggerel!'
+    fontsize = 'medium'
+    leg = bdbcontrib.plot_utils.gen_collapsed_legend_from_dict(
+        hl_colors_dict, loc, title, fontsize)
+    texts = get_plot_text(leg)
+    assert 'Doggerel!' in texts
+    assert 'violets' in texts
+    assert 'lilies' in texts
+    assert ('roses, poppies' in texts or 'poppies, roses' in texts)
+
+
 def main():
     ans = prepare()
     do(ans, 'fig0.png', colorby='categorical_2', show_contour=False)

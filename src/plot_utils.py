@@ -299,7 +299,8 @@ def gen_collapsed_legend_from_dict(hl_colors_dict, loc=0, title=None,
         raise TypeError("hl_colors_dict must be a dict")
 
     colors = list(set(hl_colors_dict.values()))
-    collapsed_dict = dict(zip(colors, [[]] * len(colors)))
+    from collections import defaultdict
+    collapsed_dict = defaultdict(list)
 
     for label, color in hl_colors_dict.iteritems():
         collapsed_dict[color].append(str(label))
