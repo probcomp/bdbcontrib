@@ -122,15 +122,11 @@ def query_period_perigee_given_purpose(bdb, gpm):
             SIMULATE period_minutes, perigee_km FROM
             {gpm} GIVEN purpose = "Communications" LIMIT 100;'''
 
-    bdb.execute(tech_dev_bql.format(gpm='satcomp'))
-    bdb.execute(remote_sense_bql.format(gpm='satcomp'))
-    bdb.execute(comm_bql.format(gpm='satcomp'))
+    bdb.execute(tech_dev_bql.format(gpm=gpm))
+    bdb.execute(remote_sense_bql.format(gpm=gpm))
+    bdb.execute(comm_bql.format(gpm=gpm))
 
-    bdb.execute(tech_dev_bql.format(gpm='satcc'))
-    bdb.execute(remote_sense_bql.format(gpm='satcc'))
-    bdb.execute(comm_bql.format(gpm='satcc'))
-
-def plot_TP_given_Purpose(bdb, create=False):
+def plot_period_perigee_given_purpose(bdb, create=False):
     "Plot Period, Perigee given Purpose."
     matplotlib.rcParams['legend.fontsize'] = 14
     matplotlib.rcParams['axes.titlesize'] = 18
