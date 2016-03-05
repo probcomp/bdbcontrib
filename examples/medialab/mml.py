@@ -4,7 +4,6 @@ import warnings
 import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
-import pandas as pd
 
 import bayeslite
 import bdbcontrib
@@ -162,9 +161,5 @@ def plot_period_perigee_given_purpose(bdb, gpm):
     ax.set_ylim([-20, 1700])
     ax.grid()
     ax.legend(loc='upper left', framealpha=0, prop={'weight':'bold'})
-
-def sklearn_analysis():
-    # Load the dataset.
-    dataset = pd.read_csv('resources/satellites.csv')
 
 bdb = load_bdb(filename)
