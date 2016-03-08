@@ -11,6 +11,7 @@ import seaborn as sns
 
 import bayeslite
 import bdbcontrib
+from bayeslite.metamodels.crosscat import CrosscatMetamodel
 
 from bdbcontrib import query
 from bdbcontrib.metamodels.composer import Composer
@@ -40,7 +41,12 @@ def create_bdb():
     return bdb
 
 def load_bdb(filename):
-    bdb = bayeslite.bayesdb_open(filename)
+    import crosscat.MultiprocessingEngine as ccme
+    bdb = bayeslite.bayesdb_open(pathname=filename,
+        builtin_metamodels=False)
+    crosscat = ccme.MultiprocessingEngine(cpu_count=None)
+    metamodel = CrosscatMetamodel(crosscat)
+    bayeslite.bayesdb_register_metamodel(bdb, metamodel)
     composer = Composer()
     composer.register_foreign_predictor(keplers_law.KeplersLaw)
     composer.register_foreign_predictor(random_forest.RandomForest)
