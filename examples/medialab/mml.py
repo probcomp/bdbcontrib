@@ -11,7 +11,9 @@ import seaborn as sns
 
 import bayeslite
 import bdbcontrib
+
 from bayeslite.metamodels.crosscat import CrosscatMetamodel
+from bdbcontrib import plot_utils as pu
 
 from bdbcontrib import query
 from bdbcontrib.metamodels.composer import Composer
@@ -228,6 +230,61 @@ def plot_apogee_perigee_colorby_class(bdb):
         'SELECT apogee_km, perigee_km, class_of_orbit FROM satellites;',
         colorby='class_of_orbit')
 
+def plot_country_purpose_mass(bdb):
+    bdb.sql_execute('''
+            CREATE TEMP TABLE IF NOT EXISTS country_purpose_dm AS
+                SELECT country_of_operator || "--" || purpose
+                    AS "Country-Purpose", dry_mass_kg
+                FROM satellites WHERE Class_of_orbit = "GEO" AND
+                "Country-Purpose"
+                    IN (SELECT "Country-Purpose" FROM country_purpose_select)
+        ''')
+    fig = bdbcontrib.pairplot(bdb, 'SELECT * FROM country_purpose_dm')
+    ax = fig.get_axes()
+    for tick in ax[1].get_xticklabels():
+        tick.set_rotation(90)
+    for tick in ax[0].get_xticklabels():
+        tick.set_rotation(90)
+    fig.set_tight_layout(True)
+    return fig
+
+def plot_country_purpose_given_geo_all(bdb):
+    # Compare country_purpose_select to country_purpose_simulate.
+    cp_select = query(bdb, 'SELECT * FROM country_purpose_select;')
+    cp_simulate = query(bdb, 'SELECT * FROM country_purpose_sim;')
+    cp_simulate_dm = query(bdb, 'SELECT * FROM country_purpose_dm_sim;')
+
+    # Normalize.
+    cp_select['frequency'] /= 1167.
+    cp_simulate['frequency'] /= 1000.
+    cp_simulate_dm['frequency'] /= 1000.
+
+    # Rename the columns.
+    cp_select.columns = ['Country-Purpose', 'Probability']
+    cp_simulate.columns = ['Country-Purpose', 'Probability']
+    cp_simulate_dm.columns = ['Country-Purpose', 'Probability']
+
+    # Histograms for raw data.
+    barplot(cp_select.sort(columns=['Probability']), color='b',
+        label='SELECT country-purpose GIVEN geo')
+    barplot(cp_simulate.sort(columns=['Probability']), color='r',
+        label='SIMULATE country-purpose GIVEN geo')
+    barplot(cp_simulate_dm.sort(columns=['Probability']), color='g',
+        label='SIMULATE country-purpose GIVEN geo, dry_mass_kg = 500')
+
+    # Histogram for raw vs simulated.
+    joined_select_sim = combine_dataframes(cp_select, cp_simulate)
+    joined_select_sim.columns = ['Country-Purpose',
+        'SELECT country-purpose GIVEN geo', 'SIMULATE country-purpose GIVEN geo']
+    barplot_overlay(joined_select_sim, colors=['b','r'])
+
+    # Histogram for raw vs simulated.
+    joined_sim_dm = combine_dataframes(cp_simulate, cp_simulate_dm)
+    joined_sim_dm.columns = ['Country-Purpose',
+        'SIMULATE country-purpose GIVEN geo',
+        'SIMULATE country-purpose GIVEN geo, dry_mass_kg = 500',]
+    barplot_overlay(joined_sim_dm, colors=['r','g'])
+
 def combine_dataframes(A, B):
     A_zero_uniq = set(A.ix[:,0])
     B_zero_uniq = set(B.ix[:,0])
@@ -275,52 +332,14 @@ def barplot_overlay(df, colors=['g','r']):
 
 bdb = load_bdb(filename)
 
-bdb.sql_execute('DROP TABLE IF EXISTS dry_mass_mi')
-bdb.sql_execute('DROP TABLE IF EXISTS country_purpose_select')
-bdb.sql_execute('DROP TABLE IF EXISTS country_purpose_sim_raw')
-bdb.sql_execute('DROP TABLE IF EXISTS country_purpose_sim')
-bdb.sql_execute('DROP TABLE IF EXISTS country_purpose_dm_sim_raw')
-bdb.sql_execute('DROP TABLE IF EXISTS country_purpose_dm_sim')
+# bdb.sql_execute('DROP TABLE IF EXISTS dry_mass_mi')
+# bdb.sql_execute('DROP TABLE IF EXISTS country_purpose_select')
+# bdb.sql_execute('DROP TABLE IF EXISTS country_purpose_sim_raw')
+# bdb.sql_execute('DROP TABLE IF EXISTS country_purpose_sim')
+# bdb.sql_execute('DROP TABLE IF EXISTS country_purpose_dm_sim_raw')
+# bdb.sql_execute('DROP TABLE IF EXISTS country_purpose_dm_sim')
 
-query_dry_mass_mutual_information(bdb)
-query_select_country_purpose_given_geo(bdb)
-query_simulate_country_purpose_given_geo(bdb)
-query_simulate_country_purpose_given_geo_dm(bdb)
-
-# Compare country_purpose_select to country_purpose_simulate.
-cp_select = query(bdb, 'SELECT * FROM country_purpose_select;')
-cp_simulate = query(bdb, 'SELECT * FROM country_purpose_sim;')
-cp_simulate_dm = query(bdb, 'SELECT * FROM country_purpose_dm_sim;')
-
-# Normalize.
-cp_select['frequency'] /= 1167.
-cp_simulate['frequency'] /= 1000.
-cp_simulate_dm['frequency'] /= 1000.
-
-# Rename the columns.
-cp_select.columns = ['Country-Purpose', 'Probability']
-cp_simulate.columns = ['Country-Purpose', 'Probability']
-cp_simulate_dm.columns = ['Country-Purpose', 'Probability']
-
-# Histograms for raw data.
-barplot(cp_select.sort(columns=['Probability']), color='b',
-    label='SELECT country-purpose GIVEN geo')
-barplot(cp_simulate.sort(columns=['Probability']), color='r',
-    label='SIMULATE country-purpose GIVEN geo')
-barplot(cp_simulate_dm.sort(columns=['Probability']), color='g',
-    label='SIMULATE country-purpose GIVEN geo, dry_mass_kg = 500')
-
-# Histogram for raw vs simulated.
-joined_select_sim = combine_dataframes(cp_select, cp_simulate)
-joined_select_sim.columns = ['Country-Purpose',
-    'SELECT country-purpose GIVEN geo', 'SIMULATE country-purpose GIVEN geo']
-barplot_overlay(joined_select_sim, colors=['b','r'])
-
-# Histogram for raw vs simulated.
-joined_sim_dm = combine_dataframes(cp_simulate, cp_simulate_dm)
-joined_sim_dm.columns = ['Country-Purpose',
-    'SIMULATE country-purpose GIVEN geo',
-    'SIMULATE country-purpose GIVEN geo, dry_mass_kg = 500',]
-barplot_overlay(joined_sim_dm, colors=['r','g'])
-
-# plt.close('all')
+# query_dry_mass_mutual_information(bdb)
+# query_select_country_purpose_given_geo(bdb)
+# query_simulate_country_purpose_given_geo(bdb)
+# query_simulate_country_purpose_given_geo_dm(bdb)
