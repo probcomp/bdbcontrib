@@ -125,12 +125,12 @@ setup(
         'bayeslite>=0.1.6',
         'ipython[notebook]>=3',
         'markdown2',
-        'matplotlib==1.4.3',  # See bdbcontrib/issues/94
-        'numpy==1.8.2',       # See bdbcontrib/issues/94
+        'matplotlib',
+        'numpy',
         'numpydoc',
         'pandas>=0.17.0',
-        'seaborn>=0.6',
-        'scipy==0.15.1',      # See bdbcontrib/issues/94
+        'seaborn>=0.7',  # seaborn 0.6 is at the root of #94.
+        'scipy',
         'sklearn',
         'sklearn-pandas',
         'sphinx',
