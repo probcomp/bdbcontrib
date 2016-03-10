@@ -135,6 +135,20 @@ def load_gpmcc_country_purpose_given_geo(bdb):
             LIMIT 20;
     ''')
 
+def load_gpmcc_country_purpose_given_geo_dm(bdb):
+    bayeslite.bayesdb_read_csv_file(bdb, 'country_purpose_dm_gpmcc_raw',
+        'resources/simulate_country_purpose_dm_gpmcc.csv', header=True,
+        create=True)
+    query(bdb,'''
+        CREATE TABLE country_purpose_dm_sim_gpmcc AS
+            SELECT country_of_operator || "--" || purpose AS "Country-Purpose",
+                COUNT("Country-Purpose") AS frequency
+            FROM country_purpose_dm_gpmcc_raw
+                GROUP BY "Country-Purpose"
+                ORDER BY frequency DESC
+            LIMIT 20;
+    ''')
+
 def query_unlikely_periods(bdb):
     bdb.execute('''
         CREATE TABLE IF NOT EXISTS unlikely_periods AS
@@ -271,65 +285,83 @@ def plot_country_purpose_mass(bdb):
 
 def plot_country_purpose_given_geo_all(bdb):
     # Compare country_purpose_select to country_purpose_simulate.
-    cp_select = query(bdb, 'SELECT * FROM country_purpose_select;')
-    cp_simulate = query(bdb, 'SELECT * FROM country_purpose_sim;')
-    cp_simulate_dm = query(bdb, 'SELECT * FROM country_purpose_dm_sim;')
-    cp_simulate_gpmcc = query(bdb, 'SELECT * FROM country_purpose_sim_gpmcc;')
+    cp_select = query(
+        bdb, 'SELECT * FROM country_purpose_select;')
+    cp_simulate = query(
+        bdb, 'SELECT * FROM country_purpose_sim;')
+    cp_simulate_dm = query(
+        bdb, 'SELECT * FROM country_purpose_dm_sim;')
+    cp_simulate_gpmcc = query(
+        bdb, 'SELECT * FROM country_purpose_sim_gpmcc;')
+    cp_simulate_dm_gpmcc = query(
+        bdb, 'SELECT * FROM country_purpose_dm_sim_gpmcc;')
 
     geo_normalizer = bdb.sql_execute(
         'SELECT COUNT(*) FROM satellites WHERE class_of_orbit = "GEO"').next()[0]
-
     cp_simulate_normalizer = bdb.sql_execute(
         'SELECT COUNT(*) FROM country_purpose_sim_raw').next()[0]
-
-    cp_simulate_dim_normalizer = bdb.sql_execute(
+    cp_simulate_dm_normalizer = bdb.sql_execute(
         'SELECT COUNT(*) FROM country_purpose_dm_sim_raw').next()[0]
-
     cp_simulate_gpmcc_normalizer = bdb.sql_execute(
         'SELECT COUNT(*) FROM country_purpose_gpmcc_raw').next()[0]
+    cp_simulate_dm_gpmcc_normalizer = bdb.sql_execute(
+        'SELECT COUNT (*) FROM country_purpose_dm_gpmcc_raw').next()[0]
 
     # Normalize.
     cp_select['frequency'] /= geo_normalizer
     cp_simulate['frequency'] /= cp_simulate_normalizer
-    cp_simulate_dm['frequency'] /= cp_simulate_dim_normalizer
+    cp_simulate_dm['frequency'] /= cp_simulate_dm_normalizer
     cp_simulate_gpmcc['frequency'] /= cp_simulate_gpmcc_normalizer
+    cp_simulate_dm_gpmcc['frequency'] /= cp_simulate_dm_gpmcc_normalizer
 
     # Rename the columns.
     cp_select.columns = ['Country-Purpose', 'Probability']
     cp_simulate.columns = ['Country-Purpose', 'Probability']
     cp_simulate_dm.columns = ['Country-Purpose', 'Probability']
     cp_simulate_gpmcc.columns = ['Country-Purpose', 'Probability']
+    cp_simulate_dm_gpmcc.columns = ['Country-Purpose', 'Probability']
 
     # Histograms for raw data.
     barplot(cp_select.sort(columns=['Probability']), color='b',
         label='SELECT country-purpose GIVEN geo')
-    barplot(cp_simulate.sort(columns=['Probability']), color='r',
-        label='SIMULATE country-purpose GIVEN geo')
-    barplot(cp_simulate_dm.sort(columns=['Probability']), color='g',
-        label='SIMULATE country-purpose GIVEN geo, dry_mass_kg = 500')
-    barplot(cp_simulate_gpmcc.sort(columns=['Probability']), color='y',
-        label='SIMULATE country-purpose GIVEN geo (GPMCC)')
 
-    # Histogram for raw vs simulated.
+    barplot(cp_simulate.sort(columns=['Probability']), color='m',
+        label='SIMULATE country-purpose GIVEN geo')
+    barplot(cp_simulate_dm.sort(columns=['Probability']), color='y',
+        label='SIMULATE country-purpose GIVEN geo, dry_mass_kg = 500')
+
+    barplot(cp_simulate_gpmcc.sort(columns=['Probability']), color='r',
+        label='SIMULATE country-purpose GIVEN geo (GPMCC)')
+    barplot(cp_simulate_dm_gpmcc.sort(columns=['Probability']), color='g',
+        label='SIMULATE country-purpose GIVEN geo, dry_mass_kg = 500 (GPMCC)')
+
+    # Histogram for select vs simulated.
     joined_select_sim = combine_dataframes(cp_select, cp_simulate)
     joined_select_sim.columns = ['Country-Purpose',
         'SELECT country-purpose GIVEN geo',
         'SIMULATE country-purpose GIVEN geo']
-    barplot_overlay(joined_select_sim, colors=['b','r'])
+    barplot_overlay(joined_select_sim, colors=['b','m'])
 
-    # Histogram for raw vs simulated.
+    # Histogram for simulated vs simulated dm.
     joined_sim_dm = combine_dataframes(cp_simulate, cp_simulate_dm)
     joined_sim_dm.columns = ['Country-Purpose',
         'SIMULATE country-purpose GIVEN geo',
         'SIMULATE country-purpose GIVEN geo, dry_mass_kg = 500',]
-    barplot_overlay(joined_sim_dm, colors=['r','g'])
+    barplot_overlay(joined_sim_dm, colors=['m','y'])
 
-    # Histogram for raw vs gpmcc.
+    # Histogram for select vs simulated (gpmcc).
     joined_select_sim = combine_dataframes(cp_select, cp_simulate_gpmcc)
     joined_select_sim.columns = ['Country-Purpose',
         'SELECT country-purpose GIVEN geo',
         'SIMULATE country-purpose GIVEN geo (GPMCC)']
-    barplot_overlay(joined_select_sim, colors=['b','y'])
+    barplot_overlay(joined_select_sim, colors=['b','r'])
+
+    # Histogram for simulated vs simulated dm.
+    joined_sim_dm = combine_dataframes(cp_simulate_gpmcc, cp_simulate_dm_gpmcc)
+    joined_sim_dm.columns = ['Country-Purpose',
+        'SIMULATE country-purpose GIVEN geo (GPMCC)',
+        'SIMULATE country-purpose GIVEN geo, dry_mass_kg = 500 (GPMCC)',]
+    barplot_overlay(joined_sim_dm, colors=['r','g'])
 
     # Top four SELECT columns, lump everyone else into OTHER.
     top_cols = cp_select.iloc[:4]['Country-Purpose'].tolist()
@@ -347,12 +379,14 @@ def plot_country_purpose_given_geo_all(bdb):
     # Histograms for raw data.
     barplot(choose_top(top_cols, cp_select), color='b',
         label='SELECT country-purpose GIVEN geo')
-    barplot(choose_top(top_cols, cp_simulate), color='r',
+    barplot(choose_top(top_cols, cp_simulate), color='m',
         label='SIMULATE country-purpose GIVEN geo')
-    barplot(choose_top(top_cols, cp_simulate_dm), color='g',
+    barplot(choose_top(top_cols, cp_simulate_dm), color='y',
         label='SIMULATE country-purpose GIVEN geo, dry_mass_kg = 500')
-    barplot(choose_top(top_cols, cp_simulate_gpmcc), color='y',
+    barplot(choose_top(top_cols, cp_simulate_gpmcc), color='r',
         label='SIMULATE country-purpose GIVEN geo (GPMCC)')
+    barplot(choose_top(top_cols, cp_simulate_dm_gpmcc), color='g',
+        label='SIMULATE country-purpose GIVEN geo, dry_mass_kg = 500 (GPMCC)')
 
 def combine_dataframes(A, B):
     A_zero_uniq = set(A.ix[:,0])
