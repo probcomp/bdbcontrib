@@ -332,7 +332,7 @@ def get_bayesdb_col_type(column_name, df_column, bdb=None,
 
     def guess_column_type(df_column):
         pd_type = df_column.dtype
-        if pd_type is str:
+        if pd_type is str or pd_type == np.object:
             return 'categorical'
         else:
             if len(df_column.unique()) < 30:
