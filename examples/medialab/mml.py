@@ -122,6 +122,27 @@ def initialize_analyse_satcc(bdb):
     print 'Analyze'
     bdb.execute('ANALYZE satcc FOR 1500 ITERATION WAIT;')
 
+def load_gpmcc_country_purpose_given_geo(bdb):
+    bayeslite.bayesdb_read_csv_file(bdb, 'country_purpose_gpmcc_raw',
+        'resources/simulate_country_purpose_gpmcc.csv', header=True, create=True)
+    query(bdb,'''
+        CREATE TABLE country_purpose_sim_gpmcc AS
+            SELECT country_of_operator || "--" || purpose AS "Country-Purpose",
+                COUNT("Country-Purpose") AS frequency
+            FROM country_purpose_gpmcc_raw
+                GROUP BY "Country-Purpose"
+                ORDER BY frequency DESC
+            LIMIT 20;
+    ''')
+
+def query_unlikely_periods(bdb):
+    bdb.execute('''
+        CREATE TABLE IF NOT EXISTS unlikely_periods AS
+            ESTIMATE name, class_of_orbit, period_minutes,
+                PREDICTIVE PROBABILITY OF period_minutes
+                    AS "Relative Probability of Period"
+            FROM satcc;''')
+
 def query_period_perigee_given_purpose(bdb, gpm):
     tech_dev_bql = '''CREATE TABLE tech_dev_{gpm} AS
             SIMULATE period_minutes, perigee_km FROM
@@ -253,16 +274,31 @@ def plot_country_purpose_given_geo_all(bdb):
     cp_select = query(bdb, 'SELECT * FROM country_purpose_select;')
     cp_simulate = query(bdb, 'SELECT * FROM country_purpose_sim;')
     cp_simulate_dm = query(bdb, 'SELECT * FROM country_purpose_dm_sim;')
+    cp_simulate_gpmcc = query(bdb, 'SELECT * FROM country_purpose_sim_gpmcc;')
+
+    geo_normalizer = bdb.sql_execute(
+        'SELECT COUNT(*) FROM satellites WHERE class_of_orbit = "GEO"').next()[0]
+
+    cp_simulate_normalizer = bdb.sql_execute(
+        'SELECT COUNT(*) FROM country_purpose_sim_raw').next()[0]
+
+    cp_simulate_dim_normalizer = bdb.sql_execute(
+        'SELECT COUNT(*) FROM country_purpose_dm_sim_raw').next()[0]
+
+    cp_simulate_gpmcc_normalizer = bdb.sql_execute(
+        'SELECT COUNT(*) FROM country_purpose_gpmcc_raw').next()[0]
 
     # Normalize.
-    cp_select['frequency'] /= 1167.
-    cp_simulate['frequency'] /= 1000.
-    cp_simulate_dm['frequency'] /= 1000.
+    cp_select['frequency'] /= geo_normalizer
+    cp_simulate['frequency'] /= cp_simulate_normalizer
+    cp_simulate_dm['frequency'] /= cp_simulate_dim_normalizer
+    cp_simulate_gpmcc['frequency'] /= cp_simulate_gpmcc_normalizer
 
     # Rename the columns.
     cp_select.columns = ['Country-Purpose', 'Probability']
     cp_simulate.columns = ['Country-Purpose', 'Probability']
     cp_simulate_dm.columns = ['Country-Purpose', 'Probability']
+    cp_simulate_gpmcc.columns = ['Country-Purpose', 'Probability']
 
     # Histograms for raw data.
     barplot(cp_select.sort(columns=['Probability']), color='b',
@@ -271,11 +307,14 @@ def plot_country_purpose_given_geo_all(bdb):
         label='SIMULATE country-purpose GIVEN geo')
     barplot(cp_simulate_dm.sort(columns=['Probability']), color='g',
         label='SIMULATE country-purpose GIVEN geo, dry_mass_kg = 500')
+    barplot(cp_simulate_gpmcc.sort(columns=['Probability']), color='y',
+        label='SIMULATE country-purpose GIVEN geo (GPMCC)')
 
     # Histogram for raw vs simulated.
     joined_select_sim = combine_dataframes(cp_select, cp_simulate)
     joined_select_sim.columns = ['Country-Purpose',
-        'SELECT country-purpose GIVEN geo', 'SIMULATE country-purpose GIVEN geo']
+        'SELECT country-purpose GIVEN geo',
+        'SIMULATE country-purpose GIVEN geo']
     barplot_overlay(joined_select_sim, colors=['b','r'])
 
     # Histogram for raw vs simulated.
@@ -284,6 +323,36 @@ def plot_country_purpose_given_geo_all(bdb):
         'SIMULATE country-purpose GIVEN geo',
         'SIMULATE country-purpose GIVEN geo, dry_mass_kg = 500',]
     barplot_overlay(joined_sim_dm, colors=['r','g'])
+
+    # Histogram for raw vs gpmcc.
+    joined_select_sim = combine_dataframes(cp_select, cp_simulate_gpmcc)
+    joined_select_sim.columns = ['Country-Purpose',
+        'SELECT country-purpose GIVEN geo',
+        'SIMULATE country-purpose GIVEN geo (GPMCC)']
+    barplot_overlay(joined_select_sim, colors=['b','y'])
+
+    # Top four SELECT columns, lump everyone else into OTHER.
+    top_cols = cp_select.iloc[:4]['Country-Purpose'].tolist()
+
+    # Find sum of everyone else for cp_select.
+    def choose_top(top_cols, df):
+        df = df.loc[df['Country-Purpose'].isin(top_cols)]
+        new_df = pd.DataFrame(columns=['Country_Purpose', 'Probability'])
+        new_df.loc[len(new_df)] = ['Other', 1-df['Probability'].sum()]
+        for c in reversed(top_cols):
+            new_df.loc[len(new_df)] = [c,
+                df.loc[df['Country-Purpose'] == c]['Probability'].iloc[0]]
+        return new_df
+
+    # Histograms for raw data.
+    barplot(choose_top(top_cols, cp_select), color='b',
+        label='SELECT country-purpose GIVEN geo')
+    barplot(choose_top(top_cols, cp_simulate), color='r',
+        label='SIMULATE country-purpose GIVEN geo')
+    barplot(choose_top(top_cols, cp_simulate_dm), color='g',
+        label='SIMULATE country-purpose GIVEN geo, dry_mass_kg = 500')
+    barplot(choose_top(top_cols, cp_simulate_gpmcc), color='y',
+        label='SIMULATE country-purpose GIVEN geo (GPMCC)')
 
 def combine_dataframes(A, B):
     A_zero_uniq = set(A.ix[:,0])
@@ -296,7 +365,7 @@ def combine_dataframes(A, B):
         a_val = A.loc[k].iloc[0] if k in A.index else 0
         b_val = B.loc[k].iloc[0] if k in B.index else 0
         C.loc[k] = [a_val, b_val]
-    return C.sort(columns=['b'], ascending=True).reset_index()
+    return C.sort(columns=['a'], ascending=True).reset_index()
 
 def barplot(df, color='#333333', label=None):
     if df.shape[1] != 2:
@@ -308,8 +377,9 @@ def barplot(df, color='#333333', label=None):
     ax.set_yticklabels(df.ix[:,0].values, fontweight='bold')
     ax.set_ylabel(df.columns[0], fontweight='bold')
     ax.set_xlabel(df.columns[1], fontweight='bold')
+    ax.set_xlim([0, .6])
     figure.set_tight_layout(True)
-    ax.legend(loc='lower right')
+    ax.legend(loc='center right')
     return figure
 
 def barplot_overlay(df, colors=['g','r']):
