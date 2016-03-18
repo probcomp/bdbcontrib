@@ -56,8 +56,6 @@ def ensure_timeout(delay, target):
 
 @contextmanager
 def prepare():
-    #import pytest
-    #pytest.set_trace()
     if testvars['dataset'] is None:
         (df, csv_data) = test_plot_utils.dataset(40)
         tempd = tempfile.mkdtemp(prefix="bdbcontrib-test-recipes")
