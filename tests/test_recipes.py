@@ -38,7 +38,7 @@ import tempfile
 import test_plot_utils
 
 from bayeslite.read_csv import bayesdb_read_csv
-from bayeslite.loggers import BqlLogger
+from bayeslite.loggers import CaptureLogger
 from bdbcontrib import recipes
 
 testvars = {'dataset': None, 'input_df': None}
@@ -54,29 +54,6 @@ def ensure_timeout(delay, target):
     # proc.terminate()
     # proc.join()
 
-
-class MyTestLogger(BqlLogger):
-    def __init__(self, verbose=pytest.config.option.verbose):
-        self.calls = []
-        self.verbose = verbose
-    def info(self, msg_format, *values):
-        if self.verbose:
-            print('INFO: '+msg_format, *values)
-        self.calls.append(('info', msg_format, values))
-    def warn(self, msg_format, *values):
-        if self.verbose:
-            print('WARN: '+msg_format, *values)
-        self.calls.append(('warn', msg_format, values))
-    def plot(self, suggested_name, figure):
-        if self.verbose:
-            plt.show()
-        self.calls.append(('plot', suggested_name, figure))
-    def result(self, msg_format, *values):
-        if self.verbose:
-            print('RSLT: '+msg_format, *values)
-        self.calls.append(('result', msg_format, values))
-
-
 @contextmanager
 def prepare():
     #import pytest
@@ -91,7 +68,8 @@ def prepare():
         name = ''.join(random.choice(ascii_lowercase) for _ in range(32))
         dts = recipes.quickstart(name=name,
                                  csv_path=csv_path, bdb_path=bdb_path,
-                                 logger=MyTestLogger(),
+                                 logger=CaptureLogger(
+                                     verbose=pytest.config.option.verbose),
                                  session_capture_name="test_recipes.py")
         ensure_timeout(10, lambda: dts.analyze(models=10, iterations=20))
         testvars['dataset'] = dts
