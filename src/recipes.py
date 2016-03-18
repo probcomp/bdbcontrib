@@ -18,6 +18,7 @@ import bayeslite
 import bayeslite.core
 import bayeslite.guess
 from bayeslite.loggers import BqlLogger, logged_query
+from bayeslite.exception import BayesLiteException
 import bayeslite.metamodels.crosscat
 import bdbcontrib
 import bdbcontrib.plot_utils
@@ -86,7 +87,14 @@ class BqlRecipes(object):
     self.csv_path = csv_path
     self.df = df
     self.bdb_path = bdb_path
-    self.logger = BqlLogger() if logger is None else logger
+    if logger is None:
+      if 'IPython' in sys.modules:
+        from bdbcontrib.loggers import IPYTHON_LOGGER as ipy
+        self.logger = ipy
+      else:
+        self.logger = BqlLogger()
+    else:
+      self.logger = logger
     self.bdb = None
     self.status = None
     self.session_capture_name = None
