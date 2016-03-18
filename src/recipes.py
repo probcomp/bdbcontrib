@@ -54,18 +54,30 @@ class BqlRecipes(object):
         data source (csv or df) is specified, then it must already have been
         populated. If not specified, we will use a volatile in-memory bdb.
     logger : object
-        Something on which we can call .info or .warn, by default a
-        bayeslite.loggers.BqlLogger, but could be QuietLogger (only results),
-        SilentLogger (nothing), IpyLogger, or LoggingLogger to use those
-        modules, or anything else that implements the BqlLogger interface.
+        Something on which we can call .info or .warn
+        By default a bayeslite.loggers.BqlLogger, but could be QuietLogger
+        (only results), SilentLogger (nothing), IpyLogger, CaptureLogger,
+        or LoggingLogger to use those modules, or anything else that
+        implements the BqlLogger interface.
     session_capture_name : String
-        None by default. If you want to send your session logs (perhaps
-        including underlying data!) automatically to the Probabilistic
-        Computing group for research purposes, possibly putting those logs and
-        data into the public domain, then please set this value to a name that
-        we might recognize you by. If the name is not self-evident, then please
-        send that name in an email to bayesdb@mit.edu to help us connect your
-        sessions to you.
+        Signing up with your name and email and sending your session details
+        to the MIT Probabilistic Computing Group helps build a community of
+        support and helps improve your user experience. You can save your choice
+        in a file called 'bayesdb-session-capture-opt.txt' in the directory
+        where you run the software, or any parent directory. This option
+        overrides any setting in such a file. Any string is interpreted as
+        opting in to sending session details. False is interpreted as opting
+        out. You must choose. If you choose to use an organization name or
+        email, then please send a note to bayesdb@mit.edu to help us connect
+        your sessions to you.
+
+        If you encounter a bug, or something surprising, please include your
+        session capture name in your report.
+
+        If you opt out, you still allow us to count how often users opt out.
+
+        DO NOT USE THIS SOFTWARE FOR HIPAA-COVERED, PERSONALLY IDENTIFIABLE,
+        OR SIMILARLY SENSITIVE DATA! Opting out does not guarantee security.
     """
     assert re.match(r'\w+', name)
     assert df is not None or csv_path or bdb_path
@@ -77,8 +89,43 @@ class BqlRecipes(object):
     self.logger = BqlLogger() if logger is None else logger
     self.bdb = None
     self.status = None
-    self.session_capture_name = session_capture_name
+    self.session_capture_name = None
+    self.generators = None
+    self.initialize_session_capture(session_capture_name)
     self.initialize()
+
+  def initialize_session_capture(self, name):
+    if self.session_capture_name is not None:
+      return
+    if name is not None:
+      if name == False:
+        with logged_query('count-beacon', None, name='single-opt-out'):
+          pass
+      self.session_capture_name = name
+      return
+    # Search for a session-capture name or opt-out saved as a file:
+    filename = "bayesdb-session-capture-opt.txt"
+    searchdir = os.getcwd()
+    while searchdir != os.path.dirname(searchdir):  # While not at root.
+      try:
+        with open(os.path.join(searchdir, filename), 'r') as optinfile:
+          self.session_capture_name = optinfile.read()
+          if self.session_capture_name == 'False':
+            with logged_query('count-beacon', None, name='saved-opt-out'):
+              self.session_capture_name = False
+          break
+      except IOError:
+        pass
+      searchdir = os.path.dirname(searchdir)
+    # No init option specified, no choice file found. Force the choice.
+    if self.session_capture_name is None:
+      raise ValueError(
+        "Please set session_capture_name option to quickstart\n"
+        "  to either opt-in or opt-out of sending details of your usage of\n"
+        "  this software to the MIT Probabilistic Computing Group.\n\n"
+        "If you see this in one of our example notebooks,\n"
+        "  return to the starting page, the Index.ipynb, to\n"
+        "  make that choice.")  # TODO: Index.ipynb is a promise.
 
   def initialize(self):
     if self.bdb:
@@ -94,19 +141,16 @@ class BqlRecipes(object):
           header=True, create=True, ifnotexists=True)
       else:
         raise ValueError("No data sources specified, and an empty bdb.")
-    size = self.query('''SELECT COUNT(*) FROM %t''').ix(0, 0)
-    assert 0 < size
-    if "BAYESDB_WIZARD_MODE" in os.environ:
-      old_wizmode = os.environ["BAYESDB_WIZARD_MODE"]
-    else:
-      old_wizmode = ""
-    os.environ["BAYESDB_WIZARD_MODE"] = "1"
-    self.query('''
+    self.generators = self.query('''SELECT * FROM bayesdb_generator''')
+    if len(self.generators) == 0:
+      size = self.query('''SELECT COUNT(*) FROM %t''').ix(0, 0)
+      assert 0 < size
+      self.query('''
         CREATE GENERATOR %g IF NOT EXISTS FOR %t USING crosscat( GUESS(*) )''')
-    os.environ["BAYESDB_WIZARD_MODE"] = old_wizmode
 
   def check_representation(self):
     assert self.bdb, "Did you initialize?"
+    assert self.session_capture_name is not None
 
   def reset(self):
     self.check_representation()
@@ -198,8 +242,12 @@ class BqlRecipes(object):
       if minutes > 0:
         if checkpoint == 0:
           checkpoint = max(1, int(minutes * models / 200))
-        self.query('ANALYZE %s FOR %d MINUTES CHECKPOINT %d ITERATION WAIT' %
-              (self.generator_name, minutes, checkpoint))
+        analyzer = ('ANALYZE %s FOR %d MINUTES CHECKPOINT %d ITERATION WAIT' %
+                    (self.generator_name, minutes, checkpoint))
+        with logged_query(query_string=analyzer,
+                          name=self.session_capture_name,
+                          bindings=self.query('SELECT * FROM %t')):
+          self.query(analyzer)
       elif iterations > 0:
         if checkpoint == 0:
           checkpoint = max(1, int(iterations / 20))
