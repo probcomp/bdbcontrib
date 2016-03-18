@@ -3,3 +3,4 @@
 /src/version.py
 dist
 bdbcontrib.egg-info
+bayesdb-session-capture-opt.txt
