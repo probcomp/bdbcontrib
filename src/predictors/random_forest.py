@@ -140,6 +140,7 @@ class RandomForest(predictor.IBayesDBForeignPredictor):
         would crash whenever a categorical value unseen in training due to
         filtering (but existant in df nevertheless) was passed in.
         """
+        # pylint: disable=no-member
         self.rf_partial.fit_transform(self.X_numerical, self.Y)
         self.rf_full.fit_transform(
             np.hstack((self.X_numerical, self.X_categorical)), self.Y)
