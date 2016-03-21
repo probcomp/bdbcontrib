@@ -390,10 +390,10 @@ class BqlRecipes(object):
         Where to save plots, if not displaying them on console.
     """
     self.check_representation()
-    if len(vars) < 2:
-      raise BLE(ValueError('Need to explore at least two variables.'))
     with logged_query(query_string='quick_explore_vars', bindings=(vars,),
                     name=self.session_capture_name):
+      if len(vars) < 2:
+        raise BLE(ValueError('Need to explore at least two variables.'))
       self.pairplot_vars(vars)
       query_columns = '''"%s"''' % '''", "'''.join(vars)
       deps = self.query('''ESTIMATE DEPENDENCE PROBABILITY
