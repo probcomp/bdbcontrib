@@ -288,6 +288,7 @@ class BqlRecipes(object):
   def per_model_analysis_status(self):
     """Return the number of iterations for each model."""
     # XXX Move this to bdbcontrib/src/bql_utils.py ?
+    self.check_representation()
     try:
       return self.query('''SELECT iterations FROM bayesdb_generator_model
                            WHERE generator_id = (
@@ -299,6 +300,7 @@ class BqlRecipes(object):
 
   def analysis_status(self):
     """Return the count of models for each number of iterations run."""
+    self.check_representation()
     itrs = self.per_model_analysis_status()
     if itrs is None or len(itrs) == 0:
       emt = pd.DataFrame(columns=['count of models'])
@@ -317,6 +319,7 @@ class BqlRecipes(object):
     Specifies bdb, query with the given columns, and generator_name:
     bdbcontrib_pairplot
     """
+    self.check_representation()
     if len(cols) < 1:
         raise BLE(ValueError('Pairplot at least one variable.'))
     qcols = cols if colorby is None else set(cols + [colorby])
@@ -357,6 +360,7 @@ class BqlRecipes(object):
     **kwargs : dict
         Passed to zmatrix: vmin, vmax, row_ordering, col_ordering
     '''
+    self.check_representation()
     with logged_query(query_string='heatmap(deps, selectors)',
                       bindings=(str(deps), repr(selectors)),
                       name=self.session_capture_name):
@@ -385,6 +389,7 @@ class BqlRecipes(object):
     plotfile: string pathname
         Where to save plots, if not displaying them on console.
     """
+    self.check_representation()
     if len(cols) < 2:
       raise BLE(ValueError('Need to explore at least two columns.'))
     with logged_query(query_string='quick_explore_cols', bindings=(cols,),
@@ -422,11 +427,13 @@ class BqlRecipes(object):
 
   def column_type(self, col):
     """The statistical type of the given column in the current model."""
+    self.check_representation()
     descriptions = self.quick_describe_columns()
     return descriptions[descriptions['name'] == col]['stattype'].iloc[0]
 
   def sql_tracing(self, turn_on=True):
     """Trace underlying SQL, for debugging."""
+    self.check_representation()
     # Always turn off:
     self.bdb.sql_untrace(self.bdb.sql_tracer)
     if turn_on:
@@ -443,6 +450,7 @@ class BqlRecipes(object):
     nsimilar : positive integer
         The number of similar rows to retrieve.
     """
+    self.check_representation()
     with logged_query(query_string='quick_similar_rows(id_by, n)',
                       bindings=(identify_row_by, nsimilar),
                       name=self.session_capture_name):
