@@ -38,6 +38,7 @@ import tempfile
 import test_plot_utils
 
 from bayeslite.read_csv import bayesdb_read_csv
+from bayeslite.exception import BayesLiteException as BLE
 from bayeslite.loggers import CaptureLogger
 from bdbcontrib import recipes
 
@@ -174,16 +175,10 @@ def test_heatmap():
 def test_explore_cols():
     with prepare() as (dts, _df):
         dts.logger.calls = []
-        try:
-            dts.quick_explore_cols([])
-            assert False, "Should raise a ValueError because empty columns."
-        except ValueError:
-            pass
-        try:
-            dts.quick_explore_cols(['float_1'])
-            assert False, "Should raise a ValueError because only one column."
-        except ValueError:
-            pass
+        with pytest.raises(BLE):
+            dts.quick_explore_cols([]) # Empty columns
+        with pytest.raises(BLE):
+            dts.quick_explore_cols(['float_1']) # Just one column.
 
         dts.quick_explore_cols(['floats_1', 'categorical_1'])
         call_types = pd.DataFrame([call[0] for call in dts.logger.calls])
@@ -195,12 +190,8 @@ def test_explore_cols():
 def test_pairplot():
     with prepare() as (dts, _df):
         dts.logger.calls = []
-        try:
-            dts.pairplot([])
-            assert False, "Should raise a ValueError because empty columns."
-        except ValueError:
-            pass
-
+        with pytest.raises(BLE):
+            dts.pairplot([])  # Empty columns
         pt = dts.pairplot(
             ['floats_1', 'floats_3', 'many_ints_4', 'categorical_1'],
             colorby='categorical_2')
@@ -227,17 +218,11 @@ def test_similar_rows():
             return results[count[0] - 1]
         try:
             dts.query = my_test_queryfn
-            try:
-                dts.quick_similar_rows(identify_row_by={})
-                assert False, "Expected death due to no rows."
-            except NotImplementedError:
-                pass
+            with pytest.raises(BLE):
+                dts.quick_similar_rows(identify_row_by={})  # No rows.
             assert 'SELECT COUNT(*)' == q_calls[-1][0][:15]
-            try:
-                dts.quick_similar_rows(identify_row_by={})
-                assert False, "Expected death due to two many rows."
-            except NotImplementedError:
-                pass
+            with pytest.raises(BLE):
+                dts.quick_similar_rows(identify_row_by={})  # Too many rows.
             assert 'SELECT COUNT(*)' == q_calls[-1][0][:15]
             assert 'similar rows' == dts.quick_similar_rows(identify_row_by={
                 'a':'b', 'c': 'd'})

@@ -19,7 +19,7 @@ import sqlite3
 import numpy as np
 
 import bayeslite.core as core
-from bayeslite.exception import BQLError
+from bayeslite.exception import BayesLiteException as BLE
 from bayeslite.math_util import logmeanexp
 from bayeslite.sqlite3_util import sqlite3_quote_name as quote
 from bayeslite.util import casefold
@@ -176,9 +176,10 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
         assert hasattr(builder, 'name')
         # Check for duplicates.
         if casefold(builder.name()) in self.predictor_builder:
-            raise ValueError('A foreign predictor with name "{}" has already '
+            raise BLE(ValueError(
+                'A foreign predictor with name "{}" has already '
                 'been registered. Currently registered: {}'.format(
-                    builder.name(), self.predictor_builder))
+                    builder.name(), self.predictor_builder)))
         self.predictor_builder[casefold(builder.name())] = builder
 
     def name(self):
@@ -390,9 +391,9 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
             colno1):
         # XXX Computes the dependence probability for a single model.
         if modelno is None:
-            raise ValueError('Invalid modelno argument for '
+            raise BLE(ValueError('Invalid modelno argument for '
                 'internal _column_dependence_probability. An integer modelno '
-                'is required, not None.')
+                'is required, not None.'))
         # Trivial case.
         if colno0 == colno1:
             return 1
@@ -470,9 +471,9 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
         # All sets must be disjoint.
         all_cols = X + W + Z + [(r,c) for r,c,_ in Y]
         if len(all_cols) != len(set(all_cols)):
-            raise ValueError('Duplicate cells received in '
+            raise BLE(ValueError('Duplicate cells received in '
                 'conditional_mutual_information.\n'
-                'X: {}\nW: {}\nZ: {}\nY: {}'.format(X, W, Z, Y))
+                'X: {}\nW: {}\nZ: {}\nY: {}'.format(X, W, Z, Y)))
         # Simulate from joint.
         XWZ_samples = self.simulate(bdb, genid, modelno, X+W+Z,
             Y, numpredictions=numsamples)
@@ -514,9 +515,9 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
             n_samples = self.n_samples
         # Validate inputs.
         if modelno is None:
-            raise ValueError('Invalid modelno None, integer requried.')
+            raise BLE(ValueError('Invalid modelno None, integer requried.'))
         if len(Q) == 0:
-            raise ValueError('Invalid query Q: len(Q) == 0.')
+            raise BLE(ValueError('Invalid query Q: len(Q) == 0.'))
         # Ensure consistency of any duplicates in Q and Y.
         Q = self._queries_consistent_with_constraints(Q, Y)
         if Q is None:
@@ -539,13 +540,14 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
         queries = dict()
         for (row, col, val) in Q:
             if (row, col) in queries:
-                raise ValueError('Cannot specify duplicate query columns.')
+                raise BLE(ValueError('Cannot specify duplicate query columns.'))
             queries[(row, col)] = val
         ignore = set()
         constraints = set()
         for (row, col, val) in Y:
             if (row, col) in constraints:
-                raise ValueError('Cannot specify duplicate constraint row, column.')
+                raise BLE(ValueError(
+                    'Cannot specify duplicate constraint row, column.'))
             if (row, col) in queries:
                 if queries[(row, col)] == val:
                     ignore.add((row, col))
@@ -634,8 +636,9 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
             imp_conf = su.continuous_imputation_confidence(samples, None, None,
                 n_steps=1000)
         else:
-            raise ValueError('Unknown stattype "{}" for a foreign predictor '
-                'column encountered in predict_confidence.'.format(stattype))
+            raise BLE(ValueError(
+                'Unknown stattype "{}" for a foreign predictor '
+                'column encountered in predict_confidence.'.format(stattype)))
         return imp_val, imp_conf * parent_conf
 
     def simulate_joint(self, bdb, generator_id, targets, constraints, modelno,
@@ -791,9 +794,9 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
             name, binary = cursor.fetchall()[0]
             builder = self.predictor_builder.get(name, None)
             if builder is None:
-                raise LookupError('Foreign predictor for column "{}" '
+                raise BLE(LookupError('Foreign predictor for column "{}" '
                     'not registered: "{}".'.format(name,
-                        core.bayesdb_generator_column_name(bdb, genid, fcol)))
+                        core.bayesdb_generator_column_name(bdb, genid, fcol))))
             self._predictor_cache(bdb)[(genid, fcol)] = \
                 builder.deserialize(bdb, binary)
         return self._predictor_cache(bdb)[(genid, fcol)]
@@ -911,11 +914,11 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
             directive = casefold(block[0])
             commands = block[1]
             if directive not in DIRECTIVES:
-                raise ValueError('Unknown directive "{}".\n'
-                    'Available directives: {}.'.format(directive, DIRECTIVES))
+                raise BLE(ValueError('Unknown directive "{}".\n'
+                    'Available directives: {}.'.format(directive, DIRECTIVES)))
             if not isinstance(commands, list):
-                raise ValueError('Unknown commands in "{}" directive: {}.'\
-                        .format(directive, commands))
+                raise BLE(ValueError('Unknown commands in "{}" directive: {}.'\
+                        .format(directive, commands)))
             if directive == 'default' or directive == 'crosscat':
                 while commands:
                     c = casefold(commands.pop(0))
@@ -923,7 +926,8 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
                         continue
                     s = casefold(commands.pop(0))
                     if s not in STATTYPES:
-                        raise ValueError('Invalid stattype "{}".'.format(s))
+                        raise BLE(ValueError(
+                            'Invalid stattype "{}".'.format(s)))
                     columns[c] = s
                     lcols.append(c)
             elif directive == 'independent':
@@ -946,12 +950,12 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
                 c = casefold(commands.pop(0))
                 s = casefold(commands.pop(0))
                 if s not in STATTYPES:
-                    raise ValueError('Invalid stattype "{}".'.format(s))
+                    raise BLE(ValueError('Invalid stattype "{}".'.format(s)))
                 columns[c] = s
                 given = casefold(commands.pop(0))
                 if given != 'given':
-                    raise ValueError('Execpted GIVEN keyword, received: {}.'\
-                            .format(given))
+                    raise BLE(ValueError(
+                        'Execpted GIVEN keyword, received: {}.'.format(given)))
                 conditions = []
                 while commands:
                     r = casefold(commands.pop(0))
@@ -963,29 +967,30 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
                 fcol_to_fpred[c] = directive
         # Unique lcols.
         if len(lcols) != len(set(lcols)):
-            raise ValueError('Duplicate default columns enountered: {}.'\
-                .format(lcols))
+            raise BLE(ValueError(
+                'Duplicate default columns enountered: {}.'.format(lcols)))
         # Unique fcols.
         if len(fcols) != len(set(fcols)):
-            raise ValueError('Duplicate foreign columns enountered: {}.'\
-                .format(fcols))
+            raise BLE(ValueError(
+                'Duplicate foreign columns enountered: {}.'.format(fcols)))
         # All stattypes declared.
         for _, c in fcol_to_pcols.iteritems():
             for r in c:
                 if r not in columns:
-                    raise ValueError('No stattype declaration for "{}".'\
-                        .format(r))
+                    raise BLE(ValueError(
+                        'No stattype declaration for "{}".'.format(r)))
         # No col both lcol and fcol.
         for l in lcols:
             if l in fcol_to_pcols:
-                raise ValueError('Column "{}" can only be modeled once.'\
-                    .format(l))
+                raise BLE(ValueError(
+                    'Column "{}" can only be modeled once.'.format(l)))
         # No non-default dependencies.
         for dep in dependencies:
             for col in dep[1]:
                 if col not in lcols:
-                    raise ValueError('Column "{}" with dependency constraint '
-                        'must have default model.'.format(col))
+                    raise BLE(ValueError(
+                        'Column "{}" with dependency constraint '
+                        'must have default model.'.format(col)))
         # Return the hodgepodge.
         return (columns, lcols, fcols, fcol_to_pcols, fcol_to_fpred,
             dependencies)
@@ -1030,6 +1035,6 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
                     del graph[node]
                     graph_sorted.append((node, edges))
             if not acyclic:
-                raise ValueError('A cyclic dependency occurred in '
-                    'topological_sort.')
+                raise BLE(ValueError(
+                    'A cyclic dependency occurred in topological_sort.'))
         return graph_sorted

@@ -25,6 +25,7 @@ import pandas as pd
 import seaborn as sns
 
 import bayeslite.core
+from bayeslite.exception import BayesLiteException as BLE
 
 import bdbcontrib.bql_utils as bqlu
 
@@ -233,7 +234,8 @@ def barplot(bdb, bql):
     """
     df = bqlu.cursor_to_df(bdb.execute(bql))
     if df.shape[1] != 2:
-        raise ValueError('Need two columns of output from SELECT for barplot.')
+        raise BLE(ValueError(
+            'Need two columns of output from SELECT for barplot.'))
     height_inches = df.shape[0] / 2.0
     figure, ax = plt.subplots(figsize=(height_inches, 5))
 
@@ -265,7 +267,7 @@ def rotate_tick_labels(ax, axis='x', rotation=90):
     elif axis.lower() == 'y':
         _, labels = ax.get_yticks()
     else:
-        raise ValueError('axis must be x or y')
+        raise BLE(ValueError('axis must be x or y'))
     plt.setp(labels, rotation=rotation)
 
 
@@ -296,7 +298,7 @@ def gen_collapsed_legend_from_dict(hl_colors_dict, loc=0, title=None,
     legend : matplotlib.legend
     """
     if not isinstance(hl_colors_dict, dict):
-        raise TypeError("hl_colors_dict must be a dict")
+        raise BLE(TypeError("hl_colors_dict must be a dict"))
 
     colors = list(set(hl_colors_dict.values()))
     from collections import defaultdict
@@ -327,8 +329,9 @@ def get_bayesdb_col_type(column_name, df_column, bdb=None,
     # of the column will be returned otherwise we guess.
 
     if isinstance(df_column, pd.DataFrame):
-        raise TypeError('Multiple columns in the query result have the same '
-            'name (%s).' % (column_name,))
+        raise BLE(TypeError(
+            'Multiple columns in the query result have the same name (%s).' %
+            (column_name,)))
 
     def guess_column_type(df_column):
         pd_type = df_column.dtype
@@ -392,8 +395,9 @@ def do_hist(data_srs, **kwargs):
 
     if len(data_srs.shape) > 1:
         if colors is None and data_srs.shape[1] != 1:
-            raise ValueError('If a dummy column is specified, colors must also'
-                ' be specified.')
+            raise BLE(ValueError(
+                'If a dummy column is specified,'
+                ' colors must also be specified.'))
 
     data_srs = data_srs.dropna()
 
@@ -730,9 +734,10 @@ def _pairplot(df, bdb=None, generator_name=None,
                 n_colorby += 1
                 colorby = colname
         if n_colorby == 0:
-            raise ValueError('colorby column, {}, not found.'.format(colorby))
+            raise BLE(ValueError(
+                'colorby column, {}, not found.'.format(colorby)))
         elif n_colorby > 1:
-            raise ValueError('Multiple columns named, {}.'.format(colorby))
+            raise BLE(ValueError('Multiple columns named, {}.'.format(colorby)))
 
         dummy = data_df[colorby].dropna()
         dvals = np.sort(dummy.unique())
@@ -740,7 +745,7 @@ def _pairplot(df, bdb=None, generator_name=None,
         dval_type = get_bayesdb_col_type('colorby', dummy, bdb=bdb,
                                          generator_name=generator_name)
         if dval_type.lower() != 'categorical':
-            raise ValueError('colorby columns must be categorical.')
+            raise BLE(ValueError('colorby columns must be categorical.'))
         cmap = sns.color_palette("Set1", ndvals)
         colors = {}
         for val, color in zip(dvals, cmap):
@@ -863,11 +868,11 @@ def _pairplot(df, bdb=None, generator_name=None,
 
 
 def comparative_hist(df, bdb=None, nbins=15, normed=False):
-    """Plot a histogram
+    """Plot a histogram.
 
     Given a one-column pandas.DataFrame, df, plots a simple histogram. Given a
-    two-column df plots the data in columns one separated by a a dummy variable
-    assumed to be in column 2.
+    two-column df plots the data in column one colored by an optional column 2.
+    If given, column 2 must be categorical.
 
     Parameters
     ----------
@@ -902,8 +907,8 @@ def comparative_hist(df, bdb=None, nbins=15, normed=False):
     colorby = None
     if len(df.columns) > 1:
         if len(df.columns) > 2:
-            raise ValueError('I do not know what to do with data with more '
-                'than two columns.')
+            raise BLE(NotImplementedError(
+                'comparative_hist not defined on more than two variables.'))
         colorby = df.columns[1]
         colorby_vals = df[colorby].unique()
 

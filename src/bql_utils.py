@@ -19,6 +19,7 @@ import pandas as pd
 import bayeslite.core
 from bayeslite import bayesdb_open
 from bayeslite import bql_quote_name as quote
+from bayeslite.exception import BayesLiteException as BLE
 from bayeslite.read_pandas import bayesdb_read_pandas_df
 from bayeslite.sqlite3_util import sqlite3_quote_name
 from bayeslite.util import cursor_value
@@ -177,7 +178,7 @@ def describe_table(bdb, table_name):
     employees |     3 |  height
     """
     if not bayeslite.core.bayesdb_has_table(bdb, table_name):
-            raise NameError('No such table {}'.format(table_name))
+            raise BLE(NameError('No such table {}'.format(table_name)))
     sql = '''
         SELECT tabname, colno, name
             FROM bayesdb_column
@@ -200,7 +201,7 @@ def describe_generator(bdb, generator_name):
     3  | employees_gen | employees |  crosscat
     """
     if not bayeslite.core.bayesdb_has_generator_default(bdb, generator_name):
-            raise NameError('No such generator {}'.format(generator_name))
+            raise BLE(NameError('No such generator {}'.format(generator_name)))
     sql = '''
             SELECT id, name, tabname, metamodel
                 FROM bayesdb_generator
@@ -226,7 +227,7 @@ def describe_generator_columns(bdb, generator_name):
         3 |  height |    numerical
     """
     if not bayeslite.core.bayesdb_has_generator_default(bdb, generator_name):
-            raise NameError('No such generator {}'.format(generator_name))
+            raise BLE(NameError('No such generator {}'.format(generator_name)))
     sql = '''
         SELECT c.colno AS colno, c.name AS name,
                 gc.stattype AS stattype
@@ -257,7 +258,7 @@ def describe_generator_models(bdb, generator_name):
           0 | 100
     """
     if not bayeslite.core.bayesdb_has_generator_default(bdb, generator_name):
-            raise NameError('No such generator {}'.format(generator_name))
+            raise BLE(NameError('No such generator {}'.format(generator_name)))
     sql = '''
         SELECT modelno, iterations FROM bayesdb_generator_model
             WHERE generator_id = ?

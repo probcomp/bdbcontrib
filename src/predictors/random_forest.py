@@ -20,6 +20,7 @@ import numpy as np
 import pandas as pd
 from sklearn.ensemble import RandomForestClassifier
 
+from bayeslite.exception import BayesLiteException as BLE
 import bdbcontrib
 from bdbcontrib.predictors import predictor
 from bdbcontrib.predictors import sklearn_utils as utils
@@ -84,16 +85,16 @@ class RandomForest(predictor.IBayesDBForeignPredictor):
     def train(self, df, targets, conditions):
         # Obtain the targets column.
         if len(targets) != 1:
-            raise ValueError('RandomForest requires exactly one column in '
-                'targets. Received {}'.format(targets))
+            raise BLE(ValueError('RandomForest requires exactly one column in '
+                'targets. Received {}'.format(targets)))
         if targets[0][1].lower() != 'categorical':
-            raise ValueError('RandomForest can only classify CATEGORICAL '
-                'columns. Received {}'.format(targets))
+            raise BLE(ValueError('RandomForest can only classify CATEGORICAL '
+                'columns. Received {}'.format(targets)))
         self.targets = [targets[0][0]]
         # Obtain the condition columns.
         if len(conditions) < 1:
-            raise ValueError('RandomForest requires at least one column in '
-                'conditions. Received {}'.format(conditions))
+            raise BLE(ValueError('RandomForest requires at least one column in '
+                'conditions. Received {}'.format(conditions)))
         self.conditions_categorical = []
         self.conditions_numerical = []
         for c in conditions:
@@ -151,10 +152,11 @@ class RandomForest(predictor.IBayesDBForeignPredictor):
         self.targets|conditions.
         """
         if not set(self.conditions).issubset(set(conditions.keys())):
-            raise ValueError('Must specify values for all the conditionals.\n'
+            raise BLE(ValueError(
+                'Must specify values for all the conditionals.\n'
                 'Received: {}\n'
                 'Expected: {}'.format(conditions, self.conditions_numerical +
-                self.conditions_categorical))
+                self.conditions_categorical)))
 
         # Are there any category values in conditions which never appeared during
         # training? If yes, we need to run the partial RF.

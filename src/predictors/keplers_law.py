@@ -20,6 +20,7 @@ import numpy as np
 
 import bdbcontrib
 from bdbcontrib.predictors import predictor
+from bayeslite.exception import BayesLiteException as BLE
 
 class KeplersLaw(predictor.IBayesDBForeignPredictor):
     """A foreign predictor which models Kepler's Third Law.
@@ -67,20 +68,20 @@ class KeplersLaw(predictor.IBayesDBForeignPredictor):
     def train(self, df, targets, conditions):
         # Obtain the targets column.
         if len(targets) != 1:
-            raise ValueError('OrbitalMechanics can only target one '
-                'column. Received {}'.format(targets))
+            raise BLE(ValueError('OrbitalMechanics can only target one '
+                'column. Received {}'.format(targets)))
         if targets[0][1].lower() != 'numerical':
-            raise ValueError('OrbitalMechanics can only target a NUMERICAL '
-                'column. Received {}'.format(targets))
+            raise BLE(ValueError('OrbitalMechanics can only target a NUMERICAL '
+                'column. Received {}'.format(targets)))
         self.targets = [targets[0][0]]
 
         # Obtain the conditions column.
         if len(conditions) != 2:
-            raise ValueError('OrbitalMechanics can only condition on '
-                'two columns. Received {}'.format(conditions))
+            raise BLE(ValueError('OrbitalMechanics can only condition on '
+                'two columns. Received {}'.format(conditions)))
         if any(c[1].lower() != 'numerical' for c in conditions):
-            raise ValueError('OrbitalMechanics can only condition on '
-                'NUMERICAL columns. Received {}'.format(conditions))
+            raise BLE(ValueError('OrbitalMechanics can only condition on '
+                'NUMERICAL columns. Received {}'.format(conditions)))
         self.conditions = [c[0] for c in conditions]
 
         # The dataset.
@@ -102,9 +103,10 @@ class KeplersLaw(predictor.IBayesDBForeignPredictor):
 
     def simulate(self, n_samples, conditions):
         if not set(self.conditions).issubset(set(conditions.keys())):
-            raise ValueError('Must specify values for all the conditionals.\n'
+            raise BLE(ValueError(
+                'Must specify values for all the conditionals.\n'
                 'Received: {}\n'
-                'Expected: {}'.format(conditions, self.conditions))
+                'Expected: {}'.format(conditions, self.conditions)))
         apogee_km, perigee_km = self._conditions(conditions)
         period_minutes = satellite_period_minutes(apogee_km, perigee_km)
         return list(period_minutes + self.prng.normal(scale=self.noise,
@@ -112,9 +114,10 @@ class KeplersLaw(predictor.IBayesDBForeignPredictor):
 
     def logpdf(self, value, conditions):
         if not set(self.conditions).issubset(set(conditions.keys())):
-            raise ValueError('Must specify values for all the conditionals.\n'
+            raise BLE(ValueError(
+                'Must specify values for all the conditionals.\n'
                 'Received: {}\n'
-                'Expected: {}'.format(conditions, self.conditions))
+                'Expected: {}'.format(conditions, self.conditions)))
         apogee_km, perigee_km = self._conditions(conditions)
         period_minutes = satellite_period_minutes(apogee_km, perigee_km)
         return logpdfGaussian(value, period_minutes, self.noise)

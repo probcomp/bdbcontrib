@@ -15,6 +15,7 @@
 #   limitations under the License.
 
 import bayeslite
+from bayeslite.exception import BayesLiteException as BLE
 import os
 import random
 import test_utils
@@ -22,7 +23,7 @@ import tempfile
 from pandas.util.testing import assert_frame_equal
 import pytest
 from bdbcontrib import cursor_to_df, parallel
-
+from apsw import SQLError
 
 def test_estimate_pairwise_similarity():
     """
@@ -55,25 +56,25 @@ def test_estimate_pairwise_similarity():
         )
 
         # Should complain with bad core value
-        with pytest.raises(ValueError):
+        with pytest.raises(BLE):
             parallel.estimate_pairwise_similarity(
                 bdb_file.name, 't', 't_cc', cores=0
             )
 
         # Should complain if overwrite flag is not set, but t_similarity
         # exists
-        with pytest.raises(Exception):
+        with pytest.raises(SQLError):
             parallel.estimate_pairwise_similarity(
                 bdb_file.name, 't', 't_cc'
             )
         # Should complain if model and table don't exist
-        with pytest.raises(Exception):
+        with pytest.raises(SQLError):
             parallel.estimate_pairwise_similarity(
                 bdb_file.name, 'foo', 'foo_cc'
             )
         # Should complain if bdb_file doesn't exist
         with tempfile.NamedTemporaryFile() as does_not_exist:
-            with pytest.raises(Exception):
+            with pytest.raises(SQLError):
                 parallel.estimate_pairwise_similarity(
                     does_not_exist.name, 't', 't_cc'
                 )
@@ -172,7 +173,7 @@ def test_estimate_pairwise_similarity_long():
                 bdb.execute('SELECT * FROM t_similarity')
             ).shape == (N**2, 3)
         # N too high should fail
-        with pytest.raises(ValueError):
+        with pytest.raises(BLE):
             parallel.estimate_pairwise_similarity(
                 bdb_file.name, 't', 't_cc', N=41, overwrite=True
             )

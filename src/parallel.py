@@ -14,6 +14,7 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
+from bayeslite.exception import BayesLiteException as BLE
 from bdbcontrib.bql_utils import cursor_to_df
 import multiprocessing as mp
 from bayeslite import bayesdb_open
@@ -94,9 +95,8 @@ def estimate_pairwise_similarity(bdb_file, table, model, sim_table=None,
         cores = mp.cpu_count()
 
     if cores < 1:
-        raise ValueError(
-            "Invalid number of cores {}".format(cores)
-        )
+        raise BLE(ValueError(
+            "Invalid number of cores {}".format(cores)))
 
     if sim_table is None:
         sim_table = table + '_similarity'
@@ -107,9 +107,8 @@ def estimate_pairwise_similarity(bdb_file, table, model, sim_table=None,
     if N is None:
         N = table_count
     elif N > table_count:
-        raise ValueError(
-            "Asked for N={} rows but {} rows in table".format(N, table_count)
-        )
+        raise BLE(ValueError(
+            "Asked for N={} rows but {} rows in table".format(N, table_count)))
 
     # Calculate the size (# of similarities to compute) and
     # offset (where to start) calculation for each worker query.

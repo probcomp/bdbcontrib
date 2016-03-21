@@ -23,6 +23,7 @@ from matplotlib.patches import Rectangle
 import seaborn as sns
 
 import bayeslite.core
+from bayeslite.exception import BayesLiteException as BLE
 from crosscat.utils import sample_utils as su
 
 import bql_utils as bu
@@ -57,8 +58,9 @@ def draw_crosscat(bdb, generator, modelno, row_label_col=None):
     table_name, metamodel = cursor.next()
 
     if metamodel.lower() != 'crosscat':
-        raise ValueError('Metamodel for generator %s (%s) should be crosscat' %
-            (generator, metamodel))
+        raise BLE(ValueError(
+            'Metamodel for generator %s (%s) should be crosscat' %
+            (generator, metamodel)))
 
     figure, axes = plt.subplots(tight_layout=False)
     draw_state(bdb, table_name, generator,
@@ -88,9 +90,9 @@ def plot_crosscat_chain_diagnostics(bdb, diagnostic, generator):
     """
     valid_diagnostics = ['logscore', 'num_views', 'column_crp_alpha']
     if diagnostic not in valid_diagnostics:
-        raise ValueError('I do not know what to do with %s.\n'
-            'Please chosse one of the following instead: %s\n'
-            % ', '.join(valid_diagnostics))
+        raise BLE(ValueError('Unknown diagnostic %s.\n'
+            'Please choose one of the following instead: %s\n'
+            % ', '.join(valid_diagnostics)))
 
     generator_id = bayeslite.core.bayesdb_get_generator(bdb, generator)
 
@@ -147,8 +149,8 @@ def get_M_c(bdb, generator_name):
     try:
         row = cursor.next()
     except StopIteration:
-        raise ValueError(bdb, 'No crosscat metadata for generator: %s'
-            % (generator_name,))
+        raise BLE(ValueError(bdb, 'No crosscat metadata for generator: %s'
+            % (generator_name,)))
     else:
         return json.loads(row[0])
 
@@ -163,8 +165,8 @@ def get_metadata(bdb, generator_name, modelno):
     try:
         row = cursor.next()
     except StopIteration:
-        raise ValueError('Could not find generator with '
-            'name {}, or incorrect model number.'.format(generator_name))
+        raise BLE(ValueError('Could not find generator with '
+            'name {}, or incorrect model number.'.format(generator_name)))
     else:
         return json.loads(row[0])
 
@@ -322,7 +324,7 @@ def draw_state(bdb, table_name, generator_name, modelno,
 
     if view_labels is not None:
         if not isinstance(view_labels, list):
-            raise TypeError("view_labels must be a list")
+            raise BLE(TypeError("view_labels must be a list"))
         if len(view_labels) != len(sorted_views):
             view_labels += ['']*(len(sorted_rows)-len(view_labels))
     else:
@@ -351,8 +353,8 @@ def draw_state(bdb, table_name, generator_name, modelno,
         row_labels = [str(i) for i in range(num_rows)]
     elif isinstance(row_label_col, list):
         if len(row_label_col) != num_rows:
-            raise TypeError("If row_label_col is a list, it must have an "
-                            "entry for each row")
+            raise BLE(TypeError("If row_label_col is a list, it must have an "
+                                "entry for each row"))
         row_labels = [str(label) for label in row_label_col]
     elif isinstance(row_label_col, str):
         # FIXME: This is not going to work until BayesDB stops removing key and
@@ -361,8 +363,8 @@ def draw_state(bdb, table_name, generator_name, modelno,
         label_col_idx = M_c['name_to_idx'][row_label_col]
         row_labels = [str(T[row, label_col_idx]) for row in range(num_rows)]
     else:
-        raise TypeError("I don't know what to do with a {} "
-                        "row_label_col".format(type(row_label_col)))
+        raise BLE(TypeError("Unhandled row_label_col type {}.".format(
+            type(row_label_col))))
 
     row_idx_to_label = {}
     row_label_to_idx = {}
@@ -703,14 +705,15 @@ class DrawStateUtils(object):
             elif isinstance(hl_colors, dict):
                 for key in hl_colors.keys():
                     if key not in hl_labels:
-                        raise ValueError('hl_colors dict must have an entry '
-                            'for each hl_label.')
+                        raise BLE(ValueError(
+                            'hl_colors dict must have an entry '
+                            'for each hl_label.'))
                 hl_colors_out = hl_colors
             else:
-                raise TypeError('hl_colors must be a list or dict.')
+                raise BLE(TypeError('hl_colors must be a list or dict.'))
             if len(hl_colors) != len(hl_labels):
-                raise ValueError('hl_colors must have an entry for each entry '
-                    'in hl_labels.')
+                raise BLE(ValueError('hl_colors must have an entry for each '
+                    'entry in hl_labels.'))
 
         return hl_colors_out
 

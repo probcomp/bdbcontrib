@@ -22,6 +22,7 @@ import matplotlib
 matplotlib.use("Agg")
 
 import bayeslite
+from bayeslite.exception import BayesLiteException as BLE
 import pandas
 import pytest
 
@@ -104,12 +105,12 @@ def test_get_metadata():
         bdb.execute('''
             create generator {} for {} using crosscat(guess(*))
         '''.format(generator_name, table_name))
-        with pytest.raises(ValueError):
+        with pytest.raises(BLE):
             md = crosscat_utils.get_metadata(bdb, generator_name, 0)
 
         bdb.execute('INITIALIZE 2 MODELS FOR {}'.format(generator_name))
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError):  # XXX from BayesLite: should be a BLE?
             crosscat_utils.get_metadata(bdb, 'Peter_Gabriel', 0)
         md = crosscat_utils.get_metadata(bdb, generator_name, 0)
 

@@ -18,6 +18,7 @@ import os
 import pytest
 
 import bayeslite
+from bayeslite.exception import BayesLiteException as BLE
 from bayeslite.sqlite3_util import sqlite3_quote_name as quote
 
 import bdbcontrib
@@ -59,7 +60,7 @@ def test_create_generator_schema():
         );''')
     assert bayeslite.core.bayesdb_has_generator(bdb, 't1_cc')
     # IGNORE and GUESS(*) are forbidden and should crash.
-    with pytest.raises(Exception):
+    with pytest.raises(AttributeError):
         bdb.execute('''
             CREATE GENERATOR t2 FOR satellites USING composer(
                 default (
@@ -68,7 +69,7 @@ def test_create_generator_schema():
                 )
             );''')
     # Test unregistered foreign predictor.
-    with pytest.raises(ValueError):
+    with pytest.raises(BLE):
         bdb.execute('''
             CREATE GENERATOR t3 FOR satellites USING composer(
                 default (
@@ -82,7 +83,7 @@ def test_create_generator_schema():
                 )
             );''')
     # Unregistered foreign predictor should crash.
-    with pytest.raises(ValueError):
+    with pytest.raises(BLE):
         bdb.execute('''
             CREATE GENERATOR t4 FOR satellites USING composer(
                 default (
@@ -110,7 +111,7 @@ def test_create_generator_schema():
             )
         );''')
     # Wrong stattype in predictor should crash.
-    with pytest.raises(ValueError):
+    with pytest.raises(BLE):
         bdb.execute('''
             CREATE GENERATOR t6 FOR satellites USING composer(
                 default (
@@ -124,7 +125,7 @@ def test_create_generator_schema():
                 )
             );''')
     # Missing GIVEN keyword should crash.
-    with pytest.raises(ValueError):
+    with pytest.raises(BLE):
         bdb.execute('''
             CREATE GENERATOR t6 FOR satellites USING composer(
                 default (
@@ -138,7 +139,7 @@ def test_create_generator_schema():
                 )
             );''')
     # Missing conditions in random forest conditions should crash.
-    with pytest.raises(ValueError):
+    with pytest.raises(BLE):
         bdb.execute('''
             CREATE GENERATOR t7 FOR satellites USING composer(
                 default (
@@ -152,7 +153,7 @@ def test_create_generator_schema():
                 )
             );''')
     # Test duplicate declarations.
-    with pytest.raises(ValueError):
+    with pytest.raises(BLE):
         bdb.execute('''
             CREATE GENERATOR t7 FOR satellites USING composer(
                 default (
@@ -182,7 +183,7 @@ def test_create_generator_schema():
             )
         );''')
     # Duplicate declarations in foreign predictors should crash.
-    with pytest.raises(ValueError):
+    with pytest.raises(BLE):
         bdb.execute('''
             CREATE GENERATOR t9 FOR satellites USING composer(
                 default (
@@ -216,7 +217,7 @@ def test_create_generator_schema():
             INDEPENDENT(Country_of_Operator, Purpose)
         );''')
     # MML for foreign predictors should crash.
-    with pytest.raises(ValueError):
+    with pytest.raises(BLE):
         bdb.execute('''
             CREATE GENERATOR t11 FOR satellites USING composer(
                 default (
@@ -310,12 +311,12 @@ def test_register_foreign_predictor():
     composer.register_foreign_predictor(multiple_regression.MultipleRegression)
     composer.register_foreign_predictor(keplers_law.KeplersLaw)
     # Register duplicates.
-    with pytest.raises(ValueError):
+    with pytest.raises(BLE):
         composer.register_foreign_predictor(keplers_law.KeplersLaw)
-    with pytest.raises(ValueError):
+    with pytest.raises(BLE):
         composer.register_foreign_predictor(
             multiple_regression.MultipleRegression)
-    with pytest.raises(ValueError):
+    with pytest.raises(BLE):
         composer.register_foreign_predictor(random_forest.RandomForest)
     # Register invalid predictors.
     with pytest.raises(AssertionError):
@@ -728,5 +729,5 @@ def test_topological_sort():
             assert n not in parents
     # Cyclic graph should throw an error.
     graph = {1:[], 2:[1], 3:[2,4,6], 4:[2], 5:[3,4], 6:[4,5,1]}
-    with pytest.raises(ValueError):
+    with pytest.raises(BLE):
         topo = Composer.topological_sort(graph)

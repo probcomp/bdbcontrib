@@ -18,7 +18,7 @@ import math
 
 import bayeslite.core
 from bayeslite import bql_quote_name
-
+from bayeslite.exception import BayesLiteException as BLE
 
 def extract_target_cols(bdb, generator, targets=None):
     """Extract target columns (helper for LL/KL query).
@@ -251,10 +251,11 @@ def estimate_kl_divergence(bdb, generatorA, generatorB, targets=None,
             if p_a == 0:
                 # How on earth did we simulate a value from genA with zero
                 # density/prob under genA?
-                raise ValueError('Fatal error: simulated a (col,val)=({},{}) '
+                raise BLE(ValueError(
+                    'Fatal error: simulated a (col,val)=({},{}) '
                     'from base generatorA ({}) with zero density. Check '
                     'implementation of simluate and/or logpdf of '
-                    'generator.'.format(col,val,generatorA))
+                    'generator.'.format(col,val,generatorA)))
             if p_b == 0:
                 # Detected failure of absolute continuity
                 # (under assumption that joint factors into marginals)
@@ -268,9 +269,10 @@ def estimate_kl_divergence(bdb, generatorA, generatorB, targets=None,
     # XXX Assertion may fail, see TODO in docstring.
     # assert kl > 0
     if kl < 0:
-        raise ValueError('Cannot compute reasonable value for KL divergence. '
+        raise BLE(ValueError(
+            'Cannot compute reasonable value for KL divergence. '
             'Try increasing the number of samples (currently using {}'
-            'samples).'.format(n_samples))
+            'samples).'.format(n_samples)))
 
     return kl / n_samples
 

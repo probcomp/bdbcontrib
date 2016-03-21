@@ -18,7 +18,7 @@ import bayeslite
 import bayeslite.core
 import bayeslite.guess
 from bayeslite.loggers import BqlLogger, logged_query
-from bayeslite.exception import BayesLiteException
+from bayeslite.exception import BayesLiteException as BLE
 import bayeslite.metamodels.crosscat
 import bdbcontrib
 import bdbcontrib.plot_utils
@@ -127,13 +127,13 @@ class BqlRecipes(object):
       searchdir = os.path.dirname(searchdir)
     # No init option specified, no choice file found. Force the choice.
     if self.session_capture_name is None:
-      raise ValueError(
+      raise BLE(ValueError(
         "Please set session_capture_name option to quickstart\n"
         "  to either opt-in or opt-out of sending details of your usage of\n"
         "  this software to the MIT Probabilistic Computing Group.\n\n"
         "If you see this in one of our example notebooks,\n"
         "  return to the starting page, the Index.ipynb, to\n"
-        "  make that choice.")  # TODO: Index.ipynb is a promise.
+        "  make that choice."))  # TODO: Index.ipynb is a promise.
 
   def initialize(self):
     if self.bdb:
@@ -148,7 +148,7 @@ class BqlRecipes(object):
           self.bdb, self.name, self.csv_path,
           header=True, create=True, ifnotexists=True)
       else:
-        raise ValueError("No data sources specified, and an empty bdb.")
+        raise BLE(ValueError("No data sources specified, and an empty bdb."))
     self.generators = self.query('''SELECT * FROM bayesdb_generator''')
     if len(self.generators) == 0:
       size = self.query('''SELECT COUNT(*) FROM %t''').ix(0, 0)
@@ -263,7 +263,8 @@ class BqlRecipes(object):
             '''ANALYZE %s FOR %d ITERATIONS CHECKPOINT %d ITERATION WAIT''' % (
               self.generator_name, iterations, checkpoint))
       else:
-        raise NotImplementedError('No default analysis strategy yet. Please specify minutes or iterations.')
+        raise BLE(NotImplementedError('No default analysis strategy yet.'
+                                      ' Please specify minutes or iterations.'))
     # itrs = self.per_model_analysis_status()
     # models_with_fewest_iterations =
     #    itrs[itrs['iterations'] == itrs.min('index').head(0)[0]].index.tolist()
@@ -313,7 +314,7 @@ class BqlRecipes(object):
     bdbcontrib_pairplot
     """
     if len(cols) < 1:
-        raise ValueError('Pairplot at least one variable.')
+        raise BLE(ValueError('Pairplot at least one variable.'))
     qcols = cols if colorby is None else set(cols + [colorby])
     query_columns = '''"%s"''' % '''", "'''.join(qcols)
     with logged_query(query_string='pairplot cols=?', bindings=(query_columns,),
@@ -381,7 +382,7 @@ class BqlRecipes(object):
         Where to save plots, if not displaying them on console.
     """
     if len(cols) < 2:
-      raise ValueError('Need to explore at least two columns.')
+      raise BLE(ValueError('Need to explore at least two columns.'))
     with logged_query(query_string='quick_explore_cols', bindings=(cols,),
                       name=self.session_capture_name):
       self.pairplot(cols)
@@ -457,9 +458,9 @@ class BqlRecipes(object):
         row_exists = self.query('SELECT COUNT(*) FROM %s WHERE %s;' %
                                 (self.name, query_attrs))
         if row_exists.ix[0][0] != 1:
-          raise NotImplementedError(
+          raise BLE(NotImplementedError(
               'identify_row_by found %d rows instead of exactly 1 in %s.' %
-              (row_exists.ix[0][0], self.csv_path))
+              (row_exists.ix[0][0], self.csv_path)))
         creation_query = ('''CREATE TEMP TABLE IF NOT EXISTS %s AS ESTIMATE *,
                              SIMILARITY TO (%s) AS %s FROM %%g LIMIT %d;''' %
                           (table_name, query_attrs, column_name, nsimilar))
