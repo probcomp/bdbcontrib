@@ -184,17 +184,21 @@ class BqlRecipes(object):
       the underlying bdb would return, so LIMIT your queries if you need to.
       """)
 
+  def interpret_query(self, query_string):
+    '''Replace %t and %g as appropriate.'''
+    return re.sub(r'(^|(?<=\s))%t\b',
+                  bayeslite.bql_quote_name(self.name),
+                  re.sub(r'(^|(?<=\s))%g\b',
+                         bayeslite.bql_quote_name(self.generator_name),
+                         query_string))
+
   @helpsub(r'help_for_query', help_for_query)
   def query(self, query_string, *bindings):
     '''Basic querying without session capture or reporting.
 
     help_for_query'''
     self.check_representation()
-    query_string = re.sub(r'(^|(?<=\s))%t\b',
-                          bayeslite.bql_quote_name(self.name),
-                          re.sub(r'(^|(?<=\s))%g\b',
-                                 bayeslite.bql_quote_name(self.generator_name),
-                                 query_string))
+    query_string = self.interpret_query(query_string)
     self.logger.info("BQL [%s] [%r]", query_string, bindings)
     with self.bdb.savepoint():
       try:
