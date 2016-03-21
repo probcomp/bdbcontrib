@@ -303,29 +303,29 @@ class BqlRecipes(object):
     self.check_representation()
     itrs = self.per_model_analysis_status()
     if itrs is None or len(itrs) == 0:
-      emt = pd.DataFrame(columns=['count of models'])
+      emt = pd.DataFrame(columns=['count of model instances'])
       emt.index.name = 'iterations'
       return emt
     vcs = pd.DataFrame(itrs['iterations'].value_counts())
     vcs.index.name = 'iterations'
-    vcs.columns = ['count of models']
+    vcs.columns = ['count of model instances']
     self.status = vcs
     return vcs
 
   @helpsub('bdbcontrib_pairplot', bdbcontrib.plot_utils.pairplot.__doc__)
-  def pairplot(self, cols, plotfile=None, colorby=None, **kwargs):
+  def pairplot_vars(self, vars, plotfile=None, colorby=None, **kwargs):
     """Wrap bdbcontrib.plot_utils.pairplot to show the given columns.
 
     Specifies bdb, query with the given columns, and generator_name:
     bdbcontrib_pairplot
     """
     self.check_representation()
-    if len(cols) < 1:
-        raise BLE(ValueError('Pairplot at least one variable.'))
-    qcols = cols if colorby is None else set(cols + [colorby])
-    query_columns = '''"%s"''' % '''", "'''.join(qcols)
-    with logged_query(query_string='pairplot cols=?', bindings=(query_columns,),
+    with logged_query(query_string='pairplot_vars=?', bindings=(vars,),
                       name=self.session_capture_name):
+      if len(vars) < 1:
+        raise BLE(ValueError('Pairplot at least one variable.'))
+      qvars = vars if colorby is None else set(vars + [colorby])
+      query_columns = '''"%s"''' % '''", "'''.join(qvars)
       self.logger.plot(plotfile,
                        bdbcontrib.pairplot(self.bdb, '''SELECT %s FROM %s''' %
                                              (query_columns, self.name),
@@ -378,10 +378,10 @@ class BqlRecipes(object):
                            cmap)
       return hmap
 
-  def quick_explore_cols(self, cols, nsimilar=20, plotfile='explore_cols'):
+  def quick_explore_vars(self, vars, nsimilar=20, plotfile='explore_vars'):
     """Show dependence probabilities and neighborhoods based on those.
 
-    cols: list of strings
+    vars: list of strings
         At least two column names to look at dependence probabilities of,
         and to explore neighborhoods of.
     nsimilar: positive integer
@@ -390,12 +390,12 @@ class BqlRecipes(object):
         Where to save plots, if not displaying them on console.
     """
     self.check_representation()
-    if len(cols) < 2:
-      raise BLE(ValueError('Need to explore at least two columns.'))
-    with logged_query(query_string='quick_explore_cols', bindings=(cols,),
-                      name=self.session_capture_name):
-      self.pairplot(cols)
-      query_columns = '''"%s"''' % '''", "'''.join(cols)
+    if len(vars) < 2:
+      raise BLE(ValueError('Need to explore at least two variables.'))
+    with logged_query(query_string='quick_explore_vars', bindings=(vars,),
+                    name=self.session_capture_name):
+      self.pairplot_vars(vars)
+      query_columns = '''"%s"''' % '''", "'''.join(vars)
       deps = self.query('''ESTIMATE DEPENDENCE PROBABILITY
                            FROM PAIRWISE COLUMNS OF %s
                            FOR %s;''' % (self.generator_name, query_columns))
@@ -407,7 +407,7 @@ class BqlRecipes(object):
       self.logger.result("Pairwise dependence probability for: %s\n%s\n\n",
                          query_columns, triangle)
 
-      for col in cols:
+      for col in vars:
         neighborhood = self.query(
         '''ESTIMATE *, DEPENDENCE PROBABILITY WITH "%s"
            AS "Probability of Dependence with %s"

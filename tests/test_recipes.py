@@ -80,13 +80,13 @@ def test_analyze_and_analysis_status_and_reset():
     with prepare() as (dts, _df):
         resultdf = dts.analysis_status()
         assert 'iterations' == resultdf.index.name, repr(resultdf)
-        assert 'count of models' == resultdf.columns[0], repr(resultdf)
+        assert 'count of model instances' == resultdf.columns[0], repr(resultdf)
         assert 1 == len(resultdf), repr(resultdf)
         assert 10 == resultdf.ix[20, 0], repr(resultdf)
 
         resultdf = dts.analyze(models=11, iterations=1)
         assert 'iterations' == resultdf.index.name, repr(resultdf)
-        assert 'count of models' == resultdf.columns[0], repr(resultdf)
+        assert 'count of model instances' == resultdf.columns[0], repr(resultdf)
         dts.logger.result(str(resultdf))
         assert 2 == len(resultdf), repr(resultdf)
         assert 10 == resultdf.ix[21, 0], repr(resultdf)
@@ -95,12 +95,12 @@ def test_analyze_and_analysis_status_and_reset():
         dts.reset()
         resultdf = dts.analysis_status()
         assert 'iterations' == resultdf.index.name, repr(resultdf)
-        assert 'count of models' == resultdf.columns[0], repr(resultdf)
+        assert 'count of model instances' == resultdf.columns[0], repr(resultdf)
         assert 0 == len(resultdf), repr(resultdf)
         ensure_timeout(10, lambda: dts.analyze(models=10, iterations=20))
         resultdf = dts.analysis_status()
         assert 'iterations' == resultdf.index.name, repr(resultdf)
-        assert 'count of models' == resultdf.columns[0], repr(resultdf)
+        assert 'count of model instances' == resultdf.columns[0], repr(resultdf)
         assert 1 == len(resultdf), repr(resultdf)
         assert 10 == resultdf.ix[20, 0], repr(resultdf)
 
@@ -172,15 +172,15 @@ def test_heatmap():
         assert 'F-W.A-E.foobar.png' in names
         assert 'F-W.F-W.foobar.png' in names
 
-def test_explore_cols():
+def test_explore_vars():
     with prepare() as (dts, _df):
         dts.logger.calls = []
         with pytest.raises(BLE):
-            dts.quick_explore_cols([]) # Empty columns
+            dts.quick_explore_vars([]) # Empty columns
         with pytest.raises(BLE):
-            dts.quick_explore_cols(['float_1']) # Just one column.
+            dts.quick_explore_vars(['float_1']) # Just one column.
 
-        dts.quick_explore_cols(['floats_1', 'categorical_1'])
+        dts.quick_explore_vars(['floats_1', 'categorical_1'])
         call_types = pd.DataFrame([call[0] for call in dts.logger.calls])
         call_counts = call_types.iloc[:,0].value_counts()
         assert call_counts['result'] > 0
@@ -191,8 +191,8 @@ def test_pairplot():
     with prepare() as (dts, _df):
         dts.logger.calls = []
         with pytest.raises(BLE):
-            dts.pairplot([])  # Empty columns
-        pt = dts.pairplot(
+            dts.pairplot_vars([])  # Empty columns
+        pt = dts.pairplot_vars(
             ['floats_1', 'floats_3', 'many_ints_4', 'categorical_1'],
             colorby='categorical_2')
         call_types = pd.DataFrame([call[0] for call in dts.logger.calls])
