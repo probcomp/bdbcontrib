@@ -43,7 +43,11 @@ def get_out_and_err(notebook_path=None, outfile=None, errfile=None):
 
 def check_results(results, warnings_are_errors=False, content_tester=None):
   (output, error) = results
-  notebook = json.loads(output)
+  try:
+    notebook = json.loads(output)
+  except:
+    print error
+    raise
   cells = notebook['worksheets'][0]['cells']
   for cell in cells:
     if cell['cell_type'] in ('markdown', 'heading'):
