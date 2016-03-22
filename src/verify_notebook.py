@@ -19,20 +19,25 @@ import json
 import subprocess
 import sys
 
-def get_out_and_err():
+def get_out_and_err(notebook_path=None, outfile=None, errfile=None):
   output = None
-  if len(sys.argv) == 3:
-    with open(sys.argv[1], 'r') as out:
-      output = out.read()
-    with open(sys.argv[2], 'r') as err:
-      error = err.read()
-  else:
-    cmd = 'runipy --matplotlib --stdout Satellites.ipynb'
+  error = None
+  if notebook_path is not None:
+    cmd = 'runipy --matplotlib --stdout "%s.ipynb"' % (notebook_path,)
     p = subprocess.Popen(cmd, shell=True, stdin=None,
                          stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                          close_fds=True)
     output = p.stdout.read()
     error = p.stderr.read()
+  elif outfile is not None and errfile is not None:
+    with open(outfile, 'r') as out:
+      output = out.read()
+    with open(errfile, 'r') as err:
+      error = err.read()
+  elif len(sys.argv) == 3:
+    return get_out_and_err(sys.argv[1], sys.argv[2])
+  else:
+    raise ValueError("Specify a notebook path or out and err files to verify.")
   return (output, error)
 
 
@@ -56,7 +61,7 @@ def check_results(results, warnings_are_errors=False, content_tester=None):
                 print "WARNING: ", msg
         elif output['output_type'] == 'pyout':
           if content_tester:
-            content_tester(cell)
+            content_tester(cell)  # Content-tester should raise on error.
           else:
             pass
         elif output['output_type'] == 'display_data':
@@ -68,10 +73,6 @@ def check_results(results, warnings_are_errors=False, content_tester=None):
   if 'exception' in error or 'nonzero exit status' in error:
     raise ValueError(error)
 
-        
-
-def main():
-  check_results(get_out_and_err())
-
-if __name__ == "__main__":
-  main()
+def run_and_verify_notebook(notebook_path, **kwargs):
+  '''runipy it and verify it.'''
+  check_results(get_out_and_err(notebook_path), **kwargs)
