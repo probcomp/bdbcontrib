@@ -13,11 +13,12 @@
 #   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
+
 import re
 import os
-import verify_output
+from bdbcontrib import verify_notebook
 
-TESTDATA=os.path.join(os.path.dirname(__file__), 'satellites_verifier_examples')
+TESTDATA=os.path.join(os.path.dirname(__file__), 'notebook_verifier_examples')
 
 def datafiles(basename):
     outfile = os.path.join(TESTDATA, basename + '.out')
@@ -31,13 +32,11 @@ def datafiles(basename):
     return (outcontent, errcontent)
 
 def test_good():
-    verify_output.check_results(datafiles('good-1'))
+    verify_notebook.check_results(datafiles('good-1'))
 
 def test_missing_bdb():
     try:
-        verify_output.check_results(datafiles('missing-bdb'))
+        verify_notebook.check_results(datafiles('missing-bdb'))
         assert False
     except ValueError as e:
         assert re.search(r'\bbdb\b', str(e)), e
-
-        
