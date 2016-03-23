@@ -394,7 +394,7 @@ def test_drop_generator():
     assert not bayeslite.core.bayesdb_has_generator(bdb, 't1_cc')
     bdb.close()
 
-def test_composer_integration_slow():
+def test_composer_integration__ci_slow():
     # But currently difficult to seperate these tests into smaller tests because
     # of their sequential nature. We will still test all internal functions
     # with different regimes of operation.
