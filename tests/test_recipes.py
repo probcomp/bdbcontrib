@@ -46,7 +46,7 @@ testvars = {'dataset': None, 'input_df': None}
 
 import multiprocessing
 import time
-@contextmanager
+
 def ensure_timeout(delay, target):
     proc = multiprocessing.Process(target=target)
     proc.start()
