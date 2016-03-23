@@ -4,3 +4,5 @@
 dist
 bdbcontrib.egg-info
 bayesdb-session-capture-opt.txt
+/examples/satellites/satellites-*-meta.txt
+/examples/satellites/satellites-*-logscores.pdf
