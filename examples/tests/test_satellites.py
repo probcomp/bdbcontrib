@@ -17,12 +17,36 @@
 import os
 from bdbcontrib.verify_notebook import run_and_verify_notebook
 
-SATELLITES=os.path.join(os.path.dirname(os.path.dirname(__file__)),
-                        "satellites", "Satellites")
-def check_satellites(cell):
+SATELLITES_DIR=os.path.join(os.path.dirname(os.path.dirname(__file__)),
+                            "satellites")
+
+def rebuild_bdb(satellites_dir):
+  import os
+  for filename in os.listdir(satellites_dir):
+    if filename.startswith("satellites") and filename.endswith(".bdb"):
+      os.remove(os.path.join(satellites_dir, filename))
+  import time
+  seed=int(time.strftime("%Y%m%d"))
+  import imp
+  build_bdbs = imp.load_source("build_bdbs",
+                               os.path.join(satellites_dir, "build_bdbs.py"))
+  build_bdbs.doit(out_dir=satellites_dir,
+                  num_models=10, num_iters=4, checkpoint_freq=2, seed=seed)
+  # Note: build_bdbs records the seed and other diagnostics in the output
+  # directory as satellites-[date]-probcomp-* (besides creating satellites.bdb)
+
+def do_not_track(satellites_dir):
+  optpath = os.path.join(satellites_dir, "bayesdb-session-capture-opt.txt")
+  with open(optpath, "w") as optfile:
+    optfile.write("False\n")
+
+def check_satellites(notebook_cell):
   """Check pyout cell contents for reasonableness in the Satellites notebook."""
   # Should raise on error.
-  print repr(cell)
+  print repr(notebook_cell)
 
 def test_satellites():
-    run_and_verify_notebook(SATELLITES, content_tester=check_satellites)
+  do_not_track(SATELLITES_DIR)
+  rebuild_bdb(SATELLITES_DIR)
+  run_and_verify_notebook(os.path.join(SATELLITES_DIR, "Satellites"),
+                          content_tester=check_satellites)

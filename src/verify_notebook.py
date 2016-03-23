@@ -77,6 +77,6 @@ def check_results(results, warnings_are_errors=False, content_tester=None):
   if 'exception' in error or 'nonzero exit status' in error:
     raise ValueError(error)
 
-def run_and_verify_notebook(notebook_path, **kwargs):
-  '''runipy it and verify it.'''
-  check_results(get_out_and_err(notebook_path), **kwargs)
+def run_and_verify_notebook(notebook_path_basename, **kwargs):
+  '''runipy it and verify it. Adds ".ipynb" to the path.'''
+  check_results(get_out_and_err(notebook_path_basename), **kwargs)
