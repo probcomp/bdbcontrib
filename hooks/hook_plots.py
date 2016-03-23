@@ -239,7 +239,7 @@ def histogram(self, argin):
     plt.close('all')
 
 
-@bayesdb_shell_cmd('barplot')
+@bayesdb_shell_cmd('bar')
 def barplot(self, argin):
     """plot bar-plot of query giving categories and heights
     <query> [<options>]
