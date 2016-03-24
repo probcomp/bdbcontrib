@@ -101,7 +101,7 @@ def launch(options):
                             stdout=outnb, stderr=errlog, shell=False)
         else:
             os.execlp('ipython', 'ipython', 'notebook', '--',
-                      options.destination)
+                      os.path.join(options.destination, 'Index.ipynb'))
     except Exception as e:
         sys.stderr.write('%s: %s\n' % (progname(), str(e)))
         sys.stderr.write('%s: failed.\n' % (progname(),))
