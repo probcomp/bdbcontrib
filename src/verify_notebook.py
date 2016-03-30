@@ -115,6 +115,37 @@ def assert_no_pyout():
     return True
   return assert_no_pyout_tester
 
+def assert_stream_matches(rxp, **kwargs):
+  def assert_stream_matches_tester(cell_i, cell, dscr):
+    assert 'code' == cell['cell_type'], "Expected code cell: " + dscr
+    assert 'outputs' in cell, "No outputs in cell: " + dscr
+    found = False
+    for output in cell['outputs']:
+      assert 'output_type' in output, "No output type: " + dscr
+      if 'stream' != output['output_type']:
+        continue
+      assert 'text' in output, "No text in output: " + dscr
+      for msg_i, msg in enumerate(output['text']):
+        if re.search(rxp, msg, **kwargs):
+          return True
+    assert found, "No matching stream text: /%s/ in cell %s" % (rxp, dscr)
+  return assert_stream_matches_tester
+
+def assert_stream_not(rxp, **kwargs):
+  def assert_stream_not_matches_tester(cell_i, cell, dscr):
+    assert 'code' == cell['cell_type'], "Expected code cell: " + dscr
+    assert 'outputs' in cell, "No outputs in code cell: " + dscr
+    for output in cell['outputs']:
+      assert 'output_type' in output, "No output_type in cell: " + dscr
+      if 'stream' != output['output_type']:
+        continue
+      assert 'text' in output, "No text in stream: " + dscr
+      for msg_i, msg in enumerate(output['text']):
+        assert not re.search(rxp, msg, **kwargs), \
+          "Expected not to find /%s/ but found it in cell: %s" % (rxp, dscr)
+    return True
+  return assert_stream_not_matches_tester
+
 def assert_pyout_matches(rxp, **kwargs):
   def assert_pyout_matches_tester(cell_i, cell, dscr):
     assert 'code' == cell['cell_type'], "Expected code cell: " + dscr

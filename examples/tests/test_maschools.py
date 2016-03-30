@@ -37,4 +37,13 @@ def test_ma_schools():
       os.path.join(MASCHOOLS_DIR, "MASchoolDistricts"),
       msglimit=msglimit,
       required=[('schools2.quick_explore_vars\(\[',
-                [vn.assert_warns('matplotlib.*backend')])])
+                 [vn.assert_warns('matplotlib.*backend')]),
+                ('schools0.quick_describe_columns()', [r'categorical']),
+                ('schools1.quick_describe_columns()', [r'categorical']),
+                # Once solved, this will not contain categorical, but as
+                # set up to be solved, it does:
+                ('schools2.quick_describe_columns()', [r'categorical']),
+                # As set up, this should have "cannot convert" messages,
+                # Not once it's solved though.
+                ('df.applymap', [vn.assert_stream_matches('Cannot convert')]),
+                ])

@@ -105,6 +105,7 @@ def test_exhaustive():
         (r'Querying the data', [recordTrue, "SQL", recordTrue]),
         (r'satellites', ["Purpose", recordTrue, "Multinational",
                          vn.assert_pyout_matches("launch_vehicle", flags=re.I),
+                         vn.assert_stream_matches(r"BQL \[SELECT \* FROM"),
                          # "well-known satellites" is in the input:
                          vn.assert_pyout_not("well-known satellites")]),
         # From here on out, tests fail in various ways.
@@ -123,9 +124,17 @@ def test_exhaustive():
         ('', [vn.assert_markdown_not('')]),      # 16
         ('', [vn.assert_markdown_not('')]),      # 17
         ('', [vn.assert_pyout_not('')]),         # 18
-        ('', [lambda i, c, d: False]),           # 19
-        ('', [lambda i, c, d: []]),              # 20
-        ('', [lambda i, c, d: None]),            # 21
+        ('', []),
+        ('', []),
+        ('', [vn.assert_has_png()]),
+        ('', []),
+        ('', [vn.assert_has_png()]),
+        ('', []),
+        ('', []),
+        ('', [vn.assert_stream_not('')]),
+        ('', [lambda i, c, d: False]),
+        ('', [lambda i, c, d: []]),
+        ('', [lambda i, c, d: None]),
         ]
     expected += [('', [])] * (40 - len(expected) - 1)  # 40 total cells.
     vn.check_results(datafiles('missing-bdb'), errstream=errs,
@@ -147,10 +156,10 @@ def test_exhaustive():
     assert "Expected markdown cell" in str(errs.pop(0))
     assert "Expected not to find" in str(errs.pop(0))
     assert "Expected not to find" in str(errs.pop(0))
+    assert "Expected not to find" in str(errs.pop(0))
     assert "returned False" in str(errs.pop(0))
     assert "returned []" in str(errs.pop(0))
     assert "returned None" in str(errs.pop(0))
-    assert "Undeclared png" in str(errs.pop(0))
     assert "Undeclared png" in str(errs.pop(0))
     assert "Unexpected cell at end" in str(errs.pop(0))
     assert [] == errs
