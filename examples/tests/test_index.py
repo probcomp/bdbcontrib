@@ -24,10 +24,12 @@ INDEX_DIR=os.path.join(os.path.dirname(os.path.dirname(__file__)))
 # But that can wait for another commit.
 
 def test_index():
+  os.chdir(INDEX_DIR)
   optfile = os.path.join(INDEX_DIR, 'bayesdb-session-capture-opt.txt')
-  if os.path.exists(optfile):
+  if 'DEBUG_TESTS' not in os.environ:
+    if os.path.exists(optfile):
       os.remove(optfile)
   run_and_verify_notebook(os.path.join(INDEX_DIR, "Index"))
-  assert os.path.exists(optfile)
+  assert os.path.exists(optfile), optfile
   with open(optfile, 'r') as opt:
     assert " <>\n" == opt.read()

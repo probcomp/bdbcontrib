@@ -15,7 +15,8 @@
 #   limitations under the License.
 
 import os
-from bdbcontrib.verify_notebook import run_and_verify_notebook
+import pytest
+from bdbcontrib import verify_notebook as vn
 
 MASCHOOLS_DIR=os.path.join(os.path.dirname(os.path.dirname(__file__)),
                            "ma-school-districts")
@@ -27,4 +28,9 @@ def do_not_track(satellites_dir):
 
 def test_ma_schools():
   do_not_track(MASCHOOLS_DIR)
-  run_and_verify_notebook(os.path.join(MASCHOOLS_DIR, "MASchoolDistricts"))
+  msglimit = None if pytest.config.option.verbose else 1000
+  vn.run_and_verify_notebook(
+      os.path.join(MASCHOOLS_DIR, "MASchoolDistricts"),
+      msglimit=msglimit,
+      required=[('schools2.quick_explore_vars\(\[',
+                [vn.assert_warns('matplotlib.*backend')])])
