@@ -21,7 +21,6 @@
 from collections import namedtuple
 import inspect
 import matplotlib
-matplotlib.use("Agg")
 from matplotlib import pyplot as plt
 import re
 import types
