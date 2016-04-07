@@ -144,8 +144,7 @@ def df_to_table(df, tablename=None, **kwargs):
     bayesdb_read_pandas_df(bdb, tablename, df, create=True)
     return (bdb, tablename)
 
-def query(bdb, bql):
-
+def query(bdb, bql, bindings=None):
     """Execute the `bql` query on the `bdb` instance.
 
     Parameters
@@ -154,15 +153,17 @@ def query(bdb, bql):
         Active BayesDB instance.
     bql : str
         BQL query string.
+    bindings : Values to safely fill in for '?' in the BQL query.
 
     Returns
     -------
     df : pandas.DataFrame
         Table of results as a pandas dataframe.
     """
-    cursor = bdb.execute(bql)
+    if bindings is None:
+        bindings = ()
+    cursor = bdb.execute(bql, bindings)
     return cursor_to_df(cursor)
-
 
 def describe_table(bdb, table_name):
     """Returns a DataFrame containing description of `table_name`.
