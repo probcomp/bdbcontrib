@@ -42,7 +42,7 @@ def rebuild_bdb(satellites_dir):
   build_bdbs = imp.load_source("build_bdbs",
                                os.path.join(satellites_dir, "build_bdbs.py"))
   build_bdbs.doit(out_dir=satellites_dir,
-                  num_models=10, num_iters=4, checkpoint_freq=2, seed=seed)
+                  num_models=20, num_iters=20, checkpoint_freq=2, seed=seed)
   # Note: build_bdbs records the seed and other diagnostics in the output
   # directory as satellites-[date]-probcomp-* (besides creating satellites.bdb)
 
