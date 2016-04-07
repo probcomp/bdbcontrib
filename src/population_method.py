@@ -20,8 +20,6 @@
 
 from collections import namedtuple
 import inspect
-import matplotlib
-from matplotlib import pyplot as plt
 import re
 import types
 
@@ -339,7 +337,8 @@ def population_method(**argspec_transforms):
         except:
           self.logger.exception("")
           raise
-        if isinstance(result, plt.Figure):
+        from matplotlib import pyplot
+        if isinstance(result, pyplot.Figure):
           self.logger.plot(result, kwargs.get('plotfile', None))
         else:
           self.logger.info(result)
