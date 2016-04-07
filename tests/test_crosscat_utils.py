@@ -19,7 +19,7 @@
 # which might prevent a later test from drawing pictures headless.
 # &#&*%(@#^&!@.
 import matplotlib
-matplotlib.use("Agg")
+matplotlib.use("pdf")
 
 import bayeslite
 from bayeslite.exception import BayesLiteException as BLE

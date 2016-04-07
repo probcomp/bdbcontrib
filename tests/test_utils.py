@@ -18,7 +18,7 @@
 # matplotlib backend, which might prevent a later test from drawing
 # pictures headless.  &#&*%(@#^&!@.
 import matplotlib
-matplotlib.use("Agg")
+matplotlib.use("pdf")
 
 import pytest
 import tempfile

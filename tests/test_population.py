@@ -18,7 +18,7 @@ from __future__ import print_function
 
 # matplotlib needs to set the backend before anything else gets to.
 import matplotlib
-matplotlib.use("Agg")
+matplotlib.use("pdf")
 import matplotlib.pyplot as plt
 
 from contextlib import contextmanager
