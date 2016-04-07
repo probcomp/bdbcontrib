@@ -24,6 +24,8 @@ from bayeslite.read_pandas import bayesdb_read_pandas_df
 from bayeslite.sqlite3_util import sqlite3_quote_name
 from bayeslite.util import cursor_value
 
+from bdbcontrib.population_method import population_method
+
 ###############################################################################
 ###                                 PUBLIC                                  ###
 ###############################################################################
@@ -144,15 +146,14 @@ def df_to_table(df, tablename=None, **kwargs):
     bayesdb_read_pandas_df(bdb, tablename, df, create=True)
     return (bdb, tablename)
 
+@population_method(population_to_bdb=0, interpret_bql=1)
 def query(bdb, bql, bindings=None):
     """Execute the `bql` query on the `bdb` instance.
 
     Parameters
     ----------
-    bdb : bayeslite.BayesDB
-        Active BayesDB instance.
-    bql : str
-        BQL query string.
+    bdb : __population_to_bdb__
+    bql : __interpret_bql__
     bindings : Values to safely fill in for '?' in the BQL query.
 
     Returns

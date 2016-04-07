@@ -36,6 +36,14 @@ from diagnostic_utils import estimate_log_likelihood
 
 from version import __version__
 
+from py_utils import helpsub
+from population import Population
+
+@helpsub("__population_doc__", Population.__init__.__doc__)
+def quickstart(*args, **kwargs):
+  """__population_doc__"""
+  return Population(*args, **kwargs)
+
 def draw_crosscat(*args, **kwargs):
     import crosscat_utils
     draw_crosscat = crosscat_utils.draw_crosscat
@@ -73,6 +81,7 @@ def pairplot(*args, **kwargs):
     return pairplot(*args, **kwargs)
 
 __all__ = [
+        'quickstart',
     # bql_utils
         'cardinality',
         'cursor_to_df',
