@@ -51,7 +51,7 @@ import datetime
 import hashlib
 import logging
 import matplotlib
-matplotlib.use('pdf')
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import os
 import subprocess

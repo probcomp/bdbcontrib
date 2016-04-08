@@ -18,7 +18,7 @@ from __future__ import print_function
 
 # matplotlib needs to set the backend before anything else gets to.
 import matplotlib
-matplotlib.use("pdf")
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
 from collections import namedtuple

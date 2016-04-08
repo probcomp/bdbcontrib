@@ -15,7 +15,7 @@
 #   limitations under the License.
 
 import matplotlib
-matplotlib.use("pdf")
+matplotlib.use('Agg')
 from matplotlib import pyplot as plt
 
 import bayeslite

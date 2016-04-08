@@ -20,7 +20,7 @@ import pytest
 import re
 
 import matplotlib
-matplotlib.use('pdf')
+matplotlib.use('Agg')
 
 from bdbcontrib.verify_notebook import run_and_verify_notebook
 from bdbcontrib.verify_notebook import assert_markdown_matches as md

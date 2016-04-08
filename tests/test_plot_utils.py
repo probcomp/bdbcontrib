@@ -15,7 +15,7 @@
 #   limitations under the License.
 
 import matplotlib
-matplotlib.use("pdf")
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
 import mock

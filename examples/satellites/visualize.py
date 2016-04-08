@@ -16,7 +16,7 @@
 #   limitations under the License.
 
 import matplotlib
-matplotlib.use("pdf")
+matplotlib.use('Agg')
 
 import argparse
 import cPickle as pickle # json doesn't like tuple dict keys
