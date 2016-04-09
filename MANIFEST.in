@@ -21,6 +21,7 @@ include doc/probe.rst
 include doc/random_forest.rst
 include doc/shell.rst
 include doc/visualization.rst
+include examples/Index.ipynb
 include examples/ma-school-districts/ma-school-districts.csv
 include examples/ma-school-districts/MASchoolDistricts.ipynb
 include examples/on-stability-testing.md
