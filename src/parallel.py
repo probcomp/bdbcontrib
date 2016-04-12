@@ -14,6 +14,65 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
+"""Speed up BDB queries by parallelizing them.
+
+Intuition
+---------
+
+``ESTIMATE SIMILARITY FROM PAIRWISE t`` will run in ``O(n^2 m v)`` time, where
+``n`` is the number of rows, ``m`` is the number of models, and ``v`` is the
+average number of views per model. While this query is reasonable for small
+datasets, on medium-large datasets the query slows down significantly and can
+become intractable.  Splitting the processing up among multiple cores can
+greatly reduce computation time; this module provides functionality to assist
+this multiprocessing.
+
+Currently, a multiprocessing equivalent is provided only for
+``ESTIMATE PAIRWISE SIMILARITY``. In fact, this is a query that is most likely
+to require multiprocessing, as datasets frequently have many more rows than
+columns.
+
+Example
+-------
+
+Following are (very) informal timing statistics with a 200 rows by 4 column
+.cvs file, run on a late 2012 MacBook Pro with a 2.5 GHz 2-core Intel Core i5::
+
+    id,one,two,three,four
+    0,2,3,4,two
+    1,1,5,4,three
+    2,5,1,5,one
+    ...
+    197,0,5,0,five
+    198,5,3,0,three
+    199,4,5,2,three
+
+After inserting this .csv data into a table ``t`` and analyzing it quickly::
+
+    bdb.execute('''
+        CREATE GENERATOR t_cc FOR t USING crosscat (
+            GUESS(*),
+            id IGNORE
+        )
+    ''')
+    bdb.execute('INITIALIZE 3 MODELS FOR t_cc')
+    bdb.execute('ANALYZE t_cc MODELS 0-2 FOR 10 ITERATIONS WAIT')
+
+The corresponding similarity table thus has 200^2 = 40000 rows::
+
+    In [72]: %timeit -n 10 cursor_to_df(bdb.execute('ESTIMATE SIMILARITY FROM PAIRWISE t_cc'))
+    10 loops, best of 3: 9.56 s per loop
+
+    In [73]: %timeit -n 10 parallel.estimate_pairwise_similarity(bdb_file.name, 't', 't_cc', overwrite=True)
+    10 loops, best of 3: 5.16 s per loop  # And values are located in the t_similarity table.
+
+The approximate 2x speed up is what would be expected from dividing the work
+among two cores. Further speed increases are likely with more powerful
+machines.
+
+----
+"""
+
 from bayeslite.exception import BayesLiteException as BLE
 from bdbcontrib.bql_utils import cursor_to_df
 import multiprocessing as mp
