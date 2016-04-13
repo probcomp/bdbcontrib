@@ -24,6 +24,7 @@ import sys
 import bdbcontrib.version
 import bayeslite.version
 import crosscat.version
+import pkg_resources
 
 def usage(out):
     out.write('Usage: %s [options]\n' % (progname(),))
@@ -61,22 +62,10 @@ def oswalk_find(fnpattern, path):
 
 def fetch(options):
     if options.source is None:
-        lib_bdbcontrib = os.path.dirname(bdbcontrib.version.__file__)
-        venv_bdbcontrib = os.path.join(
-            os.path.dirname(os.path.dirname(__file__)), "bdbcontrib")
-        path = [lib_bdbcontrib, venv_bdbcontrib]
-        found = False
-        for bdbcontribdir in path:
-            source = os.path.join(bdbcontribdir, "examples")
-            if os.path.exists(source):
-                options.source = source
-                found = True
-                break
-    else:
-        found = os.path.exists(options.source)
-    if not found:
-        raise ValueError("Did not find the bdbcontrib/examples directory in " +
-                         repr(path))
+        options.source = pkg_resources.resource_filename(
+            'bdbcontrib', 'examples')
+    assert os.path.exists(options.source), \
+        "Did not find the bdbcontrib/examples directory in this distribution."
     if os.path.exists(options.destination):
         raise ValueError("Destination %s must not yet exist." %
                          (options.destination,))
