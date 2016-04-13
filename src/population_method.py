@@ -33,7 +33,7 @@ from population import Population
 PopulationTransformation = namedtuple(
     'PopulationTransformation',
     ['name', 'decorated_doc', 'method_doc', 'doc', 'transform'])
-    
+
 POPULATION_TRANSFORMATIONS = [
     PopulationTransformation(
         name='population',
@@ -91,7 +91,7 @@ POPULATION_TRANSFORMATIONS = [
         ),
     ]
 
-  
+
 ARGSPEC_TRANSFORMS = dict([(pt.name, pt.transform)
                            for pt in POPULATION_TRANSFORMATIONS])
 METHOD_DOC_FILLERS = dict([('__'+pt.name+'__', pt.method_doc)
@@ -103,7 +103,7 @@ PT_DOC='\n'.join(["%s: %s\n\t%s" %
                    pt.doc)
                   for pt in POPULATION_TRANSFORMATIONS])
 
-    
+
 def fill_documentation(docstr, fillers):
   if docstr is None:
     return None
@@ -175,7 +175,7 @@ def compile_argspec_transforms(fn, argspecs):
         return lambda _self, kwargs: kwargs[idx] if idx in kwargs else None
       optional_transformers[name] = wrap_optarg_passthru(name)
 
-        
+
   wrapper_i = 0
   wrapped_transformers = []
   required_method_names = []
@@ -246,7 +246,7 @@ def apply_argspec_transforms(pop, argspecs, args, kwargs):
       raise TypeError("%s() takes at least %d arguments (%d given)" %
                       (argspecs['name'], len(required_names),
                        len(args) + len(kwargs)))
-  
+
   new_varargs = []
   # Positional optional args:
   for opt_i in xrange(len(required_names), len(args)):
@@ -308,14 +308,14 @@ def population_method(**argspec_transforms):
      line is removed, and other positional arguments shift to accommodate).
 
      __PT_DOC__
-     
+
      In your method's docstring, use the above names with underscores to
      get their appropriate documentation (if you want it replaced). For
      example, use __population_name__ in place of the lines where you
      would put the population name parameter's description, after its name.
-     
+
      For those transformations that do not have an [arg], if their documentation
-     line starts with the parameter name, then a colon, then the double 
+     line starts with the parameter name, then a colon, then the double
      underscored transformation name, then the entire line is removed.
      For example, a documentation line like
        table : __population_name__
