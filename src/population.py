@@ -162,7 +162,7 @@ class Population(object):
         raise BLE(ValueError("No data sources specified, and an empty bdb."))
     self.generators = self.query('''SELECT * FROM bayesdb_generator''')
     if len(self.generators) == 0:
-      size = self.query('''SELECT COUNT(*) FROM %t''').ix(0, 0)
+      size = self.query('''SELECT COUNT(*) FROM %t''').ix[0, 0]
       assert 0 < size
       self.query('''
         CREATE GENERATOR %g IF NOT EXISTS FOR %t USING crosscat( GUESS(*) )''')
