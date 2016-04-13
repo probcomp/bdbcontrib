@@ -360,7 +360,5 @@ def get_column_descriptive_metadata(bdb, table_name, column_names, md_field):
                 short_names.append(sname)
                 break
 
-    if len(short_names) != len(column_names):
-        import pdb
-        pdb.set_trace()
+    assert len(short_names) == len(column_names)
     return short_names
