@@ -33,14 +33,16 @@ import bdbcontrib.bql_utils as bqlu
 ###                                   PUBLIC                                ###
 ###############################################################################
 
-def mi_hist(bdb, generator, col1, col2, num_samples=1000, bins=5):
-    """Plot histogram of mutual information over generator's models.
+def mi_hist(bdb, generator_name, col1, col2, num_samples=1000, bins=5):
+    """
+    Histogram of estimated mutual information between the two columns for each
+    of a generator's model instances.
 
     Parameters
     ----------
     bdb : bayeslite.BayesDB
         Active BayesDB instance.
-    generator : str
+    generator_name : str
         Name of the generator to compute MI(col1;col2)
     col1, col2 : str
         Name of the columns to compute MI(col1;col2)
@@ -53,7 +55,7 @@ def mi_hist(bdb, generator, col1, col2, num_samples=1000, bins=5):
     -------
     figure : matplotlib.figure.Figure
     """
-    generator_id = bayeslite.core.bayesdb_get_generator(bdb, generator)
+    generator_id = bayeslite.core.bayesdb_get_generator(bdb, generator_name)
     bql = '''
         SELECT COUNT(modelno) FROM bayesdb_generator_model
             WHERE generator_id = ?
@@ -68,7 +70,7 @@ def mi_hist(bdb, generator, col1, col2, num_samples=1000, bins=5):
         bql = '''
             ESTIMATE MUTUAL INFORMATION OF {} WITH {} USING {} SAMPLES FROM {}
                 USING MODEL {} LIMIT 1
-        '''.format(col1, col2, num_samples, generator, modelno)
+        '''.format(col1, col2, num_samples, generator_name, modelno)
         cursor = bdb.execute(bql)
         mutual_information = cursor.fetchvalue()
         mis.append(mutual_information)
