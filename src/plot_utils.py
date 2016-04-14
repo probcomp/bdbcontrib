@@ -381,6 +381,17 @@ def prep_plot_df(data_df, var_names):
 def drop_inf_and_nan(np_Series):
     return np_Series.replace([-np.inf, np.inf], np.nan).dropna()
 
+def seaborn_broken_bins(np_Series):
+    # XXX: Seaborn is broken, uses np.asarray(values).squeeze()
+    # which for lists of one is an "unsized object" from which you
+    # cannot calculate freedman diaconis bins.
+    if len(np_Series) == 1:
+        return []
+    # When seaborn uses its _freedman_diaconis_bins it forgets to np.ceil,
+    # so do that for it. Again (this has been broken and fixed before). :-p
+    # This is being inserted at seaborn==0.6.0.
+    return np.ceil(sns.distributions._freedman_diaconis_bins(np_Series))
+
 def do_hist(data_srs, **kwargs):
     ax = kwargs.get('ax', None)
     bdb = kwargs.get('bdb', None)
@@ -423,10 +434,13 @@ def do_hist(data_srs, **kwargs):
         if colors is not None:
             for val, color in colors.iteritems():
                 subdf = data_srs.loc[data_srs.ix[:, 1] == val]
-                sns.distplot(drop_inf_and_nan(subdf.ix[:, 0]),
-                             kde=do_kde, ax=ax, color=color)
+                values = drop_inf_and_nan(subdf.ix[:, 0])
+                bins = seaborn_broken_bins(values)
+                sns.distplot(values, kde=do_kde, ax=ax, color=color, bins=bins)
         else:
-            sns.distplot(drop_inf_and_nan(data_srs), kde=do_kde, ax=ax)
+            values = drop_inf_and_nan(data_srs)
+            bins = seaborn_broken_bins(values)
+            sns.distplot(values, kde=do_kde, ax=ax, bins=bins)
 
     return ax
 
