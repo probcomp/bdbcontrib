@@ -473,6 +473,9 @@ def do_heatmap(plot_df, unused_vartypes, **kwargs):
 def do_violinplot(plot_df, vartypes, **kwargs):
     ax = kwargs.get('ax', None)
     colors = kwargs.get('colors', None)
+    for handled in ('ax', 'colors'):
+        if handled in kwargs:
+            del kwargs[handled]
 
     dummy = plot_df.shape[1] == 3
 
@@ -499,7 +502,7 @@ def do_violinplot(plot_df, vartypes, **kwargs):
             data=plot_df,
             order=sub_vals, hue=plot_df.columns[2],
             names=sub_vals, ax=ax, orient=("v" if vert else "h"),
-            palette=colors, inner='quartile')
+            palette=colors, inner='quartile', **kwargs)
         axis.legend_ = None
     else:
         sns.violinplot(
@@ -508,7 +511,7 @@ def do_violinplot(plot_df, vartypes, **kwargs):
             data=plot_df,
             order=unique_vals, names=unique_vals, ax=ax,
             orient=("v" if vert else "h"),
-            color='SteelBlue', inner='quartile')
+            color='SteelBlue', inner='quartile', **kwargs)
 
     if vert:
         ax.set_xlim([-.5, n_vals-.5])
@@ -522,16 +525,23 @@ def do_violinplot(plot_df, vartypes, **kwargs):
     return ax
 
 
-def do_kdeplot(plot_df, unused_vartypes, **kwargs):
+def do_kdeplot(plot_df, unused_vartypes, bdb=None, generator_name=None,
+               **kwargs):
     # XXX: kdeplot is not a good choice for small amounts of data because
     # it uses a kernel density estimator to crease a smooth heatmap. On the
     # other hand, scatter plots are uninformative given lots of data---the
     # points get jumbled up. We may just want to set a threshold (N=100)?
 
+    _unused_generator_name = generator_name  # So it doesn't end up in kwargs
+    _unused_bdb = bdb
+
     ax = kwargs.get('ax', None)
     show_contour = kwargs.get('show_contour', False)
     colors = kwargs.get('colors', None)
     show_missing = kwargs.get('show_missing', False)
+    for handled in ('ax', 'show_contour', 'colors', 'show_missing'):
+        if handled in kwargs:
+            del kwargs[handled]
 
     if ax is None:
         ax = plt.gca()
@@ -546,7 +556,7 @@ def do_kdeplot(plot_df, unused_vartypes, **kwargs):
 
     if not dummy:
         plt.scatter(df.values[:, 0], df.values[:, 1], alpha=.5,
-            color='steelblue', zorder=2)
+            color='steelblue', zorder=2, **kwargs)
         # plot nulls
         if show_missing:
             nacol_x = null_rows.ix[:, 0].dropna()
@@ -562,7 +572,7 @@ def do_kdeplot(plot_df, unused_vartypes, **kwargs):
         for val, color in colors.iteritems():
             subdf = df.loc[df.ix[:, 2] == val]
             plt.scatter(subdf.values[:, 0], subdf.values[:, 1], alpha=.5,
-                color=color, zorder=2)
+                color=color, zorder=2, **kwargs)
             subnull = null_rows.loc[null_rows.ix[:, 2] == val]
             if show_missing:
                 nacol_x = subnull.ix[:, 0].dropna()
@@ -694,7 +704,8 @@ def zmatrix(data_df, clustermap_kws=None, row_ordering=None,
 
 # TODO: bdb, and table_name should be optional arguments
 def _pairplot(df, bdb=None, generator_name=None,
-        show_contour=False, colorby=None, show_missing=False, show_full=False):
+        show_contour=False, colorby=None, show_missing=False, show_full=False,
+        **kwargs):
     """Plots the columns in data_df in a facet grid.
 
     Supports the following pairs:
@@ -722,6 +733,8 @@ def _pairplot(df, bdb=None, generator_name=None,
         plots.
     show_full : bool
         Show full pairwise plots, rather than only lower triangular plots.
+    kwargs : dict
+        Options to pass through to underlying plotting function (for pairs).
 
     Returns
     -------
@@ -821,7 +834,7 @@ def _pairplot(df, bdb=None, generator_name=None,
                 ax = do_pair_plot(plot_df, vartypes_pair, ax=ax, bdb=bdb,
                     generator_name=generator_name,
                     show_contour=show_contour, show_missing=show_missing,
-                    colors=colors)
+                    colors=colors, **kwargs)
 
                 ymins[y_pos, x_pos] = ax.get_ylim()[0]
                 ymaxs[y_pos, x_pos] = ax.get_ylim()[1]
