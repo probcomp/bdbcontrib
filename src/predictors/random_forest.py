@@ -35,7 +35,7 @@ class RandomForest(predictor.IBayesDBForeignPredictor):
     @classmethod
     def create(cls, bdb, table, targets, conditions):
         cols = [c for c,_ in targets+conditions]
-        df = bdbcontrib.table_to_df(bdb, table, cols)
+        df = bdbcontrib.bql_utils.table_to_df(bdb, table, cols)
         rf = cls()
         rf.train(df, targets, conditions)
         rf.prng = bdb.np_prng
