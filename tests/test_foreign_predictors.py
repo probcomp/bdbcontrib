@@ -17,7 +17,7 @@
 import numpy as np
 import pandas as pd
 
-from bdbcontrib import df_to_table
+from bdbcontrib.bql_utils import df_to_table
 from crosscat.tests import synthetic_data_generator as sdg
 
 from bdbcontrib.predictors.random_forest import RandomForest
