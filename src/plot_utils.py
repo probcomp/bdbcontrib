@@ -27,11 +27,13 @@ import seaborn as sns
 import bayeslite.core
 from bayeslite.exception import BayesLiteException as BLE
 import bdbcontrib.bql_utils as bqlu
+from bdbcontrib.population_method import population_method
 
 ###############################################################################
 ###                                   PUBLIC                                ###
 ###############################################################################
 
+@population_method(population_to_bdb=0, generator_name=1)
 def mi_hist(bdb, generator_name, col1, col2, num_samples=1000, bins=5):
     """
     Histogram of estimated mutual information between the two columns for each
@@ -80,6 +82,7 @@ def mi_hist(bdb, generator_name, col1, col2, num_samples=1000, bins=5):
 
     return figure
 
+@population_method(population_to_bdb=0, specifier_to_df=1)
 def heatmap(bdb, deps, **kwargs):
     '''Plot clustered heatmaps for the given dependencies.
 
@@ -129,6 +132,8 @@ def selected_heatmaps(bdb, df, selector_fns, **kwargs):
                 yield (zmatrix(this_block, vmin=0, vmax=1, **kwargs),
                        n0selector, n1selector)
 
+@population_method(population_to_bdb=0, specifier_to_df=1,
+                   generator_name='generator_name')
 def pairplot(bdb, df, generator_name=None, show_contour=False, colorby=None,
         show_missing=False, show_full=False, **kwargs):
     """Plot array of plots for all pairs of columns.
@@ -170,6 +175,7 @@ def pairplot(bdb, df, generator_name=None, show_contour=False, colorby=None,
 
     return figure
 
+@population_method(population_to_bdb=0, specifier_to_df=1)
 def histogram(bdb, df, nbins=15, bins=None, normed=None):
     """Plot histogram of one- or two-column table.
 
@@ -239,6 +245,7 @@ def histogram(bdb, df, nbins=15, bins=None, normed=None):
     ax.set_xlabel(df.columns[0])
     return figure
 
+@population_method(population_to_bdb=0, specifier_to_df=1)
 def barplot(bdb, df):
     """Make bar-plot from categories and their heights.
 
