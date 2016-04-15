@@ -23,6 +23,7 @@ from bayeslite.exception import BayesLiteException as BLE
 from bayeslite.read_pandas import bayesdb_read_pandas_df
 from bayeslite.sqlite3_util import sqlite3_quote_name
 from bayeslite.util import cursor_value
+from bdbcontrib.population_method import population_method
 
 from bdbcontrib.population_method import population_method
 
@@ -30,13 +31,13 @@ from bdbcontrib.population_method import population_method
 ###                                 PUBLIC                                  ###
 ###############################################################################
 
+@population_method(population_to_bdb=0)
 def cardinality(bdb, table, cols=None):
     """Compute the number of unique values in the columns of a table.
 
     Parameters
     ----------
-    bdb : bayeslite.BayesDB
-        Active BayesDB instance.
+    bdb : __population_to_bdb__
     table : str
         Name of table.
     cols : list<str>, optional
@@ -64,13 +65,13 @@ def cardinality(bdb, table, cols=None):
     return counts
 
 
+@population_method(population_to_bdb=0)
 def nullify(bdb, table, value):
     """Replace specified values in a SQL table with ``NULL``.
 
     Parameters
     ----------
-    bdb : bayeslite.BayesDB
-        bayesdb database object
+    bdb : __population_to_bdb__
     table : str
         The name of the table on which to act
     value : stringable
@@ -166,6 +167,7 @@ def query(bdb, bql, bindings=None):
     cursor = bdb.execute(bql, bindings)
     return cursor_to_df(cursor)
 
+@population_method(population_to_bdb=0, population_name=1)
 def describe_table(bdb, table_name):
     """Returns a DataFrame containing description of `table_name`.
 
@@ -191,6 +193,7 @@ def describe_table(bdb, table_name):
     return cursor_to_df(curs)
 
 
+@population_method(population_to_bdb=0, generator_name=1)
 def describe_generator(bdb, generator_name):
     """Returns a DataFrame containing description of `generator_name`.
 
@@ -212,7 +215,7 @@ def describe_generator(bdb, generator_name):
     curs = bdb.sql_execute(sql, bindings=(generator_name,))
     return cursor_to_df(curs)
 
-
+@population_method(population_to_bdb=0, generator_name=1)
 def describe_generator_columns(bdb, generator_name):
     """Returns a DataFrame containing description of the columns
     modeled by `generator_name`.
@@ -246,7 +249,7 @@ def describe_generator_columns(bdb, generator_name):
     curs = bdb.sql_execute(sql, bindings=(generator_id,))
     return cursor_to_df(curs)
 
-
+@population_method(population_to_bdb=0, generator_name=1)
 def describe_generator_models(bdb, generator_name):
     """Returns a DataFrame containing description of the models
     in `generator_name`.
@@ -290,7 +293,7 @@ def get_column_info(bdb, generator_name):
     '''
     return bdb.sql_execute(sql, (generator_id,)).fetchall()
 
-
+@population_method(population_to_bdb=0, generator_name=1)
 def get_column_stattype(bdb, generator_name, column_name):
     generator_id = bayeslite.core.bayesdb_get_generator(bdb, generator_name)
     sql = '''
