@@ -191,7 +191,7 @@ def pairplot(bdb, bql, generator_name=None, show_contour=False, colorby=None,
     return figure
 
 
-def histogram(bdb, bql, bins=15, normed=None):
+def histogram(bdb, df, nbins=15, bins=None, normed=None):
     """Plot histogram of one- or two-column table.
 
     If two-column, subdivide the first column according to labels in
@@ -199,24 +199,66 @@ def histogram(bdb, bql, bins=15, normed=None):
 
     Parameters
     ----------
-    bdb : bayeslite.BayesDB
-        Active BayesDB instance.
-    bql : str
-        The BQL to run and histogram.
-    bins : int, optional
+    bdb : __population_to_bdb__
+    df : __specifier_to_df__
+    nbins : int, optional
         Number of bins in the histogram.
     normed : bool, optional
-        Normalize the histograms?
+        If True, normalizes the the area of the histogram (or each
+        sub-histogram if df has two columns) to 1.
 
     Returns
     ----------
     figure: matplotlib.figure.Figure
     """
-    df = bqlu.cursor_to_df(bdb.execute(bql))
-    figure = comparative_hist(df, bdb=bdb, nbins=bins, normed=normed)
+    df = df.dropna()
+    if len(df.columns) == 0:
+        raise BLE(ValueError('Tried to plot a histogram of an empty result.'))
 
+    vartype = get_bayesdb_col_type(df.columns[0], df[df.columns[0]], bdb=bdb)
+    if vartype == 'categorical':
+        raise BLE(TypeError(
+            "Cannot histogram categorical varible %s. Barplot? Colorby?" %
+            (df.columns[0],)))
+    a = min(df.ix[:, 0].values)
+    b = max(df.ix[:, 0].values)
+    support = b - a
+    interval = support/nbins
+    if bins is None:
+        bins = np.linspace(a, b+interval, nbins)
+
+    colorby = None
+    if len(df.columns) > 1:
+        if len(df.columns) > 2:
+            raise BLE(ValueError('Got more columns than data and colorby.'))
+        colorby = df.columns[1]
+        colorby_stattype = get_bayesdb_col_type(
+            df.columns[1], df[df.columns[1]], bdb=bdb)
+        if colorby_stattype != 'categorical':
+            raise BLE(TypeError("Cannot color by non-categorical variable " +
+                                colorby))
+        colorby_vals = df[colorby].unique()
+
+    figure, ax = plt.subplots(tight_layout=False, facecolor='white')
+    if colorby is None:
+        ax.hist(df.ix[:, 0].values, bins=bins, color='#383838',
+            edgecolor='none', normed=normed)
+        plot_title = df.columns[0]
+    else:
+        colors = sns.color_palette('deep', len(colorby_vals))
+        for color, cbv in zip(colors, colorby_vals):
+            subdf = df[df[colorby] == cbv]
+            ax.hist(subdf.ix[:, 0].values, bins=bins, color=color, alpha=.5,
+                edgecolor='none', normed=normed, label=str(cbv))
+        ax.legend(loc=0, title=colorby)
+        plot_title = df.columns[0] + " by " + colorby
+
+    if normed:
+        plot_title += " (normalized)"
+
+    ax.set_title(plot_title)
+    ax.set_xlabel(df.columns[0])
     return figure
-
 
 def barplot(bdb, bql):
     """Plot bar-plot of query giving categories and heights.

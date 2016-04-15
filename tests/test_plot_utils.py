@@ -23,11 +23,13 @@ import numpy as np
 import re
 import os
 import pandas as pd
+import pytest
 from io import BytesIO
 
 import bayeslite
 import bdbcontrib
 
+from bayeslite.exception import BayesLiteException as BLE
 from bayeslite.read_csv import bayesdb_read_csv
 from bdbcontrib.bql_utils import cursor_to_df
 from bdbcontrib.plot_utils import _pairplot
@@ -89,6 +91,10 @@ def do(prepped, location, **kwargs):
               show_full=False, **kwargs)
     plt.savefig(location)
 
+def run_histogram(bdb, df, location, **kwargs):
+    plt.figure(tight_layout=True, facecolor='white')
+    bdbcontrib.plot_utils.histogram(bdb, df)
+    plt.savefig(location)
 
 from PIL import Image
 def has_nontrivial_contents_over_white_background(imgfile):
@@ -161,7 +167,7 @@ def test_selected_heatmaps():
     seen = []
     with mock.patch('bdbcontrib.plot_utils.zmatrix', return_value=42):
         for (plot, s0, s1) in bdbcontrib.plot_utils.selected_heatmaps(
-                bdb, selectors=sels, df=deps):
+                bdb, selector_fns=sels, df=deps):
             assert 42 == plot
             seen.append((s0, s1))
     assert 4 == len(seen)
@@ -169,6 +175,40 @@ def test_selected_heatmaps():
     assert (s_ae, s_fw) in seen
     assert (s_fw, s_ae) in seen
     assert (s_fw, s_fw) in seen
+
+def test_histogram():
+    categoricals = set(['categorical_1', 'categorical_2', 'few_ints_3'])
+    numerics = set(['floats_1', 'floats_3', 'many_ints_4', 'skewed_numeric_5'])
+    (df, bdb) = prepare()
+    f = BytesIO()
+    with pytest.raises(BLE):
+        run_histogram(bdb, pd.DataFrame(), f)
+    with pytest.raises(BLE):
+        run_histogram(bdb, df[['categorical_1', 'few_ints_3', 'floats_3']], f)
+    for datacol in categoricals:
+        with pytest.raises(BLE):
+            run_histogram(bdb, df[[datacol]], f)
+        with pytest.raises(BLE):
+            run_histogram(bdb, df[[datacol, 'categorical_1']], f)
+        with pytest.raises(BLE):
+            run_histogram(bdb, df[[datacol, 'many_ints_4']], f)
+    for colorby in numerics:
+        with pytest.raises(BLE):
+            run_histogram(bdb, df[['many_ints_4', colorby]], f)
+
+    for datacol in numerics:
+        for colorby in categoricals:
+            f = BytesIO()
+            run_histogram(bdb, df[[datacol]], f)
+            assert has_nontrivial_contents_over_white_background(flush(f))
+            if datacol == colorby:
+                with pytest.raises(BLE):
+                    f = BytesIO()
+                    run_histogram(bdb, df[[datacol, colorby]], f)
+            else:
+                f = BytesIO()
+                run_histogram(bdb, df[[datacol, colorby]], f)
+                assert has_nontrivial_contents_over_white_background(flush(f))
 
 
 def get_plot_text(obj):
