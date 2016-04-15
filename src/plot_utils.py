@@ -26,7 +26,6 @@ import seaborn as sns
 
 import bayeslite.core
 from bayeslite.exception import BayesLiteException as BLE
-
 import bdbcontrib.bql_utils as bqlu
 
 ###############################################################################
@@ -81,50 +80,36 @@ def mi_hist(bdb, generator_name, col1, col2, num_samples=1000, bins=5):
 
     return figure
 
-def heatmap(bdb, bql=None, df=None, **kwargs):
-    """Plot clustered heatmap of pairwise matrix.
+def heatmap(bdb, deps, **kwargs):
+    '''Plot clustered heatmaps for the given dependencies.
 
     Parameters
     ----------
-    bdb : bayeslite.BayesDB
-        Active BayesDB instance.
-    bql : str
-        The BQL to run and plot. Must be a PAIRWISE BQL query if specified.
-        One of bql or df must be specified.
-    df : pandas.DataFrame(columns=['generator_id', 'name0', 'name1', 'value'])
-        If bql is not specified, take data from here.
+    bdb : __population_to_bdb__
+    deps : __specifier_to_df__
+        Must have columns=['generator_id', 'name0', 'name1', 'value'],
+        I.e. the result of a BQL query of the form 'ESTIMATE ... PAIRWISE ...'.
+        E.g., DEPENDENCE PROBABILITY, MUTUAL INFORMATION, COVARIANCE, etc.
 
     **kwargs : dict
         Passed to zmatrix: vmin, vmax, row_ordering, col_ordering
 
-    Returns
-    -------
-    clustermap: seaborn.clustermap
-    """
-    assert bql is not None or df is not None
-    assert bql is None or df is None
-    if bql is not None:
-        df = bqlu.cursor_to_df(bdb.execute(bql))
-    df.fillna(0, inplace=True)
-    return zmatrix(df, **kwargs)
+    Returns a seaborn.clustermap (a kind of matplotlib.Figure)
+    '''
+    return zmatrix(deps, vmin=0, vmax=1, **kwargs)
 
-def selected_heatmaps(bdb, selectors, bql=None, df=None, **kwargs):
+def selected_heatmaps(bdb, df, selector_fns, **kwargs):
     """Yield heatmaps of pairwise matrix, broken up according to selectors.
 
     Parameters
     ----------
-    bdb : bayeslite.BayesDB
-        Active BayesDB instance.
+    bdb: a bayeslite.BayesDB instance
+    df: the result of a PAIRWISE query.
     selectors : [lambda name --> bool]
         Rather than plot the full NxN matrix all together, make separate plots
         for each combination of these selectors, plotting them in sequence.
         If selectors are specified, yields clustermaps, which caller is
         responsible for showing or saving, and then closing.
-    bql : str
-        The BQL to run and plot. Must be a PAIRWISE BQL query if specified.
-        One of bql or df must be specified.
-    df : pandas.DataFrame(columns=['generator_id', 'name0', 'name1', 'value'])
-        If bql is not specified, then take data from here instead.
     **kwargs : dict
         Passed to zmatrix: vmin, vmax, row_ordering, col_ordering
 
@@ -134,22 +119,18 @@ def selected_heatmaps(bdb, selectors, bql=None, df=None, **kwargs):
     caller keep a dict of these functions to names to help identify each one.
     """
     # Cannot specify neither or both.
-    assert bql is not None or df is not None
-    assert bql is None or df is None
-    if bql is not None:
-        df = bqlu.cursor_to_df(bdb.execute(bql))
     df.fillna(0, inplace=True)
-    for n0selector in selectors:
+    for n0selector in selector_fns:
         n0selection = df.iloc[:, 1].map(n0selector)
-        for n1selector in selectors:
+        for n1selector in selector_fns:
             n1selection = df.iloc[:, 2].map(n1selector)
             this_block = df[n0selection & n1selection]
             if len(this_block) > 0:
                 yield (zmatrix(this_block, vmin=0, vmax=1, **kwargs),
                        n0selector, n1selector)
 
-def pairplot(bdb, bql, generator_name=None, show_contour=False, colorby=None,
-        show_missing=False, show_full=False):
+def pairplot(bdb, df, generator_name=None, show_contour=False, colorby=None,
+        show_missing=False, show_full=False, **kwargs):
     """Plot array of plots for all pairs of columns.
 
     Plots continuous-continuous pairs as scatter (optional KDE contour).
@@ -158,12 +139,9 @@ def pairplot(bdb, bql, generator_name=None, show_contour=False, colorby=None,
 
     Parameters
     ----------
-    bdb : bayeslite.BayesDB
-        Active BayesDB instance.
-    bql : str
-        The BQL to run and pairplot.
-    generator_name : str, optional
-        The name of generator; explicitly passing in provides optimizations.
+    bdb : __population_to_bdb__
+    df : __specifier_to_df__
+    generator_name : __generator_name__
     show_contour : bool, optional
         If True, KDE contours are plotted on top of scatter plots
         and histograms.
@@ -175,21 +153,22 @@ def pairplot(bdb, bql, generator_name=None, show_contour=False, colorby=None,
         plots.
     show_full : bool, optional
         Show full pairwise plots, rather than only lower triangular plots.
+    **kwargs : dict, optional
+        Options to pass through to underlying plotter for pairs.
 
     Returns
     -------
     figure : matplotlib.figure.Figure
     """
-    df = bqlu.cursor_to_df(bdb.execute(bql))
     figure = _pairplot(df, bdb=bdb, generator_name=generator_name,
         show_contour=show_contour, colorby=colorby, show_missing=show_missing,
-        show_full=show_full)
-    figure.tight_layout()
+        show_full=show_full, **kwargs)
+    padding = -0.4 * (df.shape[1] - 2)
+    figure.tight_layout(h_pad=padding, pad=padding)
     inches = len(df.columns) * 4
     figure.set_size_inches((inches, inches))
 
     return figure
-
 
 def histogram(bdb, df, nbins=15, bins=None, normed=None):
     """Plot histogram of one- or two-column table.
@@ -260,23 +239,20 @@ def histogram(bdb, df, nbins=15, bins=None, normed=None):
     ax.set_xlabel(df.columns[0])
     return figure
 
-def barplot(bdb, bql):
-    """Plot bar-plot of query giving categories and heights.
+def barplot(bdb, df):
+    """Make bar-plot from categories and their heights.
 
     First column specifies names; second column specifies heights.
 
     Parameters
     ----------
-    bdb : bayeslite.BayesDB
-        Active BayesDB instance.
-    bql : str
-        The BQL to run and histogram. Must have a two-column result.
+    bdb : __population_to_bdb__
+    df : __specifier_to_df__
 
     Returns
     ----------
     figure: matplotlib.figure.Figure
     """
-    df = bqlu.cursor_to_df(bdb.execute(bql))
     if df.shape[1] != 2:
         raise BLE(ValueError(
             'Need two columns of output from SELECT for barplot.'))
@@ -290,10 +266,8 @@ def barplot(bdb, bql):
     ax.set_xlim([-1, df.shape[0] - .5])
     ax.set_ylabel(df.columns[1])
     ax.set_xlabel(df.columns[0])
-    ax.set_title('\n    '.join(wrap(bql, 80)))
 
     return figure
-
 
 ###############################################################################
 ###                              INTERNAL                                   ###
@@ -399,9 +373,6 @@ def get_bayesdb_col_type(column_name, df_column, bdb=None,
             return coltype
         except IndexError:
             return guess_column_type(df_column)
-        except Exception as err:
-            print 'Unexpected exception: {}'.format(err)
-            raise err
     else:
         return guess_column_type(df_column)
 
@@ -706,6 +677,7 @@ def zmatrix(data_df, clustermap_kws=None, row_ordering=None,
     -------
     clustermap: seaborn.clustermap
     """
+    data_df.fillna(0, inplace=True)
     if clustermap_kws is None:
         half_root_col = (data_df.shape[0] ** .5) / 2.0
         clustermap_kws = {'linewidths': 0.2, 'vmin': vmin, 'vmax': vmax,
