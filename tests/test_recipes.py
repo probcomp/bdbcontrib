@@ -130,7 +130,7 @@ def test_quick_describe_columns_and_column_type(dts_df):
     for (column, expected_type) in expected.iteritems():
         stattype = resultdf[resultdf['name'] == column]['stattype'].iloc[0]
         assert re.match(expected_type, stattype), column
-        assert re.match(expected_type, dts.column_type(column))
+        assert re.match(expected_type, dts.vartype(column))
 
 def test_heatmap(dts_df):
     dts, _df = dts_df
@@ -144,22 +144,24 @@ def test_heatmap(dts_df):
     assert ('plot', 'foobar.png') == thecall[:2]
 
     dts.logger.calls = []
-    dts.heatmap(deps, plotfile='foobar.png',
-                selectors=
-                {'A-E': lambda x: bool(re.search(r'^[a-eA-E]', x[0])),
-                 'F-W': lambda x: bool(re.search(r'^[f-wF-W]', x[0])),
-                 'X-Z': lambda x: bool(re.search(r'^[x-zX-Z]', x[0]))})
+    ae = lambda x: bool(re.search(r'^[a-eA-E]', x[0]))
+    fw = lambda x: bool(re.search(r'^[f-wF-W]', x[0]))
+    xz = lambda x: bool(re.search(r'^[x-zX-Z]', x[0]))
+    selectors={ae: 'A-E', fw: 'F-W', xz: 'X-Z'}
+    plots = []
+    names = []
+    for (m, s1, s2) in dts.selected_heatmaps(deps, selector_fns=[ae, fw, xz]):
+        plots.append(m)
+        names.append((selectors[s1], selectors[s2]))
     # NOTE: columns are: 'floats_1', 'categorical_1', 'categorical_2',
     #     'few_ints_3', 'floats_3', 'many_ints_4', 'skewed_numeric_5',
     # So there are 2 in A-E, 5 in F-W, and 0 in X-Z.
     # So we should produce 3 plots: AE vs. AE, AE vs. FW, and FW vs. FW.
-    plots = [c for c in dts.logger.calls if c[0] == 'plot']
     assert 4 == len(plots)
-    names = [p[1] for p in plots]
-    assert 'A-E.A-E.foobar.png' in names
-    assert 'A-E.F-W.foobar.png' in names
-    assert 'F-W.A-E.foobar.png' in names
-    assert 'F-W.F-W.foobar.png' in names
+    assert ('A-E', 'A-E') in names
+    assert ('A-E', 'F-W') in names
+    assert ('F-W', 'A-E') in names
+    assert ('F-W', 'F-W') in names
 
 def test_explore_vars(dts_df):
     dts, _df = dts_df

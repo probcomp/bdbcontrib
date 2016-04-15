@@ -82,8 +82,8 @@ def mi_hist(bdb, generator_name, col1, col2, num_samples=1000, bins=5):
 
     return figure
 
-@population_method(population_to_bdb=0, specifier_to_df=1)
-def heatmap(bdb, deps, **kwargs):
+@population_method(population=0, population_to_bdb=1, specifier_to_df=2)
+def heatmap(self, bdb, deps, plotfile=None, **kwargs):
     '''Plot clustered heatmaps for the given dependencies.
 
     Parameters
@@ -99,8 +99,12 @@ def heatmap(bdb, deps, **kwargs):
 
     Returns a seaborn.clustermap (a kind of matplotlib.Figure)
     '''
-    return zmatrix(deps, vmin=0, vmax=1, **kwargs)
+    result = zmatrix(deps, vmin=0, vmax=1, **kwargs)
+    if plotfile:
+        self.logger.plot(plotfile, result)
+    return result
 
+@population_method(population_to_bdb=0, specifier_to_df=1)
 def selected_heatmaps(bdb, df, selector_fns, **kwargs):
     """Yield heatmaps of pairwise matrix, broken up according to selectors.
 
