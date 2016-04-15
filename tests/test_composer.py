@@ -22,6 +22,7 @@ from bayeslite.exception import BayesLiteException as BLE
 from bayeslite.sqlite3_util import sqlite3_quote_name as quote
 
 import bdbcontrib
+from bdbcontrib.bql_utils import describe_generator, describe_generator_models
 from bdbcontrib.metamodels.composer import Composer
 from bdbcontrib.predictors import random_forest
 from bdbcontrib.predictors import keplers_law
@@ -405,7 +406,7 @@ def test_composer_integration__ci_slow():
     bdb = bayeslite.bayesdb_open()
     bayeslite.bayesdb_read_csv_file(bdb, 'satellites', PATH_SATELLITES_CSV,
         header=True, create=True)
-    bdbcontrib.nullify(bdb, 'satellites', 'NaN')
+    bdbcontrib.bql_utils.nullify(bdb, 'satellites', 'NaN')
     # Composer.
     composer = Composer(n_samples=5)
     composer.register_foreign_predictor(
@@ -457,9 +458,9 @@ def test_composer_integration__ci_slow():
 
     bdb.execute('INITIALIZE 2 MODELS FOR t1')
     # Check number of models.
-    df = bdbcontrib.describe_generator_models(bdb, 't1')
+    df = describe_generator_models(bdb, 't1')
     assert len(df) == 2
-    df = bdbcontrib.describe_generator_models(bdb, 't1_cc')
+    df = describe_generator_models(bdb, 't1_cc')
     assert len(df) == 2
 
     # -------------------
@@ -468,11 +469,11 @@ def test_composer_integration__ci_slow():
 
     bdb.execute('ANALYZE t1 FOR 2 ITERATIONS WAIT;')
     # Check number of iterations of composer.
-    df = bdbcontrib.describe_generator_models(bdb, 't1')
+    df = describe_generator_models(bdb, 't1')
     for index, modelno, iterations in df.itertuples():
         assert iterations == 2
     # Check number of iterations of composer_cc.
-    df = bdbcontrib.describe_generator_models(bdb, 't1_cc')
+    df = describe_generator_models(bdb, 't1_cc')
     for index, modelno, iterations in df.itertuples():
         assert iterations == 2
 
