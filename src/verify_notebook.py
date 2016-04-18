@@ -88,6 +88,7 @@ def make_warning_tester(rxp, optional=False, **kwargs):
             return True
     assert optional or found, \
       "No matching warning: /%s/ in cell %s" % (rxp, dscr)
+    return True
   return assert_warns_tester
 
 def assert_warns(rxp, **kwargs):
