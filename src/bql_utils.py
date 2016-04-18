@@ -65,7 +65,7 @@ def cardinality(bdb, table, cols=None):
     return counts
 
 
-@population_method(population_to_bdb=0)
+@population_method(population_to_bdb=0, population_name=1)
 def nullify(bdb, table, value):
     """Replace specified values in a SQL table with ``NULL``.
 
