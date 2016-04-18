@@ -676,6 +676,7 @@ def zmatrix(data_df, clustermap_kws=None, row_ordering=None,
         image = sns.clustermap(data_df, **clustermap_kws)
         labels = image.ax_heatmap.get_yticklabels()
         image.ax_heatmap.set_yticklabels(labels, rotation='horizontal')
+        image.ax_heatmap.set_xticklabels(labels, rotation='vertical')
         return image
 
 
