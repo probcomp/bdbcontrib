@@ -38,7 +38,7 @@ def test_ma_schools():
       msglimit=msglimit,
       required=[('schools2.quick_explore_vars\(\[',
                  [vn.allow_warns('matplotlib.*backend')]),
-                ('ESTIMATE DEPENDENCE_PROBABILITY',
+                ('ESTIMATE DEPENDENCE PROBABILITY',
                  [vn.assert_has_png(), vn.allow_warns('FutureWarning')]),
                 ('schools0.quick_describe_columns()', [r'categorical']),
                 ('schools1.quick_describe_columns()', [r'categorical']),
