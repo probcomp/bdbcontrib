@@ -9,3 +9,4 @@ Internal BDB Contrib Components
     diagnostic
     shell
     crosscat
+    parallel

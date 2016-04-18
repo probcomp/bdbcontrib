@@ -726,7 +726,12 @@ def zmatrix(data_df, clustermap_kws=None, row_ordering=None,
         return (sns.heatmap(df, ax=ax, **clustermap_kws),
             row_ordering, col_ordering)
     else:
-        return sns.clustermap(data_df, **clustermap_kws)
+        image = sns.clustermap(data_df, **clustermap_kws)
+        ylabels = image.ax_heatmap.get_yticklabels()
+        xlabels = image.ax_heatmap.get_xticklabels()
+        image.ax_heatmap.set_yticklabels(ylabels, rotation='horizontal')
+        image.ax_heatmap.set_xticklabels(xlabels, rotation='vertical')
+        return image
 
 
 # TODO: bdb, and table_name should be optional arguments
