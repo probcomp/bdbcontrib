@@ -209,11 +209,13 @@ def histogram(bdb, df, nbins=15, bins=None, normed=None):
         raise BLE(TypeError(
             "Cannot histogram categorical varible %s. Barplot? Colorby?" %
             (df.columns[0],)))
-    a = min(df.ix[:, 0].values)
-    b = max(df.ix[:, 0].values)
-    support = b - a
-    interval = support/nbins
+    if nbins is None:
+        nbins = len(bins) if bins is not None else 15
     if bins is None:
+        a = min(df.ix[:, 0].values)
+        b = max(df.ix[:, 0].values)
+        support = b - a
+        interval = support / nbins
         bins = np.linspace(a, b+interval, nbins)
 
     colorby = None
