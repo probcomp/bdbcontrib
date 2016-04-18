@@ -27,6 +27,7 @@ import bayeslite.core
 from bayeslite.loggers import BqlLogger, logged_query
 from bayeslite.exception import BayesLiteException as BLE
 import bdbcontrib
+import bdbcontrib.plot_utils # To helpsub from it.
 from bdbcontrib.population import Population
 from bdbcontrib.population_method import population_method
 from py_utils import helpsub
