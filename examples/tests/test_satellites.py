@@ -28,7 +28,7 @@ from bdbcontrib.verify_notebook import assert_markdown_not as md_not
 from bdbcontrib.verify_notebook import assert_pyout_matches as py
 from bdbcontrib.verify_notebook import assert_pyout_not as py_not
 from bdbcontrib.verify_notebook import assert_has_png as has_png
-from bdbcontrib.verify_notebook import assert_raises, assert_warns
+from bdbcontrib.verify_notebook import assert_raises, assert_warns, allow_warns
 
 SATELLITES_DIR=os.path.join(os.path.dirname(os.path.dirname(__file__)),
                             "satellites")
@@ -73,7 +73,7 @@ EXPECTED = [
    [r'IBEX', r'NaN', r'14\.36', r'GEO', r'LEO', r'Elliptical']),
   (r'statistical graphics procedures', []),
   (r'import matplotlib', []),
-  (r'bdbcontrib.histogram', [has_png()]),
+  (r'satellites.histogram', [has_png()]),
 
   (r'Querying the implications', [md(r"what if", flags=re.I)]),
   (r'Consider the following', []),
@@ -92,7 +92,8 @@ EXPECTED = [
   (r'as the constraints for the hypothetical get narrower', []),
 
   (r'Exploring predictive relationships', []),
-  (r'heatmap.*ESTIMATE DEPENDENCE PROBABILITY', [has_png()]),
+  (r'heatmap.*ESTIMATE DEPENDENCE PROBABILITY',
+   [has_png(), allow_warns(r'FutureWarning')]),
   (r'high probability of mutual interdependence',
    [r'country of contractor', r"contractor's identity",
     r'location of the satellite']),
@@ -108,7 +109,8 @@ EXPECTED = [
   (r'SELECT \* FROM inferred_orbit',
    [r'inferred_orbit_type_conf',
     r'(?m)^29\s+(Sun-Synchronous|Intermediate|N/A)']),
-  (r'(?s)pairplot.*SELECT inferred_orbit_type', [has_png()]),
+  (r'(?s)pairplot.*SELECT inferred_orbit_type',
+   [has_png(), allow_warns(r'VisibleDeprecationWarning')]),
   (r'moderate to high confidence for the orbit type of `LEO`', []),
 
   (r'Identify anomalies', []),
