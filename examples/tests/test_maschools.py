@@ -48,4 +48,6 @@ def test_ma_schools():
                 # As set up, this should have "cannot convert" messages,
                 # Not once it's solved though.
                 ('df.applymap', [vn.assert_stream_matches('Cannot convert')]),
+                (r'schools2.quick_explore_vars',
+                 [vn.allow_warns('VisibleDeprecationWarning')])
                 ])
