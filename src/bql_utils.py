@@ -147,8 +147,8 @@ def df_to_table(df, tablename=None, **kwargs):
     bayesdb_read_pandas_df(bdb, tablename, df, create=True)
     return (bdb, tablename)
 
-@population_method(population_to_bdb=0, interpret_bql=1)
-def query(bdb, bql, bindings=None):
+@population_method(population_to_bdb=0, interpret_bql=1, logger="logger")
+def query(bdb, bql, bindings=None, logger=None):
     """Execute the `bql` query on the `bdb` instance.
 
     Parameters
@@ -164,6 +164,8 @@ def query(bdb, bql, bindings=None):
     """
     if bindings is None:
         bindings = ()
+    if logger:
+        logger.info("BQL [%s] %s", bql, bindings)
     cursor = bdb.execute(bql, bindings)
     return cursor_to_df(cursor)
 
