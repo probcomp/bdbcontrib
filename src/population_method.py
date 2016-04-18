@@ -337,11 +337,6 @@ def population_method(**argspec_transforms):
         except:
           self.logger.exception("")
           raise
-        from matplotlib import pyplot
-        if isinstance(result, pyplot.Figure):
-          self.logger.plot(result, kwargs.get('plotfile', None))
-        else:
-          self.logger.info(str(result))
         self.check_representation()
         return result
 
