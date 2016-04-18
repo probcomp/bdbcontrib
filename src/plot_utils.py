@@ -461,6 +461,8 @@ def do_hist(data_srs, **kwargs):
             for val, color in colors.iteritems():
                 subdf = data_srs.loc[data_srs.ix[:, 1] == val]
                 values = drop_inf_and_nan(subdf.ix[:, 0])
+                if len(values) == 1: # Then seaborn would break. :-p
+                    values = [values]
                 bins = seaborn_broken_bins(values)
                 sns.distplot(values, kde=do_kde, ax=ax, color=color, bins=bins)
         else:
