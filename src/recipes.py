@@ -34,9 +34,10 @@ from py_utils import helpsub
 
 BqlRecipes = Population
 
-@population_method(population=0)
+@population_method(population=0, logger='logger')
 @helpsub('bdbcontrib_pairplot', bdbcontrib.plot_utils.pairplot.__doc__)
-def pairplot_vars(self, vars, plotfile=None, colorby=None, **kwargs):
+def pairplot_vars(self, vars,
+                  plotfile=None, logger=None, colorby=None, **kwargs):
   """Wrap bdbcontrib.plot_utils.pairplot to show the given columns.
 
   Specifies bdb, query with the given columns, and generator_name:
@@ -52,8 +53,8 @@ def pairplot_vars(self, vars, plotfile=None, colorby=None, **kwargs):
     generator_name=self.generator_name,
     colorby=colorby,
     **kwargs)
-  if plotfile:
-    self.logger.plot(plotfile, result)
+  if logger:
+    logger.plot(plotfile if plotfile else ('pairplot'+ '_'.join(vars)), result)
   return result
 
 @population_method(population=0)
