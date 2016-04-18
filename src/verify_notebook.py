@@ -69,7 +69,7 @@ def assert_markdown_not(rxp, **kwargs):
     return True
   return assert_markdown_not_matches_tester
 
-def assert_warns(rxp, **kwargs):
+def make_warning_tester(rxp, optional=False, **kwargs):
   def assert_warns_tester(cell_i, cell, dscr):
     assert 'code' == cell['cell_type'], "Expected code cell: " + dscr
     assert 'outputs' in cell, dscr
@@ -86,8 +86,15 @@ def assert_warns(rxp, **kwargs):
             # Mark it so we don't die when checking for unchecked warnings:
             output['text'][msg_i] += ' __verify_notebook_warning_ok__'
             return True
-    assert found, "No matching warning: /%s/ in cell %s" % (rxp, dscr)
+    assert optional or found, \
+      "No matching warning: /%s/ in cell %s" % (rxp, dscr)
   return assert_warns_tester
+
+def assert_warns(rxp, **kwargs):
+  return make_warning_tester(rxp, optional=False, **kwargs)
+
+def allow_warns(rxp, **kwargs):
+  return make_warning_tester(rxp, optional=True, **kwargs)
 
 def assert_raises(rxp, **kwargs):
   def assert_raises_tester(cell_i, cell, dscr):
