@@ -37,9 +37,11 @@ def test_ma_schools():
       os.path.join(MASCHOOLS_DIR, "MASchoolDistricts"),
       msglimit=msglimit,
       required=[('schools2.quick_explore_vars\(\[',
-                 [vn.allow_warns('matplotlib.*backend')]),
+                 [vn.allow_warns('matplotlib.*backend'),
+                  vn.allow_warns('VisibleDeprecationWarning')]),
                 ('ESTIMATE DEPENDENCE PROBABILITY',
-                 [vn.assert_has_png(), vn.allow_warns('FutureWarning')]),
+                 [vn.assert_has_png(), vn.allow_warns('FutureWarning'),
+                  vn.allow_warns('VisibleDeprecationWarning')]),
                 ('schools0.quick_describe_columns()', [r'categorical']),
                 ('schools1.quick_describe_columns()', [r'categorical']),
                 # Once solved, this will not contain categorical, but as
