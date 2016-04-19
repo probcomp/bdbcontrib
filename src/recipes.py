@@ -38,16 +38,16 @@ BqlRecipes = Population
 def quick_explore_vars(self, varnames, plotfile=None, nsimilar=20):
   """Show dependence probabilities and neighborhoods based on those.
 
-  vars: list of strings
+  varnames: list of strings
       At least two column names to look at dependence probabilities of,
       and to explore neighborhoods of.
   nsimilar: positive integer
       The size of the neighborhood to explore.
   """
-  if len(vars) < 2:
+  if len(varnames) < 2:
     raise BLE(ValueError('Need to explore at least two variables.'))
-  self.pairplot_vars(vars)
-  query_columns = '''"%s"''' % '''", "'''.join(vars)
+  self.pairplot_vars(varnames)
+  query_columns = '''"%s"''' % '''", "'''.join(varnames)
   deps = self.query('''ESTIMATE DEPENDENCE PROBABILITY
                        FROM PAIRWISE COLUMNS OF %s
                        FOR %s;''' % (self.generator_name, query_columns))
@@ -59,7 +59,7 @@ def quick_explore_vars(self, varnames, plotfile=None, nsimilar=20):
   self.logger.result("Pairwise dependence probability for: %s\n%s\n\n",
                      query_columns, triangle)
 
-  for col in vars:
+  for col in varnames:
     neighborhood = self.query(
     '''ESTIMATE *, DEPENDENCE PROBABILITY WITH "%s"
        AS "Probability of Dependence with %s"
