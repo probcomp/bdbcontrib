@@ -182,12 +182,35 @@ def test_one_variable():
 
 def test_heatmap(dts_df):
     dts, _df = dts_df
-    plot = dts.heatmap('ESTIMATE DEPENDENCE PROBABILITY'
-                       ' FROM PAIRWISE COLUMNS OF %g'
-                       ' WHERE name0 LIKE "categorical%"')
+    tiny_plot = dts.heatmap('ESTIMATE DEPENDENCE PROBABILITY'
+                            ' FROM PAIRWISE COLUMNS OF %g'
+                            ' WHERE name0 LIKE "categorical%"')
     f = BytesIO()
-    plot.savefig(f)
+    tiny_plot.savefig(f)
     assert has_nontrivial_contents_over_white_background(flush(f))
+    tiny_rows = tuple(tiny_plot.dendrogram_row.reordered_ind)
+    tiny_cols = tuple(tiny_plot.dendrogram_col.reordered_ind)
+    plt.figure(1)
+
+    plot = dts.heatmap('ESTIMATE DEPENDENCE PROBABILITY'
+                       ' FROM PAIRWISE COLUMNS OF %g')
+    rows = plot.dendrogram_row.reordered_ind
+    cols = plot.dendrogram_col.reordered_ind
+    assert len(tiny_rows) < len(rows)
+    assert len(tiny_cols) == len(cols) # Note: only restricted name0
+    assert sorted(rows) != rows
+    assert sorted(cols) != cols
+
+    (sorted_plot, srows, scols) = dts.heatmap('ESTIMATE DEPENDENCE PROBABILITY'
+        ' FROM PAIRWISE COLUMNS OF %g',
+        row_ordering=sorted(plot.dendrogram_row.reordered_ind),
+        col_ordering=sorted(plot.dendrogram_col.reordered_ind))
+
+    assert rows != srows
+    assert cols != scols
+    assert sorted(rows) == srows
+    assert sorted(cols) == scols
+
 
 def test_histogram():
     categoricals = set(['categorical_1', 'categorical_2', 'few_ints_3'])
