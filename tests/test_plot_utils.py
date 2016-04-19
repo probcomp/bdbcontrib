@@ -180,32 +180,6 @@ def test_one_variable():
       do((df, bdb), f, colorby='categorical_2', show_contour=True)
       assert has_nontrivial_contents_over_white_background(flush(f))
 
-def test_selected_heatmaps():
-    (unused_df, bdb) = prepare()
-    s_ae = lambda x: bool(re.search(r'^[a-eA-E]', x[0]))
-    s_fw = lambda x: bool(re.search(r'^[f-wF-W]', x[0]))
-    s_xz = lambda x: bool(re.search(r'^[x-zX-Z]', x[0]))
-    sels = [s_ae, s_fw, s_xz]
-    deps = pd.DataFrame([[0, 'a', 'a', 1],
-                         [0, 'a', 'b', 1],
-                         [0, 'a', 'f', 1],
-                         [0, 'b', 'a', 1],
-                         [0, 'b', 'b', 1],
-                         [0, 'b', 'f', 1],
-                         [0, 'f', 'a', 1],
-                         [0, 'f', 'b', 1],
-                         [0, 'f', 'f', 1]])
-    seen = []
-    with mock.patch('bdbcontrib.plot_utils.zmatrix', return_value=42):
-        for (plot, s0, s1) in bdbcontrib.plot_utils.selected_heatmaps(
-                bdb, selector_fns=sels, df=deps):
-            assert 42 == plot
-            seen.append((s0, s1))
-    assert 4 == len(seen)
-    assert (s_ae, s_ae) in seen
-    assert (s_ae, s_fw) in seen
-    assert (s_fw, s_ae) in seen
-    assert (s_fw, s_fw) in seen
 
 def test_histogram():
     categoricals = set(['categorical_1', 'categorical_2', 'few_ints_3'])
@@ -240,7 +214,6 @@ def test_histogram():
                 f = BytesIO()
                 run_histogram(bdb, df[[datacol, colorby]], f)
                 assert has_nontrivial_contents_over_white_background(flush(f))
-
 
 def get_plot_text(obj):
     texts = []
