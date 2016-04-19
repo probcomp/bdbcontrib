@@ -14,25 +14,21 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
-from collections import defaultdict
-import matplotlib.pyplot as plt
+# pylint: disable=no-member
+
+# These methods are for analyses that involve some amount of
+# data-analytical judgment encoded in the procedure and defaults, so
+# they are not intended as primitives, but as suggested
+# starting-points for a user's more meaningful analysis.
+
 import re
-import os
-import pandas as pd
-import sys
-import traceback
 
 import bayeslite
-import bayeslite.core
-from bayeslite.loggers import BqlLogger, logged_query
 from bayeslite.exception import BayesLiteException as BLE
 import bdbcontrib
-import bdbcontrib.plot_utils # To helpsub from it.
 from bdbcontrib.population import Population
 from bdbcontrib.population_method import population_method
 from py_utils import helpsub
-
-BqlRecipes = Population
 
 @population_method(population=0)
 def quick_explore_vars(self, varnames, plotfile=None, nsimilar=20):
@@ -113,5 +109,3 @@ def quick_similar_rows(self, identify_row_by, nsimilar=10):
     result = self.query('''SELECT * FROM %s ORDER BY %s DESC;''' %
                         (table_name, column_name))
   return result
-
-quickstart = bdbcontrib.quickstart
