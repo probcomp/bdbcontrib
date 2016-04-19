@@ -13,23 +13,30 @@
 #   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
+import sys
 
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
+from io import BytesIO
 import mock
+import multiprocessing
 import numpy as np
 import re
 import os
 import pandas as pd
 import pytest
-from io import BytesIO
+import random
+import shutil
+from string import ascii_lowercase  # pylint: disable=deprecated-module
+import tempfile
 
 import bayeslite
 import bdbcontrib
 
 from bayeslite.exception import BayesLiteException as BLE
+from bayeslite.loggers import CaptureLogger
 from bayeslite.read_csv import bayesdb_read_csv
 from bdbcontrib.bql_utils import cursor_to_df
 from bdbcontrib.plot_utils import _pairplot
@@ -62,6 +69,30 @@ def dataset(num_rows=400):
     csv_data = BytesIO()
     df.to_csv(csv_data, header=True, index_label='index')
     return (df, csv_data)
+
+def ensure_timeout(delay, target):
+    proc = multiprocessing.Process(target=target)
+    proc.start()
+    proc.join(delay)
+    assert not proc.is_alive()
+
+# Session scope (entire test run) rather than module scope (this test) because
+# it will be re-used by other test files testing other modules:
+@pytest.fixture(scope='session')
+def dts_df(request):
+    (df, csv_data) = dataset(40)
+    tempd = tempfile.mkdtemp(prefix="bdbcontrib-test-recipes")
+    request.addfinalizer(lambda: shutil.rmtree(tempd))
+    csv_path = os.path.join(tempd, "data.csv")
+    with open(csv_path, "w") as csv_f:
+        csv_f.write(csv_data.getvalue())
+    bdb_path = os.path.join(tempd, "data.bdb")
+    name = ''.join(random.choice(ascii_lowercase) for _ in range(32))
+    dts = bdbcontrib.quickstart(name=name, csv_path=csv_path, bdb_path=bdb_path,
+        logger=CaptureLogger(verbose=pytest.config.option.verbose),
+        session_capture_name="test_recipes.py")
+    ensure_timeout(10, lambda: dts.analyze(models=10, iterations=20))
+    return dts, df
 
 def prepare():
     (df, csv_str) = dataset()
