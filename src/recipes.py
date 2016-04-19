@@ -48,7 +48,8 @@ def quick_explore_vars(self, varnames, plotfile=None, nsimilar=20):
                        FROM PAIRWISE COLUMNS OF %s
                        FOR %s;''' % (self.generator_name, query_columns))
   deps.columns = ['genid', 'name0', 'name1', 'value']
-  self.logger.plot(plotfile, self.heatmap(deps))
+  if plotfile:
+    self.logger.plot(plotfile + '-deps', self.heatmap(deps))
   deps.columns = ['genid', 'name0', 'name1', 'value']
   triangle = deps[deps['name0'] < deps['name1']]
   triangle = triangle.sort_values(ascending=False, by=['value'])
@@ -69,7 +70,8 @@ def quick_explore_vars(self, varnames, plotfile=None, nsimilar=20):
         FROM PAIRWISE COLUMNS OF %s
         FOR %s;''' % (self.generator_name, neighbor_columns))
     deps.columns = ['genid', 'name0', 'name1', 'value']
-    self.logger.plot(plotfile, self.heatmap(deps))
+    if plotfile:
+      self.logger.plot(plotfile +"-"+ col , self.heatmap(deps))
     self.logger.result("Pairwise dependence probability of %s with its " +
                        "strongest dependents:\n%s\n\n", col, neighborhood)
 
