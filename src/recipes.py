@@ -34,31 +34,8 @@ from py_utils import helpsub
 
 BqlRecipes = Population
 
-@population_method(population=0, logger='logger')
-@helpsub('bdbcontrib_pairplot', bdbcontrib.plot_utils.pairplot.__doc__)
-def pairplot_vars(self, vars,
-                  plotfile=None, logger=None, colorby=None, **kwargs):
-  """Wrap bdbcontrib.plot_utils.pairplot to show the given columns.
-
-  Specifies bdb, query with the given columns, and generator_name:
-  bdbcontrib_pairplot
-  """
-  if len(vars) < 1:
-    raise BLE(ValueError('Pairplot at least one variable.'))
-  qvars = vars if colorby is None else set(vars + [colorby])
-  query_columns = '''"%s"''' % '''", "'''.join(qvars)
-  result = bdbcontrib.pairplot(
-    self.bdb,
-    self.q('''SELECT %s FROM %s''' % (query_columns, self.name)),
-    generator_name=self.generator_name,
-    colorby=colorby,
-    **kwargs)
-  if logger:
-    logger.plot(plotfile if plotfile else ('pairplot'+ '_'.join(vars)), result)
-  return result
-
 @population_method(population=0)
-def quick_explore_vars(self, vars, plotfile=None, nsimilar=20):
+def quick_explore_vars(self, varnames, plotfile=None, nsimilar=20):
   """Show dependence probabilities and neighborhoods based on those.
 
   vars: list of strings
