@@ -14,15 +14,18 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
-import bayeslite
-from bayeslite.exception import BayesLiteException as BLE
-import random
-import test_utils
-import tempfile
+from apsw import SQLError
+import os
 from pandas.util.testing import assert_frame_equal
 import pytest
-from bdbcontrib import cursor_to_df, parallel
-from apsw import SQLError
+import random
+import tempfile
+import test_utils
+
+import bayeslite
+from bayeslite.exception import BayesLiteException as BLE
+from bdbcontrib import parallel
+from bdbcontrib.bql_utils import cursor_to_df
 
 
 def test_estimate_pairwise_similarity():
