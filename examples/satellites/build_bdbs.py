@@ -61,6 +61,8 @@ import time
 import bayeslite
 import bayeslite.metamodels.crosscat
 import bdbcontrib
+import bdbcontrib.crosscat_utils
+import bdbcontrib.bql_utils
 import crosscat
 import crosscat.MultiprocessingEngine as ccme
 from bdbcontrib.experiments.probe import log
