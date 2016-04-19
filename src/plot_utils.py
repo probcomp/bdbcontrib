@@ -144,6 +144,31 @@ def pairplot(bdb, df, generator_name=None, show_contour=False, colorby=None,
 
     return figure
 
+@population_method(population_to_bdb=0, generator_name='generator_name',
+                   population_name='population_name')
+def pairplot_vars(bdb, varnames, colorby=None, generator_name=None,
+                  population_name=None, **kwargs):
+  """Use pairplot to show the given variables.
+
+  bdb: __population_to_bdb__
+  varnames: list of one or more variables to plot.
+  generator_name: __generator_name__
+  population_name: __population_name__
+  colorby: categorical variable to color all of the plots by.
+
+  See help(pairplot) for other plot options.
+
+  Returns a matplotlib.Figure
+  """
+  if len(varnames) < 1:
+    raise BLE(ValueError('Pairplot at least one variable.'))
+  qvars = varnames if colorby is None else set(varnames + [colorby])
+  query_columns = '''"%s"''' % '''", "'''.join(qvars)
+  bql = '''SELECT %s FROM %s''' % (query_columns, population_name)
+  df = bqlu.query(bdb, bql)
+  return pairplot(bdb, df, generator_name=generator_name,
+      colorby=colorby, **kwargs)
+
 @population_method(population_to_bdb=0, specifier_to_df=1)
 def histogram(bdb, df, nbins=15, bins=None, normed=None):
     """Plot histogram of one- or two-column table.
