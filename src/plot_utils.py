@@ -101,38 +101,6 @@ def heatmap(self, bdb, deps, **kwargs):
     '''
     return zmatrix(deps, vmin=0, vmax=1, **kwargs)
 
-@population_method(population_to_bdb=0, specifier_to_df=1)
-def selected_heatmaps(bdb, df, selector_fns, **kwargs):
-    """Yield heatmaps of pairwise matrix, broken up according to selectors.
-
-    Parameters
-    ----------
-    bdb: a bayeslite.BayesDB instance
-    df: the result of a PAIRWISE query.
-    selectors : [lambda name --> bool]
-        Rather than plot the full NxN matrix all together, make separate plots
-        for each combination of these selectors, plotting them in sequence.
-        If selectors are specified, yields clustermaps, which caller is
-        responsible for showing or saving, and then closing.
-    **kwargs : dict
-        Passed to zmatrix: vmin, vmax, row_ordering, col_ordering
-
-    Yields
-    ------
-    The triple (clustermap, selector1, selector2).  It is recommended that
-    caller keep a dict of these functions to names to help identify each one.
-    """
-    # Cannot specify neither or both.
-    df.fillna(0, inplace=True)
-    for n0selector in selector_fns:
-        n0selection = df.iloc[:, 1].map(n0selector)
-        for n1selector in selector_fns:
-            n1selection = df.iloc[:, 2].map(n1selector)
-            this_block = df[n0selection & n1selection]
-            if len(this_block) > 0:
-                yield (zmatrix(this_block, vmin=0, vmax=1, **kwargs),
-                       n0selector, n1selector)
-
 @population_method(population_to_bdb=0, specifier_to_df=1,
                    generator_name='generator_name')
 def pairplot(bdb, df, generator_name=None, show_contour=False, colorby=None,
