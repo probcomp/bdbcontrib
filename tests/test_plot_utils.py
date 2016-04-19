@@ -180,6 +180,14 @@ def test_one_variable():
       do((df, bdb), f, colorby='categorical_2', show_contour=True)
       assert has_nontrivial_contents_over_white_background(flush(f))
 
+def test_heatmap(dts_df):
+    dts, _df = dts_df
+    plot = dts.heatmap('ESTIMATE DEPENDENCE PROBABILITY'
+                       ' FROM PAIRWISE COLUMNS OF %g'
+                       ' WHERE name0 LIKE "categorical%"')
+    f = BytesIO()
+    plot.savefig(f)
+    assert has_nontrivial_contents_over_white_background(flush(f))
 
 def test_histogram():
     categoricals = set(['categorical_1', 'categorical_2', 'few_ints_3'])
