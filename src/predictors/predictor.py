@@ -72,7 +72,7 @@ class IBayesDBForeignPredictorFactory(object):
         See Also
         --------
 
-        :func:`bdbcontrib.table_to_df`
+        :func:`bdbcontrib.bql_utils.table_to_df`
             a helper function you can use if you want to train from a
             Pandas DataFrame rather than interacting directly with the
             database.

@@ -150,15 +150,19 @@ def pairplot_vars(bdb, varnames, colorby=None, generator_name=None,
                   population_name=None, **kwargs):
   """Use pairplot to show the given variables.
 
+  See help(pairplot) for more plot options.
+
+  Parameters
+  ----------
   bdb: __population_to_bdb__
   varnames: list of one or more variables to plot.
   generator_name: __generator_name__
   population_name: __population_name__
   colorby: categorical variable to color all of the plots by.
 
-  See help(pairplot) for other plot options.
-
-  Returns a matplotlib.Figure
+  Returns
+  -------
+  figure: a matplotlib.figure.Figure
   """
   if len(varnames) < 1:
     raise BLE(ValueError('Pairplot at least one variable.'))
