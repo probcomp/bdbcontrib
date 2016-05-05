@@ -20,6 +20,7 @@
 
 from collections import namedtuple
 import inspect
+import pydoc
 import re
 import types
 
@@ -113,6 +114,31 @@ def fill_documentation(docstr, fillers):
     else:
       docstr = re.sub(key, explanation, docstr)
   return docstr
+
+def redocument(fn, xfrms, fillers):
+  title = 'wrapped as population.' + fn.__name__
+  args, varargs, varkw, defaults = inspect.getargspec(fn)
+  argspec = inspect.formatargspec(
+      xfrms['required_names'] + xfrms['optional_names'],
+      xfrms['varargs'], xfrms['varkw'], defaults,
+      formatvalue=lambda x: '=' + repr(x))
+  note = fill_documentation(fn.__doc__, fillers)
+  first_nonempty_paragraph = []
+  if note is None:
+    note = ""
+  else:
+    first_nonempty_paragraph.append("")  # So join adds prior line break.
+    lines = re.split(r'\n', note)
+    for line in lines:
+      line = line.strip()
+      if line == "" and first_nonempty_paragraph[-1]:
+        break
+      if line != "":
+        first_nonempty_paragraph.append(line)
+    note = '\n\n' + note
+  doc = title + argspec + note
+  shortdoc = xfrms['name'] + argspec + "\n    ".join(first_nonempty_paragraph)
+  return (doc, shortdoc)
 
 def compile_argspec_transforms(fn, argspecs):
   '''Create a data structure to pass to apply_argspec_transforms.
@@ -340,8 +366,10 @@ def population_method(**argspec_transforms):
         self.check_representation()
         return result
 
-    as_population_method.__doc__ = fill_documentation(
-      fn.__doc__, METHOD_DOC_FILLERS)
+    (doc, shortdoc) = redocument(fn, xfrms, METHOD_DOC_FILLERS)
+    as_population_method.__doc__ = doc
+    Population.shortdocs.append(shortdoc)
+    as_population_method.__name__ = xfrms['name']
     setattr(Population, fn.__code__.co_name, as_population_method)
 
     fn.__doc__ = fill_documentation(fn.__doc__, DECORATED_DOC_FILLERS)

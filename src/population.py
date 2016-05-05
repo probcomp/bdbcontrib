@@ -32,9 +32,14 @@ from py_utils import helpsub
 class Population(object):
   """Generative Population Model, wraps a BayesDB, and tracks one population."""
 
+  shortdocs = []
+
   @classmethod
   def method_imports(cls):
     """Runs decorators that add methods to Population."""
+    # Set up a place for methods to deposit their short documentations for help:
+    cls.shortdocs = []
+
     # These are here rather than in, say __init__.py so doing import bdbcontrib
     # just to get its __version__ for example doesn't need to run all that code.
     # __init__.py does import population (this file) for quickstart's __doc__
@@ -287,3 +292,12 @@ class Population(object):
       return spec
     else:
       return self.query(spec)
+
+  def help(self, filter=None):
+    response = self.shortdocs
+    if filter is not None:
+      if hasattr(filter, '__call__'):
+        response = response.filter(filter)
+      else:
+        response = [r for r in response if re.search(filter, r)]
+    print '\n'.join(response)
