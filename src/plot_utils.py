@@ -104,7 +104,7 @@ def heatmap(self, bdb, deps, **kwargs):
 @population_method(population_to_bdb=0, specifier_to_df=1,
                    generator_name='generator_name')
 def pairplot(bdb, df, generator_name=None, show_contour=False, colorby=None,
-        show_missing=False, show_full=False, **kwargs):
+        show_missing=False, show_full=False, pad=None, h_pad=None, **kwargs):
     """Plot array of plots for all pairs of columns.
 
     Plots continuous-continuous pairs as scatter (optional KDE contour).
@@ -127,6 +127,10 @@ def pairplot(bdb, df, generator_name=None, show_contour=False, colorby=None,
         plots.
     show_full : bool, optional
         Show full pairwise plots, rather than only lower triangular plots.
+    pad : number, optional
+        Adjust the vertical padding between plot components.
+    h_pad : number, optional
+        Adjust the horizontal padding between plot components.
     **kwargs : dict, optional
         Options to pass through to underlying plotter for pairs.
 
@@ -137,8 +141,13 @@ def pairplot(bdb, df, generator_name=None, show_contour=False, colorby=None,
     figure = _pairplot(df, bdb=bdb, generator_name=generator_name,
         show_contour=show_contour, colorby=colorby, show_missing=show_missing,
         show_full=show_full, **kwargs)
-    padding = -0.4 * (df.shape[1] - 2)
-    figure.tight_layout(h_pad=padding, pad=padding)
+    if pad is not None or h_pad is not None:
+      default_padding = -0.4 * (df.shape[1] - 2)
+      if pad is None:
+        pad = default_padding
+      if h_pad is None:
+        h_pad = default_padding
+      figure.tight_layout(h_pad=h_pad, pad=pad)
     inches = len(df.columns) * 4
     figure.set_size_inches((inches, inches))
 
