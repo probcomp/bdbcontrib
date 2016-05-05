@@ -45,4 +45,5 @@ class IpyLogger(BqlLogger):
 IPYTHON_LOGGER = IpyLogger()
 def bayeslite_aware_render_traceback(self):
   IPYTHON_LOGGER.exception("")
+  return []
 BayesLiteException._render_traceback_ = bayeslite_aware_render_traceback
