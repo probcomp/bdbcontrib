@@ -446,6 +446,7 @@ def do_hist(data_srs, **kwargs):
     ax = kwargs.get('ax', None)
     bdb = kwargs.get('bdb', None)
     dtype = kwargs.get('dtype', None)
+    show_contour = kwargs.get('show_contour', None)
     generator_name = kwargs.get('generator_name', None)
     colors = kwargs.get('colors', None)
 
@@ -480,7 +481,7 @@ def do_hist(data_srs, **kwargs):
         ax.set_xticks(range(len(uvals)))
         ax.set_xticklabels(uvals)
     else:
-        do_kde = True
+        do_kde = show_contour
         if colors is not None:
             for val, color in colors.iteritems():
                 subdf = data_srs.loc[data_srs.ix[:, 1] == val]
@@ -526,7 +527,10 @@ def do_heatmap(plot_df, unused_vartypes, **kwargs):
 def do_violinplot(plot_df, vartypes, **kwargs):
     ax = kwargs.get('ax', None)
     colors = kwargs.get('colors', None)
-    for handled in ('ax', 'colors'):
+    cut=1
+    if kwargs.get('show_contour', None) == False:
+        cut=0
+    for handled in ('ax', 'show_contour', 'colors'):
         if handled in kwargs:
             del kwargs[handled]
 
@@ -555,7 +559,7 @@ def do_violinplot(plot_df, vartypes, **kwargs):
             data=plot_df,
             order=sub_vals, hue=plot_df.columns[2],
             names=sub_vals, ax=ax, orient=("v" if vert else "h"),
-            palette=colors, inner='quartile', **kwargs)
+            palette=colors, inner='quartile', cut=cut, **kwargs)
         axis.legend_ = None
     else:
         sns.violinplot(
@@ -564,7 +568,7 @@ def do_violinplot(plot_df, vartypes, **kwargs):
             data=plot_df,
             order=unique_vals, names=unique_vals, ax=ax,
             orient=("v" if vert else "h"),
-            color='SteelBlue', inner='quartile', **kwargs)
+            color='SteelBlue', inner='quartile', cut=cut, **kwargs)
 
     if vert:
         ax.set_xlim([-.5, n_vals-.5])
@@ -592,7 +596,7 @@ def do_kdeplot(plot_df, unused_vartypes, bdb=None, generator_name=None,
     show_contour = kwargs.get('show_contour', False)
     colors = kwargs.get('colors', None)
     show_missing = kwargs.get('show_missing', False)
-    for handled in ('ax', 'show_contour', 'colors', 'show_missing'):
+    for handled in ('ax', 'colors', 'show_contour', 'show_missing'):
         if handled in kwargs:
             del kwargs[handled]
 
@@ -639,7 +643,7 @@ def do_kdeplot(plot_df, unused_vartypes, bdb=None, generator_name=None,
 
     if show_contour:
         try:
-            sns.kdeplot(df.ix[:, :2].values, ax=ax)
+            sns.kdeplot(df.ix[:, :2].values, ax=ax, **kwargs)
         except ValueError:
             # Displaying a plot without a requested contour is better
             # than crashing.
@@ -751,21 +755,19 @@ def zmatrix(data_df, clustermap_kws=None, row_ordering=None,
         del clustermap_kws['pivot_kws']
         del clustermap_kws['figsize']
         _fig, ax = plt.subplots()
-        return (sns.heatmap(df, ax=ax, **clustermap_kws),
-            row_ordering, col_ordering)
+        hmap = sns.heatmap(df, ax=ax, **clustermap_kws)
+        rotate_tick_labels(hmap.ax_heatmap)
+        return (hmap, row_ordering, col_ordering)
     else:
-        image = sns.clustermap(data_df, **clustermap_kws)
-        ylabels = image.ax_heatmap.get_yticklabels()
-        xlabels = image.ax_heatmap.get_xticklabels()
-        image.ax_heatmap.set_yticklabels(ylabels, rotation='horizontal')
-        image.ax_heatmap.set_xticklabels(xlabels, rotation='vertical')
-        return image
+        hmap = sns.clustermap(data_df, **clustermap_kws)
+        rotate_tick_labels(hmap)
+        return hmap
 
 
 # TODO: bdb, and table_name should be optional arguments
 def _pairplot(df, bdb=None, generator_name=None,
         show_contour=False, colorby=None, show_missing=False, show_full=False,
-        **kwargs):
+        show_diagonal=True, **kwargs):
     """Plots the columns in data_df in a facet grid.
 
     Supports the following pairs:
@@ -883,7 +885,8 @@ def _pairplot(df, bdb=None, generator_name=None,
                 if colorby is not None:
                     varnames.append(colorby)
                 ax = do_hist(data_df[varnames], dtype=var_x_type, ax=ax,
-                    bdb=bdb, generator_name=generator_name, colors=colors)
+                    bdb=bdb, generator_name=generator_name, colors=colors,
+                    show_contour=show_contour)
             else:
                 varnames = [var_name_x, var_name_y]
                 vartypes_pair = (var_x_type, var_y_type,)
