@@ -1026,7 +1026,8 @@ def comparative_hist(df, bdb=None, nbins=15, normed=False):
         for color, cbv in zip(colors, colorby_vals):
             subdf = df[df[colorby] == cbv]
             ax.hist(subdf.ix[:, 0].values, bins=bins, color=color, alpha=.5,
-                edgecolor='none', normed=normed, label=str(cbv))
+                edgecolor='none', normed=normed,
+                label=("%s (n=%d)" % (str(cbv), len(subdf))))
         ax.legend(loc=0, title=colorby)
         plot_title = df.columns[0] + " by " + colorby
 
