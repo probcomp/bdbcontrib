@@ -180,7 +180,48 @@ def test_one_variable():
       do((df, bdb), f, colorby='categorical_2', show_contour=True)
       assert has_nontrivial_contents_over_white_background(flush(f))
 
-def test_heatmap(dts_df):
+def test_complete_the_square():
+    df = pd.DataFrame([['arb', 'arb', 1],
+                       ['arb', 'bar', 0],
+                       ['arb', 'caz', .2],
+#                       ['bar', 'arb', 0],   # Missing.
+                       ['bar', 'bar', 1],
+                       ['bar', 'caz', .5],
+                       ['bar', 'caz', 10000],    # Duplicate, diff value.
+                       ['caz', 'arb', .2],
+                       ['caz', 'bar', .5],
+                       ['caz', 'caz', 1]])
+    df.columns = ['i', 'c', 'v']
+    xp = pd.DataFrame([['arb', 'arb', 1],
+                       ['arb', 'bar', 0],
+                       ['arb', 'caz', .2],
+                       ['bar', 'arb', 0],    # Missing filled.
+                       ['bar', 'bar', 1],
+                       ['bar', 'caz', .5],   # Chose first one.
+                       ['caz', 'arb', .2],
+                       ['caz', 'bar', .5],
+                       ['caz', 'caz', 1]])
+    xp.columns = ['i', 'c', 'v']
+
+    ob = bdbcontrib.plot_utils.ensure_full_square(
+        df, pivot_kws={'index': df.columns[0],
+                       'columns': df.columns[1],
+                       'values': df.columns[2]})
+    assert str(xp) == str(ob)
+
+def test_select_heatmap(dts_df):
+    dts, _df = dts_df
+    plot = dts.heatmap('''SELECT categorical_1, categorical_2,
+                          COUNT(categorical_2) AS cat2_count
+                          FROM %t
+                          GROUP BY categorical_2
+                          HAVING COUNT(categorical_2) >= 1;''')
+    f = BytesIO()
+    plot.savefig(f)
+    assert has_nontrivial_contents_over_white_background(flush(f))
+
+
+def test_depprob_heatmap(dts_df):
     dts, _df = dts_df
     tiny_plot = dts.heatmap('ESTIMATE DEPENDENCE PROBABILITY'
                             ' FROM PAIRWISE COLUMNS OF %g'

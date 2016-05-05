@@ -695,6 +695,40 @@ def do_pair_plot(plot_df, vartypes, **kwargs):
     ax = DO_PLOT_FUNC[vartypes](plot_df, vartypes, **kwargs)
     return ax
 
+def ensure_full_square(data_df, pivot_kws):
+    """Ensure that all pairs are bidirectionally present in a pivot df.
+
+    data_df is expected to have an index column, a columns column, and a
+    data column, as specified by the pivot_kws (as they would be supplied
+    to seaborn.clustermap).
+
+    Creates a complete matrix where every value in index has an entry for
+    every value in columns, and vice versa, filling with zeros as needed.
+
+    Scipy has been known to segfault without this, or give a ValueError,
+    depending on the version.
+
+    Return: a new complete-square df with those three columns.
+    """
+    iname = pivot_kws['index']
+    cname = pivot_kws['columns']
+    vname = pivot_kws['values']
+
+    import sets
+    index_values = set(data_df[iname])
+    columns_values = set(data_df[cname])
+    new_df = pd.DataFrame()
+    if len(index_values) == 0 or len(columns_values) == 0:
+        return new_df
+    for ind in sorted(index_values):
+        for col in sorted(columns_values):
+            value = 0
+            found_rows = data_df[(data_df[iname]==ind) & (data_df[cname]==col)]
+            if len(found_rows) > 0:
+                value = found_rows[vname].iloc[0]
+            new_df = new_df.append([[ind, col, value]], ignore_index=True)
+    new_df.columns = [iname, cname, vname]
+    return new_df
 
 def zmatrix(data_df, clustermap_kws=None, row_ordering=None,
         col_ordering=None, vmin=None, vmax=None):
@@ -761,7 +795,8 @@ def zmatrix(data_df, clustermap_kws=None, row_ordering=None,
         rotate_tick_labels(ax)
         return (ax, row_ordering, col_ordering)
     else:
-        hmap = sns.clustermap(data_df, **clustermap_kws)
+        complete_df = ensure_full_square(data_df, clustermap_kws['pivot_kws'])
+        hmap = sns.clustermap(complete_df, **clustermap_kws)
         rotate_tick_labels(hmap.ax_heatmap)
         return hmap
 
