@@ -295,15 +295,36 @@ MODEL_TO_TYPE_LOOKUP = {
 }
 
 
-def rotate_tick_labels(ax, axis='x', rotation=90):
-    if axis.lower() == 'x':
-        _, labels = ax.get_xticks()
-    elif axis.lower() == 'y':
-        _, labels = ax.get_yticks()
-    else:
-        raise BLE(ValueError('axis must be x or y'))
-    plt.setp(labels, rotation=rotation)
+def rotate_tick_labels(ax, axis=None, rotation=None):
+    """Rotate tick labels on one axis if specified, or both otherwise.
 
+    axis : str 'x' or 'y' or None
+        If None, then both axes are rotated as requested.
+    rotation : number or 'horizontal', 'vertical', 'parallel', 'perpendicular'.
+        Angle or orientation to rotate to.
+
+    Returns: ax
+    """
+    if rotation is None:
+        rotation = 'perpendicular'
+    if axis:
+        labels = ax.get_xticklabels() if axis == 'x' else ax.get_yticklabels()
+        for tick in labels:
+            if rotation == 'by_length':
+                tick_rotation = 'horizontal'
+                if axis == 'x' and len(tick.get_text()) > 4:
+                    tick_rotation = 'vertical'
+            elif rotation == 'parallel':
+                tick_rotation = 'horizontal' if axis == 'x' else 'vertical'
+            elif rotation == 'perpendicular':
+                tick_rotation = 'vertical' if axis == 'x' else 'horizontal'
+            else:
+                tick_rotation = rotation
+            tick.set_rotation(tick_rotation)
+    else:
+        rotate_tick_labels(ax, 'x', rotation)
+        rotate_tick_labels(ax, 'y', rotation)
+    return ax
 
 def gen_collapsed_legend_from_dict(hl_colors_dict, loc=0, title=None,
         fontsize='medium', wrap_threshold=1000):
@@ -492,12 +513,13 @@ def do_heatmap(plot_df, unused_vartypes, **kwargs):
     hst, _, _ = np.histogram2d(vals_y, vals_x, bins=[bins_y, bins_x])
     cmap = 'PuBu'
     ax.matshow(hst, aspect='auto', origin='lower', cmap=cmap)
+    ax.xaxis.set_tick_params(labeltop='off', labelbottom='on') # RESETS LABELS!
     ax.grid(b=False)
     ax.set_xticks(range(bins_x))
     ax.set_yticks(range(bins_y))
     ax.set_xticklabels(uvals_x)
     ax.set_yticklabels(uvals_y)
-    ax.xaxis.set_tick_params(labeltop='off', labelbottom='on')
+    rotate_tick_labels(ax)
     return ax
 
 
@@ -831,8 +853,7 @@ def _pairplot(df, bdb=None, generator_name=None,
                                        generator_name=generator_name)
         do_hist(data_df, dtype=vartype, ax=ax, bdb=bdb,
             generator_name=generator_name, colors=colors)
-        if vartype == 'categorical':
-            pass  # rotate_tick_labels(ax)
+        rotate_tick_labels(ax)
         return
 
     xmins = np.ones((n_vars, n_vars))*float('Inf')
@@ -885,26 +906,37 @@ def _pairplot(df, bdb=None, generator_name=None,
     for x_pos in range(n_vars):
         for y_pos in range(n_vars):
             ax = axes[y_pos][x_pos]
+
+            # Self-histogram for x only, or comparative x against y:
             ax.set_xlim([np.min(xmins[:, x_pos]), np.max(xmaxs[:, x_pos])])
             if x_pos != y_pos:
                 ax.set_ylim([np.min(ymins[y_pos, :]), np.max(ymaxs[y_pos, :])])
+
+            # Y labels
             if x_pos > 0:
-                if x_pos == n_vars - 1:
+                if x_pos == n_vars - 1:  # All the way to the right:
                     ax.yaxis.tick_right()
                     ax.yaxis.set_label_position('right')
-                else:
+                else:  # No labels inside:
                     ax.set_ylabel('')
                     ax.set_yticklabels([])
+            else:
+                ax.yaxis.tick_left()
+                ax.yaxis.set_label_position('left')
+
+            # X labels:
             if y_pos < n_vars - 1:
-                if y_pos == 0:
+                if y_pos == 0:  # At top, show x labels on top:
                     ax.xaxis.tick_top()
                     ax.xaxis.set_label_position('top')
-                else:
+                else:  # No labels inside:
                     ax.set_xlabel('')
                     ax.set_xticklabels([])
             else:
-                if vartype[x_pos] == 'categorical':
-                    rotate_tick_labels(ax)
+                ax.xaxis.tick_bottom()
+                ax.xaxis.set_label_position('bottom')
+
+            rotate_tick_labels(ax)
 
     def fake_axis_ticks(ax_tl, ax_tn):
         atl, btl = ax_tl.get_ylim()
