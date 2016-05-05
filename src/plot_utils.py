@@ -769,7 +769,7 @@ def zmatrix(data_df, clustermap_kws=None, row_ordering=None,
 # TODO: bdb, and table_name should be optional arguments
 def _pairplot(df, bdb=None, generator_name=None,
         show_contour=False, colorby=None, show_missing=False, show_full=False,
-        show_diagonal=True, **kwargs):
+        **kwargs):
     """Plots the columns in data_df in a facet grid.
 
     Supports the following pairs:
