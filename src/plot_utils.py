@@ -99,7 +99,7 @@ def heatmap(self, bdb, deps, **kwargs):
 
     Returns a seaborn.clustermap (a kind of matplotlib.Figure)
     '''
-    return zmatrix(deps, vmin=0, vmax=1, **kwargs)
+    return zmatrix(deps, **kwargs)
 
 @population_method(population_to_bdb=0, specifier_to_df=1,
                    generator_name='generator_name')
@@ -730,40 +730,41 @@ def ensure_full_square(data_df, pivot_kws):
     new_df.columns = [iname, cname, vname]
     return new_df
 
-def zmatrix(data_df, clustermap_kws=None, row_ordering=None,
-        col_ordering=None, vmin=None, vmax=None):
+def zmatrix(data_df, row_ordering=None, col_ordering=None, **kwargs):
     """Plots a clustermap from an ESTIMATE PAIRWISE query.
 
     Parameters
     ----------
     data_df : pandas.DataFrame
         The result of a PAIRWISE query in pandas.DataFrame.
-    clustermap_kws : dict
-        kwargs for seaborn.clustermap. See seaborn documentation. Of particular
-        importance is the `pivot_kws` kwarg. `pivot_kws` is a dict with entries
-        index, column, and values that let clustermap know how to reshape the
-        data. If the query does not follow the standard ESTIMATE PAIRWISE
-        output, it may be necessary to define `pivot_kws`.
-        Other keywords here include vmin and vmax, linewidths, figsize, etc.
     row_ordering, col_ordering : list<int>
         Specify the order of labels on the x and y axis of the heatmap.
         To access the row and column indices from a clustermap object, use:
         clustermap.dendrogram_row.reordered_ind (for rows)
         clustermap.dendrogram_col.reordered_ind (for cols)
-    vmin, vmax : float
-        The minimum and maximum values of the colormap.
+    **kwargs :
+        to pass to seaborn.clustermap. See seaborn documentation. Of particular
+        importance is the `pivot_kws` kwarg. `pivot_kws` is a dict with entries
+        index, column, and values that let clustermap know how to reshape the
+        data. If the query does not follow the standard ESTIMATE PAIRWISE
+        output, it may be necessary to define `pivot_kws`.
+        Other keywords here include vmin and vmax, linewidths, figsize, etc.
 
     Returns
     -------
     clustermap: seaborn.clustermap
     """
+    clustermap_kws = {}
+    clustermap_kws.update(kwargs)
     data_df.fillna(0, inplace=True)
     if clustermap_kws is None:
+        clustermap_kws = {}
+    if 'figsize' not in clustermap_kws:
         half_root_col = (data_df.shape[0] ** .5) / 2.0
-        clustermap_kws = {'linewidths': 0.2, 'vmin': vmin, 'vmax': vmax,
-                          'figsize': (half_root_col, .8 * half_root_col)}
-
-    if clustermap_kws.get('pivot_kws', None) is None:
+        clustermap_kws['figsize'] = (half_root_col, .8 * half_root_col)
+    if 'linewidths' not in clustermap_kws:
+        clustermap_kws['linewidths'] = 0.2
+    if 'pivot_kws' not in clustermap_kws:
         # XXX: If the user doesnt tell us otherwise, we assume that this comes
         # fom a standard estimate pairwise query, which outputs columns
         # (table_id, col0, col1, value). The indices are indexed from the back
@@ -780,6 +781,11 @@ def zmatrix(data_df, clustermap_kws=None, row_ordering=None,
     if clustermap_kws.get('cmap', None) is None:
         # Choose a soothing blue colormap
         clustermap_kws['cmap'] = 'BuGn'
+    if 'vmin' not in clustermap_kws:
+        clustermap_kws['vmin'] =
+    if 'vmax' not in clustermap_kws:
+        clustermap_kws['vmax'] = 1
+
 
     if row_ordering is not None and col_ordering is not None:
         index = clustermap_kws['pivot_kws']['index']
