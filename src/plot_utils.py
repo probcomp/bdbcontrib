@@ -82,25 +82,6 @@ def mi_hist(bdb, generator_name, col1, col2, num_samples=1000, bins=5):
 
     return figure
 
-@population_method(population=0, population_to_bdb=1, specifier_to_df=2)
-def heatmap(self, bdb, deps, **kwargs):
-    '''Plot clustered heatmaps for the given dependencies.
-
-    Parameters
-    ----------
-    bdb : __population_to_bdb__
-    deps : __specifier_to_df__
-        Must have columns=['generator_id', 'name0', 'name1', 'value'],
-        I.e. the result of a BQL query of the form 'ESTIMATE ... PAIRWISE ...'.
-        E.g., DEPENDENCE PROBABILITY, MUTUAL INFORMATION, COVARIANCE, etc.
-
-    **kwargs : dict
-        Passed to zmatrix: vmin, vmax, row_ordering, col_ordering
-
-    Returns a seaborn.clustermap (a kind of matplotlib.Figure)
-    '''
-    return zmatrix(deps, **kwargs)
-
 @population_method(population_to_bdb=0, specifier_to_df=1,
                    generator_name='generator_name')
 def pairplot(bdb, df, generator_name=None, show_contour=False, colorby=None,
@@ -730,18 +711,32 @@ def ensure_full_square(data_df, pivot_kws):
     new_df.columns = [iname, cname, vname]
     return new_df
 
-def zmatrix(data_df, row_ordering=None, col_ordering=None, **kwargs):
-    """Plots a clustermap from an ESTIMATE PAIRWISE query.
+@population_method(specifier_to_df=0)
+def heatmap(data_df, row_ordering=None, col_ordering=None, **kwargs):
+    """Plot heatmaps, optionally clustered.
 
     Parameters
     ----------
-    data_df : pandas.DataFrame
-        The result of a PAIRWISE query in pandas.DataFrame.
+    deps : __specifier_to_df__
+        Must have two categorical columns and a numeric column.
+        The format is assumed to be that the numeric column of values is last,
+        and the two categorical columns are immediately before that.
+
+        The canonical example of that kind of data is the result of an
+        ESTIMATE ... PAIRWISE query, estimating dependence probability,
+        mutual information, correlation, etc.
+
+        If your columns are not at the end that way, then pass pivot_kws too.
+
     row_ordering, col_ordering : list<int>
         Specify the order of labels on the x and y axis of the heatmap.
+        If these are specified, we will not call try to cluster a different way,
+        and return a plain heatmap.
+
         To access the row and column indices from a clustermap object, use:
         clustermap.dendrogram_row.reordered_ind (for rows)
         clustermap.dendrogram_col.reordered_ind (for cols)
+
     **kwargs :
         to pass to seaborn.clustermap. See seaborn documentation. Of particular
         importance is the `pivot_kws` kwarg. `pivot_kws` is a dict with entries
@@ -765,8 +760,8 @@ def zmatrix(data_df, row_ordering=None, col_ordering=None, **kwargs):
     if 'linewidths' not in clustermap_kws:
         clustermap_kws['linewidths'] = 0.2
     if 'pivot_kws' not in clustermap_kws:
-        # XXX: If the user doesnt tell us otherwise, we assume that this comes
-        # fom a standard estimate pairwise query, which outputs columns
+        # XXX: If the user doesn't tell us otherwise, we assume that this comes
+        # from a standard estimate pairwise query, which outputs columns
         # (table_id, col0, col1, value). The indices are indexed from the back
         # because it will also handle the no-table_id case
         data_df.columns = [' '*i for i in range(1, len(data_df.columns))] + \
@@ -782,9 +777,11 @@ def zmatrix(data_df, row_ordering=None, col_ordering=None, **kwargs):
         # Choose a soothing blue colormap
         clustermap_kws['cmap'] = 'BuGn'
     if 'vmin' not in clustermap_kws:
-        clustermap_kws['vmin'] =
+        clustermap_kws['vmin'] = \
+            data_df[clustermap_kws['pivot_kws']['values']].min()
     if 'vmax' not in clustermap_kws:
-        clustermap_kws['vmax'] = 1
+        clustermap_kws['vmin'] = \
+            data_df[clustermap_kws['pivot_kws']['values']].max()
 
 
     if row_ordering is not None and col_ordering is not None:
