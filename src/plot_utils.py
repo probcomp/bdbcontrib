@@ -512,7 +512,7 @@ def do_heatmap(plot_df, unused_vartypes, **kwargs):
     bins_y = len(uvals_y)
 
     hst, _, _ = np.histogram2d(vals_y, vals_x, bins=[bins_y, bins_x])
-    cmap = 'PuBu'
+    cmap = 'BuGn'
     ax.matshow(hst, aspect='auto', origin='lower', cmap=cmap)
     ax.xaxis.set_tick_params(labeltop='off', labelbottom='on') # RESETS LABELS!
     ax.grid(b=False)
