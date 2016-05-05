@@ -757,12 +757,12 @@ def zmatrix(data_df, clustermap_kws=None, row_ordering=None,
         del clustermap_kws['pivot_kws']
         del clustermap_kws['figsize']
         _fig, ax = plt.subplots()
-        hmap = sns.heatmap(df, ax=ax, **clustermap_kws)
-        rotate_tick_labels(hmap.ax_heatmap)
-        return (hmap, row_ordering, col_ordering)
+        sns.heatmap(df, ax=ax, **clustermap_kws)
+        rotate_tick_labels(ax)
+        return (ax, row_ordering, col_ordering)
     else:
         hmap = sns.clustermap(data_df, **clustermap_kws)
-        rotate_tick_labels(hmap)
+        rotate_tick_labels(hmap.ax_heatmap)
         return hmap
 
 
