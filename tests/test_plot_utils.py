@@ -115,7 +115,7 @@ def prepare():
     df = cursor_to_df(cursor)
     return (df, bdb)
 
-def do(prepped, location, **kwargs):
+def run_pairplot(prepped, location, **kwargs):
     (df, bdb) = prepped
     plt.figure(tight_layout=True, facecolor='white')
     _pairplot(df, bdb=bdb, generator_name='plottest_cc',
@@ -153,13 +153,13 @@ def flush(f):
 def test_pairplot_smoke():
     ans = prepare()
     f = BytesIO()
-    do(ans, f, colorby='categorical_2', show_contour=False)
+    run_pairplot(ans, f, colorby='categorical_2', show_contour=False)
     assert has_nontrivial_contents_over_white_background(flush(f))
     f = BytesIO()
-    do(ans, f, colorby='categorical_2', show_contour=True)
+    run_pairplot(ans, f, colorby='categorical_2', show_contour=True)
     assert has_nontrivial_contents_over_white_background(flush(f))
     f = BytesIO()
-    do(ans, f, show_contour=False)
+    run_pairplot(ans, f, show_contour=False)
     assert has_nontrivial_contents_over_white_background(flush(f))
 
 def test_one_variable():
@@ -169,15 +169,15 @@ def test_one_variable():
       cursor = bdb.execute('SELECT %s FROM plottest' % (var,))
       df = cursor_to_df(cursor)
       f = BytesIO()
-      do((df, bdb), f, show_contour=False)
+      run_pairplot((df, bdb), f, show_contour=False)
       assert has_nontrivial_contents_over_white_background(flush(f))
       cursor = bdb.execute('SELECT %s, categorical_2 FROM plottest' % (var,))
       df = cursor_to_df(cursor)
       f = BytesIO()
-      do((df, bdb), f, colorby='categorical_2', show_contour=False)
+      run_pairplot((df, bdb), f, colorby='categorical_2', show_contour=False)
       assert has_nontrivial_contents_over_white_background(flush(f))
       f = BytesIO()
-      do((df, bdb), f, colorby='categorical_2', show_contour=True)
+      run_pairplot((df, bdb), f, colorby='categorical_2', show_contour=True)
       assert has_nontrivial_contents_over_white_background(flush(f))
 
 def test_complete_the_square():
@@ -319,9 +319,9 @@ def test_gen_collapsed_legend_from_dict():
 
 def main():
     ans = prepare()
-    do(ans, 'fig0.png', colorby='categorical_2', show_contour=False)
-    do(ans, 'fig1.png', colorby='categorical_2', show_contour=True)
-    do(ans, 'fig2.png', show_contour=False)
+    run_pairplot(ans, 'fig0.png', colorby='categorical_2', show_contour=False)
+    run_pairplot(ans, 'fig1.png', colorby='categorical_2', show_contour=True)
+    run_pairplot(ans, 'fig2.png', show_contour=False)
     print "Figures saved in 'fig0.png', 'fig1.png', 'fig2.png'"
     assert os.path.exists('fig0.png')
     assert os.path.exists('fig1.png')
