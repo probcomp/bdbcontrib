@@ -19,21 +19,15 @@ import os
 import pytest
 from bdbcontrib import verify_notebook as vn
 
+from util import session
+
 MASCHOOLS_DIR=os.path.join(os.path.dirname(os.path.dirname(__file__)),
                            "ma-school-districts")
 
-@contextmanager
-def do_not_track(satellites_dir):
-  optpath = os.path.join(satellites_dir, "bayesdb-session-capture-opt.txt")
-  with open(optpath, "w") as optfile:
-    optfile.write("False\n")
-  yield
-  os.remove(optpath)
-
 def test_ma_schools():
-  do_not_track(MASCHOOLS_DIR)
-  msglimit = None if pytest.config.option.verbose else 1000
-  vn.run_and_verify_notebook(
+  with session(MASCHOOLS_DIR):
+    msglimit = None if pytest.config.option.verbose else 1000
+    vn.run_and_verify_notebook(
       os.path.join(MASCHOOLS_DIR, "MASchoolDistricts"),
       msglimit=msglimit,
       required=[('schools2.quick_explore_vars\(\[',

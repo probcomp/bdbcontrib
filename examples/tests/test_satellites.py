@@ -14,13 +14,14 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
-from contextlib import contextmanager
 import os
 import pytest
 import re
 
 import matplotlib
 matplotlib.use('Agg')
+
+from util import session
 
 from bdbcontrib.verify_notebook import run_and_verify_notebook
 from bdbcontrib.verify_notebook import assert_markdown_matches as md
@@ -48,14 +49,6 @@ def rebuild_bdb(satellites_dir):
                   num_models=20, num_iters=20, checkpoint_freq=2, seed=seed)
   # Note: build_bdbs records the seed and other diagnostics in the output
   # directory as satellites-[date]-probcomp-* (besides creating satellites.bdb)
-
-@contextmanager
-def do_not_track(satellites_dir):
-  optpath = os.path.join(satellites_dir, "bayesdb-session-capture-opt.txt")
-  with open(optpath, "w") as optfile:
-    optfile.write("False\n")
-  yield
-  os.remove(optpath)
 
 # [ (input cell regex, [ ANDed cell testers ] ) ]
 EXPECTED = [
@@ -127,7 +120,7 @@ EXPECTED = [
   ]
 
 def test_satellites():
-  with do_not_track(SATELLITES_DIR):
+  with session(SATELLITES_DIR):
     if ("DEBUG_TESTS" not in os.environ or
         not os.path.exists(os.path.join(SATELLITES_DIR, "satellites.bdb"))):
       remove_bdb_files(SATELLITES_DIR) # Just in case.
