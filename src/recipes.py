@@ -67,15 +67,21 @@ def quick_explore_vars(self, varnames, plotfile=None, nsimilar=20):
     raise BLE(ValueError('Need to explore at least two variables.'))
   self.pairplot_vars(varnames)
   query_columns = '''"%s"''' % '''", "'''.join(varnames)
-  deps = self.query('''ESTIMATE DEPENDENCE PROBABILITY
-                       FROM PAIRWISE COLUMNS OF %s
-                       FOR %s;''' % (self.generator_name, query_columns))
-  deps.columns = ['genid', 'name0', 'name1', 'value']
+  with self.bdb.savepoint():
+    temptab = self.bdb.temp_table_name()
+    self.query('''
+      CREATE TEMP TABLE %s AS
+        ESTIMATE DEPENDENCE PROBABILITY
+          FROM PAIRWISE COLUMNS OF %s FOR %s
+    ''' % (temptab, self.generator_name, query_columns))
+    deps = self.query('SELECT * FROM %s' % (temptab,))
+    deps.columns = ['genid', 'name0', 'name1', 'value']
+    triangle = self.query('''
+      SELECT * FROM %s WHERE name0 < name1 ORDER BY value DESC
+    ''' % (temptab,))
+    triangle.columns = ['genid', 'name0', 'name1', 'value']
   if plotfile:
     self.logger.plot(plotfile + '-deps', self.heatmap(deps))
-  deps.columns = ['genid', 'name0', 'name1', 'value']
-  triangle = deps[deps['name0'] < deps['name1']]
-  triangle = triangle.sort_values(ascending=False, by=['value'])
   self.logger.result("Pairwise dependence probability for: %s\n%s\n\n",
                      query_columns, triangle)
 
