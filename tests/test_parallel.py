@@ -91,11 +91,11 @@ def test_estimate_pairwise_similarity():
         )
 
         parallel_sim = cursor_to_df(
-            bdb.execute('SELECT * FROM t_similarity')
-        ).sort_values(by=['rowid0', 'rowid1'])
+            bdb.execute('SELECT * FROM t_similarity ORDER BY rowid0, rowid1')
+        )
         parallel_sim_2 = cursor_to_df(
-            bdb.execute('SELECT * FROM t_similarity_2')
-        ).sort_values(by=['rowid0', 'rowid1'])
+            bdb.execute('SELECT * FROM t_similarity_2 ORDER BY rowid0, rowid1')
+        )
 
         # Results may be returned out of order. So we sort the values,
         # as above, and we reorder the numeric index
@@ -178,8 +178,8 @@ def test_estimate_pairwise_similarity_long():
             )
 
         parallel_sim = cursor_to_df(
-            bdb.execute('SELECT * FROM t_similarity')
-        ).sort_values(by=['rowid0', 'rowid1'])
+            bdb.execute('SELECT * FROM t_similarity ORDER BY rowid0, rowid1')
+        )
         parallel_sim.index = range(parallel_sim.shape[0])
 
         std_sim = cursor_to_df(
