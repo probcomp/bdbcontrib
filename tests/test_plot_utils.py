@@ -135,6 +135,17 @@ def run_mi_hist(bdb, location, gen, col1, col2, *args, **kwargs):
     plt.savefig(location)
     print 'wrote mi_hist to %r' % (location,)
 
+def run_heatmap(bdb, location, gen, *args, **kwargs):
+    plt.figure()
+    qg = bayeslite.bql_quote_name(gen)
+    df = cursor_to_df(bdb.execute('''
+        estimate dependence probability from pairwise columns of %s
+    ''' % (qg,)))
+    bdbcontrib.plot_utils.heatmap(df, *args, **kwargs)
+    plt.show()
+    plt.savefig(location)
+    print 'wrote heatmap to %r' % (location,)
+
 from PIL import Image
 def has_nontrivial_contents_over_white_background(imgfile):
     img = Image.open(imgfile)
@@ -178,6 +189,12 @@ def test_mi_hist_smoke():
         num_samples=10, bins=4)
     f = BytesIO()
     run_mi_hist(bdb, f, 'plottest_cc', 'few_ints_3', 'many_ints_4')
+
+def test_heatmap_smoke():
+    df, bdb = prepare()
+    bdb.execute('initialize 10 models for plottest_cc')
+    f = BytesIO()
+    run_heatmap(bdb, f, 'plottest_cc')
 
 def test_one_variable():
     (df, bdb) = prepare()
@@ -351,6 +368,8 @@ def main():
         num_samples=1000, bins=10)
     assert os.path.exists('mi0.png')
     assert os.path.exists('mi1.png')
+    run_heatmap(bdb, 'depprob.png', 'plottest_cc')
+    assert os.path.exists('depprob.png')
 
 if __name__ == '__main__':
     main()
