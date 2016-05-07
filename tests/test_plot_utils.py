@@ -127,6 +127,11 @@ def run_histogram(bdb, df, location, **kwargs):
     bdbcontrib.plot_utils.histogram(bdb, df)
     plt.savefig(location)
 
+def run_mi_hist(bdb, location, gen, col1, col2, *args, **kwargs):
+    plt.figure()
+    bdbcontrib.plot_utils.mi_hist(bdb, gen, col1, col2, *args, **kwargs)
+    plt.savefig(location)
+
 from PIL import Image
 def has_nontrivial_contents_over_white_background(imgfile):
     img = Image.open(imgfile)
@@ -161,6 +166,15 @@ def test_pairplot_smoke():
     f = BytesIO()
     run_pairplot(ans, f, show_contour=False)
     assert has_nontrivial_contents_over_white_background(flush(f))
+
+def test_mi_hist_smoke():
+    df, bdb = prepare()
+    bdb.execute('initialize 10 models for plottest_cc')
+    f = BytesIO()
+    run_mi_hist(bdb, f, 'plottest_cc', 'floats_1', 'categorical_1',
+        num_samples=10, bins=4)
+    f = BytesIO()
+    run_mi_hist(bdb, f, 'plottest_cc', 'few_ints_3', 'many_ints_4')
 
 def test_one_variable():
     (df, bdb) = prepare()
@@ -326,6 +340,16 @@ def main():
     assert os.path.exists('fig0.png')
     assert os.path.exists('fig1.png')
     assert os.path.exists('fig2.png')
+    df, bdb = ans
+    bdb.execute('initialize 100 models for plottest_cc')
+    bdb.execute('analyze plottest_cc for 2 iterations wait')
+    run_mi_hist(bdb, 'mi0.png', 'plottest_cc', 'floats_1', 'categorical_1',
+        num_samples=100, bins=5)
+    run_mi_hist(bdb, 'mi1.png', 'plottest_cc', 'few_ints_3', 'many_ints_4',
+        num_samples=1000, bins=10)
+    print "mi hist saved in 'mi0.png', 'mi1.png'"
+    assert os.path.exists('mi0.png')
+    assert os.path.exists('mi1.png')
 
 if __name__ == '__main__':
     main()
