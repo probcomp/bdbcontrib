@@ -121,16 +121,19 @@ def run_pairplot(prepped, location, **kwargs):
     _pairplot(df, bdb=bdb, generator_name='plottest_cc',
               show_full=False, **kwargs)
     plt.savefig(location)
+    print 'wrote pairplot to %r' % (location,)
 
 def run_histogram(bdb, df, location, **kwargs):
     plt.figure(tight_layout=True, facecolor='white')
     bdbcontrib.plot_utils.histogram(bdb, df)
     plt.savefig(location)
+    print 'wrote histogram to %r' % (location,)
 
 def run_mi_hist(bdb, location, gen, col1, col2, *args, **kwargs):
     plt.figure()
     bdbcontrib.plot_utils.mi_hist(bdb, gen, col1, col2, *args, **kwargs)
     plt.savefig(location)
+    print 'wrote mi_hist to %r' % (location,)
 
 from PIL import Image
 def has_nontrivial_contents_over_white_background(imgfile):
@@ -333,13 +336,12 @@ def test_gen_collapsed_legend_from_dict():
 
 def main():
     ans = prepare()
-    run_pairplot(ans, 'fig0.png', colorby='categorical_2', show_contour=False)
-    run_pairplot(ans, 'fig1.png', colorby='categorical_2', show_contour=True)
-    run_pairplot(ans, 'fig2.png', show_contour=False)
-    print "Figures saved in 'fig0.png', 'fig1.png', 'fig2.png'"
-    assert os.path.exists('fig0.png')
-    assert os.path.exists('fig1.png')
-    assert os.path.exists('fig2.png')
+    run_pairplot(ans, 'pp0.png', colorby='categorical_2', show_contour=False)
+    run_pairplot(ans, 'pp1.png', colorby='categorical_2', show_contour=True)
+    run_pairplot(ans, 'pp2.png', show_contour=False)
+    assert os.path.exists('pp0.png')
+    assert os.path.exists('pp1.png')
+    assert os.path.exists('pp2.png')
     df, bdb = ans
     bdb.execute('initialize 100 models for plottest_cc')
     bdb.execute('analyze plottest_cc for 2 iterations wait')
@@ -347,7 +349,6 @@ def main():
         num_samples=100, bins=5)
     run_mi_hist(bdb, 'mi1.png', 'plottest_cc', 'few_ints_3', 'many_ints_4',
         num_samples=1000, bins=10)
-    print "mi hist saved in 'mi0.png', 'mi1.png'"
     assert os.path.exists('mi0.png')
     assert os.path.exists('mi1.png')
 
