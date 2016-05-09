@@ -38,7 +38,7 @@ PopulationTransformation = namedtuple(
 POPULATION_TRANSFORMATIONS = [
     PopulationTransformation(
         name='population',
-        decorated_doc='''a bdbcontrib.population.Population from quickstart.''',
+        decorated_doc='''a bdbcontrib.population.Population''',
         method_doc=None,  # Is part of self, and should be hidden.
         doc='''Passes on the population object itself.''',
         transform=lambda pop: pop

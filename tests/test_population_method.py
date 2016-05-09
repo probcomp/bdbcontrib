@@ -17,7 +17,7 @@
 import pandas
 import pytest
 import re
-from bdbcontrib import quickstart
+from bdbcontrib import Population
 from bdbcontrib import population_method as pm
 
 # pylint: disable=no-member
@@ -126,7 +126,7 @@ def minimal_population_method():
     return 42
 
 def test_method_calls():
-    pop = quickstart('foo', df=pandas.DataFrame({'a': [11, 22]}),
+    pop = Population('foo', df=pandas.DataFrame({'a': [11, 22]}),
                      session_capture_name='test_population.py')
     assert 42 == pop.minimal_population_method()
     # It's ok to name or not name your positional args.
@@ -196,7 +196,7 @@ def five_defaults(pop, a=1, b=2, c=3, d=4, e=5):
     return [a, b, c, d, e]
 
 def test_fn_defaults():
-    pop = quickstart('foo', df=pandas.DataFrame({'a': [11, 22]}),
+    pop = Population('foo', df=pandas.DataFrame({'a': [11, 22]}),
               session_capture_name='test_population.py')
     assert [1, 2, 3, 4, 5] == pop.five_defaults()
     assert [7, 2, 3, 4, 5] == pop.five_defaults(a=7)
@@ -228,7 +228,7 @@ def hasboth_haspop(_u, pname, _v, pop='fizz', *args, **kwargs):
     return (pname, pop, len(args), len(kwargs))
 
 def test_variable_arglengths():
-    pop = quickstart('foo', df=pandas.DataFrame({'a': [11, 22]}),
+    pop = Population('foo', df=pandas.DataFrame({'a': [11, 22]}),
                      session_capture_name='test_population.py')
     spec = pm.compile_argspec_transforms(hasvarargs, {'population_name': 0})
     assert ['_u'] == spec['required_names']

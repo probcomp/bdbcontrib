@@ -46,7 +46,7 @@ class Population(object):
 
     # These are here rather than in, say __init__.py so doing import bdbcontrib
     # just to get its __version__ for example doesn't need to run all that code.
-    # __init__.py does import population (this file) for quickstart's __doc__
+    # __init__.py does import population (this file) for Population's __doc__
     # (same as this class's __init__.__doc__) so these can't just be at top.
     # But once you're using Populations, you have to pay this price once.
     import bql_utils
@@ -149,7 +149,7 @@ class Population(object):
     # No init option specified, no choice file found. Force the choice.
     if self.session_capture_name is None:
       raise BLE(
-        "Please set session_capture_name option to quickstart\n"
+        "Please set session_capture_name option to Population.__init__\n"
         "  to either opt-in or opt-out of sending details of your usage of\n"
         "  this software to the MIT Probabilistic Computing Group.\n\n"
         "If you see this in one of our example notebooks,\n"

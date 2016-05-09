@@ -88,7 +88,7 @@ def dts_df(request):
         csv_f.write(csv_data.getvalue())
     bdb_path = os.path.join(tempd, "data.bdb")
     name = ''.join(random.choice(ascii_lowercase) for _ in range(32))
-    dts = bdbcontrib.quickstart(name=name, csv_path=csv_path, bdb_path=bdb_path,
+    dts = bdbcontrib.Population(name=name, csv_path=csv_path, bdb_path=bdb_path,
         logger=CaptureLogger(verbose=pytest.config.option.verbose),
         session_capture_name="test_recipes.py")
     ensure_timeout(10, lambda: dts.analyze(models=10, iterations=20))

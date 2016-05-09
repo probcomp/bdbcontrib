@@ -39,7 +39,6 @@ from bayeslite.exception import BayesLiteException
 from bayeslite.read_csv import bayesdb_read_csv
 from bayeslite.exception import BayesLiteException as BLE
 from bayeslite.loggers import CaptureLogger
-from bdbcontrib import quickstart, recipes
 
 def test_quick_describe_columns_and_column_type(dts_df):
     dts, _df = dts_df

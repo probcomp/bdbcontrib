@@ -37,7 +37,7 @@ import test_plot_utils
 
 from bayeslite.loggers import CaptureLogger
 
-from bdbcontrib import quickstart, population
+from bdbcontrib import Population, population
 
 testvars = {'dataset': None, 'input_df': None}
 
@@ -62,7 +62,7 @@ def prepare():
             csv_f.write(csv_data.getvalue())
         bdb_path = os.path.join(tempd, "data.bdb")
         name = ''.join(random.choice(ascii_lowercase) for _ in range(32))
-        dts = quickstart(name=name, csv_path=csv_path, bdb_path=bdb_path,
+        dts = Population(name=name, csv_path=csv_path, bdb_path=bdb_path,
                          logger=CaptureLogger(
                              verbose=pytest.config.option.verbose),
                          session_capture_name="test_population.py")
