@@ -166,7 +166,16 @@ class Population(object):
           self.bdb, self.name, self.csv_path,
           header=True, create=True, ifnotexists=True)
       else:
-        raise BLE(ValueError("No data sources specified, and an empty bdb."))
+        tables = self.list_tables()
+        metamodels = self.list_metamodels()
+        if len(tables) + len(metamodels) == 0:
+          raise BLE(ValueError("No data sources specified, and an empty bdb."))
+        else:
+          raise BLE(ValueError("The name of the population must be the same"
+                               " as a table in the bdb, one of: " +
+                               ", ".join(tables) +
+                               "\nNote also that the bdb has the following"
+                               " metamodels defined: " + ", ".join(metamodels)))
     self.generators = self.query('''SELECT * FROM bayesdb_generator''')
     if len(self.generators) == 0:
       size = self.query('''SELECT COUNT(*) FROM %t''').ix[0, 0]

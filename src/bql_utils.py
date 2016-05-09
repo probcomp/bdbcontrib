@@ -251,6 +251,19 @@ def describe_generator_columns(bdb, generator_name):
     curs = bdb.sql_execute(sql, bindings=(generator_id,))
     return cursor_to_df(curs)
 
+@population_method(population_to_bdb=0)
+def list_metamodels(bdb):
+    df = query(bdb, "SELECT name FROM bayesdb_generator;")
+    return list(df['name'])
+
+@population_method(population_to_bdb=0)
+def list_tables(bdb):
+    df = query(bdb, """SELECT name FROM sqlite_master
+                       WHERE type='table' AND
+                           NAME NOT LIKE "bayesdb_%" AND
+                           NAME NOT LIKE "sqlite_%";""")
+    return list(df['name'])
+
 @population_method(population_to_bdb=0, generator_name=1)
 def describe_generator_models(bdb, generator_name):
     """Returns a DataFrame containing description of the models
