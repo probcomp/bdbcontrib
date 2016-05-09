@@ -190,6 +190,24 @@ def test_method_calls():
             == str(exc.value)), repr(exc)
     # Outright repetition, like "gen=1, gen=2", is a syntax error.
 
+
+@pm.population_method(population=0)
+def five_defaults(pop, a=1, b=2, c=3, d=4, e=5):
+    return [a, b, c, d, e]
+
+def test_fn_defaults():
+    pop = quickstart('foo', df=pandas.DataFrame({'a': [11, 22]}),
+              session_capture_name='test_population.py')
+    assert [1, 2, 3, 4, 5] == pop.five_defaults()
+    assert [7, 2, 3, 4, 5] == pop.five_defaults(a=7)
+    assert [1, 7, 3, 4, 5] == pop.five_defaults(b=7)
+    assert [1, 2, 7, 4, 5] == pop.five_defaults(c=7)
+    assert [1, 2, 3, 7, 5] == pop.five_defaults(d=7)
+    assert [1, 2, 3, 4, 7] == pop.five_defaults(e=7)
+    assert [7, 2, 8, 4, 9] == pop.five_defaults(a=7, c=8, e=9)
+    assert [1, 7, 3, 8, 5] == pop.five_defaults(b=7, d=8)
+    assert [1, 7, 8, 9, 5] == pop.five_defaults(b=7, c=8, d=9)
+
 @pm.population_method(population_name=[0])
 def hasvarargs(pname, _u, pop=None, *args):
     return (pname, pop, len(args))
@@ -223,7 +241,7 @@ def test_variable_arglengths():
     assert None == xfm(pop, {'zip': 7})
     assert 'args' == spec['varargs']
     assert None == spec['varkw']
-    
+
     assert ('foo', 1, 3) == pop.hasvarargs("U", 1, 2, 3, 4)
     assert ('foo', 'pip', 3) == pop.hasvarkw("U", pop='pip', a=1, b=2, c=3)
     assert ('foo', None, 0, 0) == pop.hasboth_arg('U', 'V')
@@ -233,7 +251,7 @@ def test_variable_arglengths():
     assert ('foo', 'W', 1, 2) == pop.hasboth_argkwarg("U", "V", "W", "X",
                                                       y="Y", z="Z")
     assert ('foo', 'fizz', 0, 0) == pop.hasboth_haspop('U', 'V')
-    
+
     with pytest.raises(TypeError) as exc:
         pop.hasvarargs("U", 1, 2, 3, 4, pop='pip')
     assert "multiple values for keyword argument 'pop'" in str(exc.value)
@@ -245,7 +263,7 @@ def test_variable_arglengths():
         pop.hasboth_arg()
     with pytest.raises(TypeError):
         pop.hasboth_argkwarg()
-        
+
     # Can only fill named parameters with population-implicit values.
     with pytest.raises(IndexError):
         @pm.population_method(population_name='0')

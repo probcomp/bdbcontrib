@@ -231,6 +231,7 @@ def compile_argspec_transforms(fn, argspecs):
           'required_transformers': wrapped_transformers,
           'optional_names': optional_names,
           'optional_transformers': optional_transformers,
+          'co_defaults': co_defaults,
           }
 
 
@@ -253,6 +254,7 @@ def apply_argspec_transforms(pop, argspecs, args, kwargs):
   required_xforms = argspecs['required_transformers']
   optional_names = argspecs['optional_names']
   optional_xforms = argspecs['optional_transformers']
+  co_defaults = argspecs['co_defaults']
   completed_args = list(args[:]) # mutable copy
   remaining_kwargs = kwargs.copy()
 
@@ -312,8 +314,10 @@ def apply_argspec_transforms(pop, argspecs, args, kwargs):
                       (argspecs['name'], key))
 
   # Allow the function's own defaults to override Nones:
-  while len(new_args) > len(required_names) and new_args[-1] is None:
-    new_args.pop()
+  for i, optname in enumerate(optional_names):
+      index = len(required_xforms) + i
+      if new_args[index] is None:
+          new_args[index] = co_defaults[i]
 
   return (new_args + new_varargs, remaining_kwargs)
 
