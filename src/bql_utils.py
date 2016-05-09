@@ -20,6 +20,7 @@ import bayeslite.core
 from bayeslite import bayesdb_open
 from bayeslite import bql_quote_name as quote
 from bayeslite.exception import BayesLiteException as BLE
+from bayeslite.loggers import logged_query
 from bayeslite.read_pandas import bayesdb_read_pandas_df
 from bayeslite.sqlite3_util import sqlite3_quote_name
 from bayeslite.util import cursor_value
@@ -332,47 +333,49 @@ def get_column_stattype(bdb, generator_name, column_name):
     else:
         return row[0]
 
-@population_method(population=0)
-def analyze(self, models=100, minutes=0, iterations=0, checkpoint=0):
-    '''Run analysis.
+@population_method(population=0, generator_name='generator_name')
+def analyze(self, models=100, minutes=0, iterations=0, checkpoint=0,
+            generator_name=None):
+  '''Run analysis.
 
-    models : integer
-        The number of models bounds the accuracy of predictive probabilities.
-        With ten models, then you get one decimal digit of interpretability,
-        with a hundred models, you get two, and so on.
-    minutes : integer
-        How long you want to let it run.
-    iterations : integer
-        How many iterations to let it run.
+  models : integer
+      The number of models bounds the accuracy of predictive probabilities.
+      With ten models, then you get one decimal digit of interpretability,
+      with a hundred models, you get two, and so on.
+  minutes : integer
+      How long you want to let it run.
+  iterations : integer
+      How many iterations to let it run.
 
-    Returns:
-        A report indicating how many models have seen how many iterations,
-        and other info about model stability.
-    '''
-    if models > 0:
-      self.query('INITIALIZE %d MODELS IF NOT EXISTS FOR %s' %
-            (models, self.generator_name))
-      assert minutes == 0 or iterations == 0
-    else:
-      models = self.analysis_status().sum()
-    if minutes > 0:
+  Returns:
+      A report indicating how many models have seen how many iterations,
+      and other info about model stability.
+  '''
+  assert generator_name is not None
+  if models > 0:
+    self.query('INITIALIZE %d MODELS IF NOT EXISTS FOR %s' %
+          (models, generator_name))
+    assert minutes == 0 or iterations == 0
+  else:
+    models = self.analysis_status(generator_name=generator_name).sum()
+  if minutes > 0:
     if checkpoint == 0:
-        checkpoint = max(1, int(minutes * models / 200))
+      checkpoint = max(1, int(minutes * models / 200))
       analyzer = ('ANALYZE %s FOR %d MINUTES CHECKPOINT %d ITERATION WAIT' %
-                  (self.generator_name, minutes, checkpoint))
+                  (generator_name, minutes, checkpoint))
       with logged_query(query_string=analyzer,
                         name=self.session_capture_name,
                         bindings=self.query('SELECT * FROM %t')):
         self.query(analyzer)
-    elif iterations > 0:
-      if checkpoint == 0:
-        checkpoint = max(1, int(iterations / 20))
-      self.query(
-          '''ANALYZE %s FOR %d ITERATIONS CHECKPOINT %d ITERATION WAIT''' % (
-              self.generator_name, iterations, checkpoint))
-    else:
-      raise NotImplementedError('No default analysis strategy yet. '
-                                'Please specify minutes or iterations.')
+  elif iterations > 0:
+    if checkpoint == 0:
+      checkpoint = max(1, int(iterations / 20))
+    self.query(
+        '''ANALYZE %s FOR %d ITERATIONS CHECKPOINT %d ITERATION WAIT''' % (
+            generator_name, iterations, checkpoint))
+  else:
+    raise NotImplementedError('No default analysis strategy yet. '
+                              'Please specify minutes or iterations.')
   # itrs = self.per_model_analysis_status()
   # models_with_fewest_iterations =
   #    itrs[itrs['iterations'] == itrs.min('index').head(0)[0]].index.tolist()
@@ -384,27 +387,26 @@ def analyze(self, models=100, minutes=0, iterations=0, checkpoint=0):
   # "the right thing" is, where that's something that at least isn't known to
   # suck.
 
-  return self.analysis_status()
+  return self.analysis_status(generator_name=generator_name)
 
-@population_method(population=0)
-def per_model_analysis_status(self):
+@population_method(population=0, generator_name='generator_name')
+def per_model_analysis_status(self, generator_name=None):
   """Return the number of iterations for each model."""
-  # XXX Move this to bdbcontrib/src/bql_utils.py ?
-  self.check_representation()
+  assert generator_name is not None
   try:
     return self.query('''SELECT iterations FROM bayesdb_generator_model
                          WHERE generator_id = (
                           SELECT id FROM bayesdb_generator WHERE name = ?)''',
-                      (self.generator_name,))
+                      (generator_name,))
   except ValueError:
     # Because, e.g. there is no generator yet, for an empty db.
     return None
 
-@population_method(population=0)
-def analysis_status(self):
+@population_method(population=0, generator_name='generator_name')
+def analysis_status(self, generator_name=None):
   """Return the count of models for each number of iterations run."""
-  self.check_representation()
-  itrs = self.per_model_analysis_status()
+  assert generator_name is not None
+  itrs = self.per_model_analysis_status(generator_name=generator_name)
   if itrs is None or len(itrs) == 0:
     emt = pd.DataFrame(columns=['count of model instances'])
     emt.index.name = 'iterations'
