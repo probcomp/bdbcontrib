@@ -63,6 +63,8 @@ def mi_hist(bdb, generator_name, col1, col2, num_samples=1000, bins=5):
     '''
     counts = bdb.execute(bql, (generator_id,))
     num_models = counts.fetchvalue()
+    if num_models == 0:
+        raise ValueError('No models to plot mutual information over!')
 
     figure, ax = plt.subplots(figsize=(6, 6))
 

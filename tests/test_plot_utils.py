@@ -115,17 +115,36 @@ def prepare():
     df = cursor_to_df(cursor)
     return (df, bdb)
 
-def do(prepped, location, **kwargs):
+def run_pairplot(prepped, location, **kwargs):
     (df, bdb) = prepped
     plt.figure(tight_layout=True, facecolor='white')
     _pairplot(df, bdb=bdb, generator_name='plottest_cc',
               show_full=False, **kwargs)
     plt.savefig(location)
+    print 'wrote pairplot to %r' % (location,)
 
 def run_histogram(bdb, df, location, **kwargs):
     plt.figure(tight_layout=True, facecolor='white')
     bdbcontrib.plot_utils.histogram(bdb, df)
     plt.savefig(location)
+    print 'wrote histogram to %r' % (location,)
+
+def run_mi_hist(bdb, location, gen, col1, col2, *args, **kwargs):
+    plt.figure()
+    bdbcontrib.plot_utils.mi_hist(bdb, gen, col1, col2, *args, **kwargs)
+    plt.savefig(location)
+    print 'wrote mi_hist to %r' % (location,)
+
+def run_heatmap(bdb, location, gen, *args, **kwargs):
+    plt.figure()
+    qg = bayeslite.bql_quote_name(gen)
+    df = cursor_to_df(bdb.execute('''
+        estimate dependence probability from pairwise columns of %s
+    ''' % (qg,)))
+    bdbcontrib.plot_utils.heatmap(df, *args, **kwargs)
+    plt.show()
+    plt.savefig(location)
+    print 'wrote heatmap to %r' % (location,)
 
 from PIL import Image
 def has_nontrivial_contents_over_white_background(imgfile):
@@ -153,14 +172,29 @@ def flush(f):
 def test_pairplot_smoke():
     ans = prepare()
     f = BytesIO()
-    do(ans, f, colorby='categorical_2', show_contour=False)
+    run_pairplot(ans, f, colorby='categorical_2', show_contour=False)
     assert has_nontrivial_contents_over_white_background(flush(f))
     f = BytesIO()
-    do(ans, f, colorby='categorical_2', show_contour=True)
+    run_pairplot(ans, f, colorby='categorical_2', show_contour=True)
     assert has_nontrivial_contents_over_white_background(flush(f))
     f = BytesIO()
-    do(ans, f, show_contour=False)
+    run_pairplot(ans, f, show_contour=False)
     assert has_nontrivial_contents_over_white_background(flush(f))
+
+def test_mi_hist_smoke():
+    df, bdb = prepare()
+    bdb.execute('initialize 10 models for plottest_cc')
+    f = BytesIO()
+    run_mi_hist(bdb, f, 'plottest_cc', 'floats_1', 'categorical_1',
+        num_samples=10, bins=4)
+    f = BytesIO()
+    run_mi_hist(bdb, f, 'plottest_cc', 'few_ints_3', 'many_ints_4')
+
+def test_heatmap_smoke():
+    df, bdb = prepare()
+    bdb.execute('initialize 10 models for plottest_cc')
+    f = BytesIO()
+    run_heatmap(bdb, f, 'plottest_cc')
 
 def test_one_variable():
     (df, bdb) = prepare()
@@ -169,15 +203,15 @@ def test_one_variable():
       cursor = bdb.execute('SELECT %s FROM plottest' % (var,))
       df = cursor_to_df(cursor)
       f = BytesIO()
-      do((df, bdb), f, show_contour=False)
+      run_pairplot((df, bdb), f, show_contour=False)
       assert has_nontrivial_contents_over_white_background(flush(f))
       cursor = bdb.execute('SELECT %s, categorical_2 FROM plottest' % (var,))
       df = cursor_to_df(cursor)
       f = BytesIO()
-      do((df, bdb), f, colorby='categorical_2', show_contour=False)
+      run_pairplot((df, bdb), f, colorby='categorical_2', show_contour=False)
       assert has_nontrivial_contents_over_white_background(flush(f))
       f = BytesIO()
-      do((df, bdb), f, colorby='categorical_2', show_contour=True)
+      run_pairplot((df, bdb), f, colorby='categorical_2', show_contour=True)
       assert has_nontrivial_contents_over_white_background(flush(f))
 
 def test_complete_the_square():
@@ -319,13 +353,23 @@ def test_gen_collapsed_legend_from_dict():
 
 def main():
     ans = prepare()
-    do(ans, 'fig0.png', colorby='categorical_2', show_contour=False)
-    do(ans, 'fig1.png', colorby='categorical_2', show_contour=True)
-    do(ans, 'fig2.png', show_contour=False)
-    print "Figures saved in 'fig0.png', 'fig1.png', 'fig2.png'"
-    assert os.path.exists('fig0.png')
-    assert os.path.exists('fig1.png')
-    assert os.path.exists('fig2.png')
+    run_pairplot(ans, 'pp0.png', colorby='categorical_2', show_contour=False)
+    run_pairplot(ans, 'pp1.png', colorby='categorical_2', show_contour=True)
+    run_pairplot(ans, 'pp2.png', show_contour=False)
+    assert os.path.exists('pp0.png')
+    assert os.path.exists('pp1.png')
+    assert os.path.exists('pp2.png')
+    df, bdb = ans
+    bdb.execute('initialize 100 models for plottest_cc')
+    bdb.execute('analyze plottest_cc for 2 iterations wait')
+    run_mi_hist(bdb, 'mi0.png', 'plottest_cc', 'floats_1', 'categorical_1',
+        num_samples=100, bins=5)
+    run_mi_hist(bdb, 'mi1.png', 'plottest_cc', 'few_ints_3', 'many_ints_4',
+        num_samples=1000, bins=10)
+    assert os.path.exists('mi0.png')
+    assert os.path.exists('mi1.png')
+    run_heatmap(bdb, 'depprob.png', 'plottest_cc')
+    assert os.path.exists('depprob.png')
 
 if __name__ == '__main__':
     main()
