@@ -31,5 +31,6 @@ def quickstart(*args, **kwargs):
 
 __all__ = [
     'quickstart',
+    'Population',
     '__version__',
 ]
