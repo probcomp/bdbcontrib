@@ -187,7 +187,12 @@ def test_cardinality(data, cols, cardinalities_expected):
             bayeslite.bayesdb_read_csv_file(bdb, 't', temp.name, header=True,
                                             create=True)
             cards = bql_utils.cardinality(bdb, 't', cols)
-            for c in cards:
-                assert 2 == len(c)
-                assert c[0] in ('id', 'one', 'two', 'three', 'four')
-            assert cardinalities_expected == [c[1] for c in cards]
+            for col, count, expected_count in zip(
+                    cards['name'], cards['distinct_count'],
+                    cardinalities_expected):
+                assert expected_count == count
+                assert col in ('id', 'one', 'two', 'three', 'four')
+                if cols is not None:
+                    expected_col = cols.pop(0)
+                    assert expected_col == col
+            assert len(cards) == len(cardinalities_expected)

@@ -32,22 +32,21 @@ from bdbcontrib.population_method import population_method
 ###                                 PUBLIC                                  ###
 ###############################################################################
 
-@population_method(population_to_bdb=0)
+@population_method(population_to_bdb=0, population_name=1)
 def cardinality(bdb, table, cols=None):
     """Compute the number of unique values in the columns of a table.
 
     Parameters
     ----------
     bdb : __population_to_bdb__
-    table : str
+    table : __population_name__
         Name of table.
     cols : list<str>, optional
         Columns to compute the unique values. Defaults to all.
 
     Returns
     -------
-    counts : list<tuple<str,int>>
-        A list of tuples of the form [(col_1, cardinality_1), ...]
+    counts : pandas.DataFrame whose .columns are ['name', 'distinct_count'].
     """
     # If no columns specified, use all.
     if not cols:
@@ -55,15 +54,16 @@ def cardinality(bdb, table, cols=None):
         res = bdb.sql_execute(sql)
         cols = [r[1] for r in res]
 
-    counts = []
+    names=[]
+    counts=[]
     for col in cols:
         sql = '''
             SELECT COUNT (DISTINCT %s) FROM %s
         ''' % (quote(col), quote(table))
         res = bdb.sql_execute(sql)
-        counts.append((col, cursor_value(res)))
-
-    return counts
+        names.append(col)
+        counts.append(cursor_value(res))
+    return pd.DataFrame({'name': names, 'distinct_count': counts})
 
 
 @population_method(population_to_bdb=0, population_name=1)
