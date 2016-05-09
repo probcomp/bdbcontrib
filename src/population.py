@@ -30,7 +30,11 @@ import bdbcontrib
 from py_utils import helpsub
 
 class Population(object):
-  """Generative Population Model, wraps a BayesDB, and tracks one population."""
+  """Generative Population Model, wraps a BayesDB, and tracks one population.
+
+  See Population.help() for a short menu of available methods.
+  See help(Population) as usual for more complete information.
+  """
 
   shortdocs = []
 
@@ -220,6 +224,11 @@ class Population(object):
       return self.query(spec)
 
   def help(self, filter=None):
+    """Show a short menu of available methods.
+
+    filter : string or re
+        Show only methods whose descriptions match the given pattern.
+    """
     response = self.shortdocs
     if filter is not None:
       if hasattr(filter, '__call__'):
