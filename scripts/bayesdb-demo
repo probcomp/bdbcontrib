@@ -18,6 +18,7 @@
 
 import getopt
 import os
+import re
 import shutil
 import StringIO
 import sys
@@ -47,6 +48,14 @@ def version(out):
     out.write('   bdbcontrib from:\t%s\n' % (inspect.getfile(bdbcontrib),))
     out.write('   bayeslite from:\t%s\n' % (inspect.getfile(bayeslite),))
     out.write('   crosscat from:\t%s\n' % (inspect.getfile(crosscat),))
+
+def short_version(out):
+    ver = 'BayesDB-' + bdbcontrib.version.__version__
+    if re.search(r'post', bayeslite.version.__version__):
+        ver += '-bl-' + bayeslite.version.__version__
+    if re.search(r'post', crosscat.version.__version__):
+        ver += '-cc-' + crosscat.version.__version__
+    out.write(ver + '\n')
 
 def progname():
     return os.path.basename(sys.argv[0])
@@ -110,6 +119,9 @@ def main():
     parser.add_option('-v', '--version',
                       help='Print the software and component versions.',
                       dest='version', default=False, action='store_true')
+    parser.add_option('-V', '--short-version',
+                      help='Print only a version string.',
+                      dest='short_version', action='store_true')
     parser.add_option('-s', '--source',
                       help="A directory that has the example sources.",
                       dest='source', default=None)
@@ -122,6 +134,10 @@ def main():
 
     if options.version:
         version(sys.stderr)
+        sys.exit(0)
+
+    if options.short_version:
+        short_version(sys.stderr)
         sys.exit(0)
 
     if not args:
