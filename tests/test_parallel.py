@@ -20,13 +20,13 @@ from pandas.util.testing import assert_frame_equal
 import pytest
 import random
 import tempfile
-import test_utils
 
 import bayeslite
 from bayeslite.exception import BayesLiteException as BLE
 from bdbcontrib import parallel
 from bdbcontrib.bql_utils import cursor_to_df
 
+import test_bql_utils
 
 def test_estimate_pairwise_similarity():
     """
@@ -36,7 +36,7 @@ def test_estimate_pairwise_similarity():
     with tempfile.NamedTemporaryFile(suffix='.bdb') as bdb_file:
         bdb = bayeslite.bayesdb_open(bdb_file.name)
         with tempfile.NamedTemporaryFile() as temp:
-            temp.write(test_utils.csv_data)
+            temp.write(test_bql_utils.csv_data)
             temp.seek(0)
             bayeslite.bayesdb_read_csv_file(
                 bdb, 't', temp.name, header=True, create=True)
