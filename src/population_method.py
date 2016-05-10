@@ -321,37 +321,37 @@ def apply_argspec_transforms(pop, argspecs, args, kwargs):
 
   return (new_args + new_varargs, remaining_kwargs)
 
-@helpsub("___PT_DOC___", PT_DOC)
+@helpsub("__PT_DOC__", PT_DOC)
 def population_method(**argspec_transforms):
   '''Create a method in the Population class to encapsulate this function.
 
-     Fill in documentation holes, but otherwise leave the function itself
-     untouched for library use.
+Fill in documentation holes, but otherwise leave the function itself
+untouched for library use.
 
-     For the types below, "arg" is a zero-indexed positional argument number
-     or a keyword argument name as a string. For keyword arguments, if the
-     caller provides a value, we leave it untouched. Positional arguments may
-     either be kept and transformed, or hidden from the argument list. If
-     the transform takes both a population and an arg, then it is kept and the
-     arg is transformed. If it takes only a population, then it is hidden (there
-     is no corresponding positional argument in the method, the documentation
-     line is removed, and other positional arguments shift to accommodate).
+For the types below, "arg" is a zero-indexed positional argument number
+or a keyword argument name as a string. For keyword arguments, if the
+caller provides a value, we leave it untouched. Positional arguments may
+either be kept and transformed, or hidden from the argument list. If
+the transform takes both a population and an arg, then it is kept and the
+arg is transformed. If it takes only a population, then it is hidden (there
+is no corresponding positional argument in the method, the documentation
+line is removed, and other positional arguments shift to accommodate).
 
-     __PT_DOC__
+__PT_DOC__
 
-     In your method's docstring, use the above names with underscores to
-     get their appropriate documentation (if you want it replaced). For
-     example, use __population_name__ in place of the lines where you
-     would put the population name parameter's description, after its name.
+In your method's docstring, use the above names with underscores to
+get their appropriate documentation (if you want it replaced). For
+example, use __population_name__ in place of the lines where you
+would put the population name parameter's description, after its name.
 
-     For those transformations that do not have an [arg], if their documentation
-     line starts with the parameter name, then a colon, then the double
-     underscored transformation name, then the entire line is removed.
-     For example, a documentation line like
-       table : __population_name__
-     would be entirely removed from the method docstring, because that argument
-     is filled in using the population instance, rather than being requested
-     from the caller.
+For those transformations that do not have an [arg], if their documentation
+line starts with the parameter name, then a colon, then the double
+underscored transformation name, then the entire line is removed.
+For example, a documentation line like
+  table : __population_name__
+would be entirely removed from the method docstring, because that argument
+is filled in using the population instance, rather than being requested
+from the caller.
      '''
   def decorator(fn):
     xfrms = compile_argspec_transforms(fn, argspec_transforms)
