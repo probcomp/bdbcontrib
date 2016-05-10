@@ -778,12 +778,24 @@ def heatmap(data_df, row_ordering=None, col_ordering=None, **kwargs):
     if clustermap_kws.get('cmap', None) is None:
         # Choose a soothing blue colormap
         clustermap_kws['cmap'] = 'BuGn'
+
+    autoset_vlimits = False
     if 'vmin' not in clustermap_kws:
+        autoset_vlimits = True
         clustermap_kws['vmin'] = \
             data_df[clustermap_kws['pivot_kws']['values']].min()
     if 'vmax' not in clustermap_kws:
-        clustermap_kws['vmin'] = \
+        autoset_vlimits = True
+        clustermap_kws['vmax'] = \
             data_df[clustermap_kws['pivot_kws']['values']].max()
+    if (autoset_vlimits and
+        clustermap_kws['vmin'] >= 0 and
+        clustermap_kws['vmax'] <= 1):
+        clustermap_kws['vmin'] = 0
+        clustermap_kws['vmax'] = 1
+    if autoset_vlimits:
+        print ("Detected value limits as [%s, %s]. Override with vmin and vmax."
+               % (clustermap_kws['vmin'], clustermap_kws['vmax']))
 
 
     if row_ordering is not None and col_ordering is not None:
