@@ -29,6 +29,8 @@ from bayeslite.exception import BayesLiteException as BLE
 import bdbcontrib
 from py_utils import helpsub
 
+OPTFILE = "bayesdb-session-capture-opt.txt"
+
 class Population(object):
   """Generative Population Model, wraps a BayesDB, and tracks one population.
 
@@ -134,11 +136,10 @@ class Population(object):
       self.session_capture_name = name
       return
     # Search for a session-capture name or opt-out saved as a file:
-    filename = "bayesdb-session-capture-opt.txt"
     searchdir = os.getcwd()
     while searchdir != os.path.dirname(searchdir):  # While not at root.
       try:
-        with open(os.path.join(searchdir, filename), 'r') as optinfile:
+        with open(os.path.join(searchdir, OPTFILE), 'r') as optinfile:
           self.session_capture_name = optinfile.read()
           if self.session_capture_name == 'False':
             self.session_capture_name = False

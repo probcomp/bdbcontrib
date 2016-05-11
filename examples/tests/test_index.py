@@ -16,7 +16,8 @@
 
 import os
 from bdbcontrib.verify_notebook import run_and_verify_notebook
-from util import session, OPTFILE
+from util import session
+from bdbcontrib.population import OPTFILE
 
 INDEX_DIR=os.path.join(os.path.dirname(os.path.dirname(__file__)))
 

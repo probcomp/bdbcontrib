@@ -17,8 +17,8 @@
 import os
 from contextlib import contextmanager
 
-OPTFILE="bayesdb-session-capture-opt.txt"
-BAKFILE="bayesdb-session-capture-opt.txt.bak"
+from bdbcontrib.population import OPTFILE
+BAKFILE = OPTFILE + ".bak"
 
 @contextmanager
 def session(parent_dir):
