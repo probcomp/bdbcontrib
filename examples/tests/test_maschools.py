@@ -36,11 +36,11 @@ def test_ma_schools():
                 ('ESTIMATE DEPENDENCE PROBABILITY',
                  [vn.assert_has_png(), vn.allow_warns('FutureWarning'),
                   vn.allow_warns('VisibleDeprecationWarning')]),
-                ('schools0.quick_describe_columns()', [r'categorical']),
-                ('schools1.quick_describe_columns()', [r'categorical']),
+                ('schools0.quick_describe_variables()', [r'categorical']),
+                ('schools1.quick_describe_variables()', [r'categorical']),
                 # Once solved, this will not contain categorical, but as
                 # set up to be solved, it does:
-                ('schools2.quick_describe_columns()', [r'categorical']),
+                ('schools2.quick_describe_variables()', [r'categorical']),
                 # As set up, this should have "cannot convert" messages,
                 # Not once it's solved though.
                 ('df.applymap', [vn.assert_stream_matches('Cannot convert')]),

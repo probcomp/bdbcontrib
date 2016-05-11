@@ -204,7 +204,7 @@ def test_describe_columns_and_column_type():
         assert ['index', 'floats_1', 'categorical_1', 'categorical_2',
                 'few_ints_3', 'floats_3', 'many_ints_4', 'skewed_numeric_5',
                 ] == list(resultdf.columns)
-        resultdf = dts.describe_generator_columns()
+        resultdf = dts.variable_stattypes()
         expected = {'floats_1': 'numerical',
                     'categorical_1': 'categorical',
                     'categorical_2': 'categorical',

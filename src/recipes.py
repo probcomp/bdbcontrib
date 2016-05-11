@@ -21,6 +21,7 @@
 # they are not intended as primitives, but as suggested
 # starting-points for a user's more meaningful analysis.
 
+import pandas
 import re
 
 import bayeslite
@@ -29,6 +30,28 @@ import bdbcontrib
 from bdbcontrib.population import Population
 from bdbcontrib.population_method import population_method
 from py_utils import helpsub
+
+@population_method(population=0, generator_name='generator_name')
+def quick_describe_variables(self, generator_name=None):
+  """Show a univariate description of each variable."""
+  assert generator_name
+  if self.df is None or self.df.empty:
+    self.df = self.query('''SELECT * FROM %t''')
+  stattypes_df = self.variable_stattypes(generator_name=generator_name)
+  stattypes = dict(zip(stattypes_df['name'], stattypes_df['stattype']))
+  result = pandas.DataFrame()
+  for desc in ('name', 'stattype',
+               'unique', 'top', 'freq',
+               'mean', 'std', 'min', '25%', '50%', '75%', 'max',
+               'count', 'hist'):
+    result[desc] = [None] * len(self.df.columns)
+  for i, var in enumerate(self.df.columns):
+    result['name'][i] = var
+    stattype = stattypes[var] if var in stattypes else 'ignored'
+    result['stattype'][i] = stattype
+    for desc, value in self.df[var].describe().iteritems():
+      result[desc][i] = value
+  return result
 
 @population_method(population=0)
 def quick_explore_vars(self, varnames, plotfile=None, nsimilar=20):

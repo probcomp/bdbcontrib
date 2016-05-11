@@ -40,13 +40,13 @@ from bayeslite.read_csv import bayesdb_read_csv
 from bayeslite.exception import BayesLiteException as BLE
 from bayeslite.loggers import CaptureLogger
 
-def test_quick_describe_columns_and_column_type(dts_df):
+def test_quick_describe_variables_and_column_type(dts_df):
     dts, _df = dts_df
     resultdf = dts.query('SELECT * from %t LIMIT 1')
     assert ['index', 'floats_1', 'categorical_1', 'categorical_2',
             'few_ints_3', 'floats_3', 'many_ints_4', 'skewed_numeric_5',
             ] == list(resultdf.columns)
-    resultdf = dts.quick_describe_columns()
+    resultdf = dts.quick_describe_variables()
     expected = {'floats_1': 'numerical',
                 'categorical_1': 'categorical',
                 'categorical_2': 'categorical',

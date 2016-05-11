@@ -218,22 +218,10 @@ def describe_generator(bdb, generator_name):
     curs = bdb.sql_execute(sql, bindings=(generator_name,))
     return cursor_to_df(curs)
 
-@population_method(population_to_bdb=0, generator_name=1)
-def describe_generator_columns(bdb, generator_name):
-    """Returns a DataFrame containing description of the columns
-    modeled by `generator_name`.
-
-    Examples
-    --------
-
-    >>> bdbcontrib.describe_generator_columns(bdb, 'employees_gen')
-    colno |    name |     stattype
-    ------+---------+-------------
-        0 |    name |  categorical
-        1 |     age |    numerical
-        2 |  weight |    numerical
-        3 |  height |    numerical
-    """
+@population_method(population_to_bdb=0, generator_name='generator_name')
+def variable_stattypes(bdb, generator_name=None):
+    assert generator_name
+    """The modeled statistical types of each variable in order."""
     if not bayeslite.core.bayesdb_has_generator_default(bdb, generator_name):
             raise BLE(NameError('No such generator {}'.format(generator_name)))
     sql = '''

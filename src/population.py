@@ -58,8 +58,8 @@ class Population(object):
     import crosscat_utils
     # Convenience alias:
     cls.q = cls.query
-    cls.quick_describe_columns = cls.describe_generator_columns
     cls.vartype = cls.get_column_stattype
+    cls.quick_describe_columns = cls.variable_stattypes
 
   def __init__(self, name, csv_path=None, bdb_path=None, df=None, logger=None,
                session_capture_name=None):
