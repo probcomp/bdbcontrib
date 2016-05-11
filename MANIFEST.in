@@ -24,6 +24,7 @@ include doc/visualization.rst
 include examples/Index.ipynb
 include examples/ma-school-districts/ma-school-districts.csv
 include examples/ma-school-districts/MASchoolDistricts.ipynb
+include examples/ma-school-districts/ma_schools.py
 include examples/on-stability-testing.md
 include examples/satellites/Satellites.ipynb
 include examples/satellites/build_bdbs.py
