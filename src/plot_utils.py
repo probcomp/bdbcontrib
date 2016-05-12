@@ -678,7 +678,7 @@ def do_pair_plot(plot_df, vartypes, **kwargs):
     ax = DO_PLOT_FUNC[vartypes](plot_df, vartypes, **kwargs)
     return ax
 
-def ensure_full_square(data_df, pivot_kws):
+def ensure_full_square(data_df, pivot_kws, default_value=0):
     """Ensure that all pairs are bidirectionally present in a pivot df.
 
     data_df is expected to have an index column, a columns column, and a
@@ -700,16 +700,23 @@ def ensure_full_square(data_df, pivot_kws):
     import sets
     index_values = set(data_df[iname])
     columns_values = set(data_df[cname])
-    new_df = pd.DataFrame()
     if len(index_values) == 0 or len(columns_values) == 0:
-        return new_df
+        return pd.DataFrame()
+    data = {}
+    for index, row in data_df.iterrows():
+        if row[iname] not in data:
+            data[row[iname]] = {}
+        sub = data[row[iname]]
+        if row[cname] not in sub:
+            sub[row[cname]] = row[vname]
+    rows = []
     for ind in sorted(index_values):
         for col in sorted(columns_values):
-            value = 0
-            found_rows = data_df[(data_df[iname]==ind) & (data_df[cname]==col)]
-            if len(found_rows) > 0:
-                value = found_rows[vname].iloc[0]
-            new_df = new_df.append([[ind, col, value]], ignore_index=True)
+            if ind in data and col in data[ind]:
+                rows.append([ind, col, data[ind][col]])
+            else:
+                rows.append([ind, col, default_value])
+    new_df = pd.DataFrame(rows)
     new_df.columns = [iname, cname, vname]
     return new_df
 
