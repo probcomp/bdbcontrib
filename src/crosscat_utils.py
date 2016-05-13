@@ -26,6 +26,7 @@ import bayeslite.core
 from bayeslite.exception import BayesLiteException as BLE
 from crosscat.utils import sample_utils as su
 
+from population_method import population_method
 import bql_utils as bu
 import plot_utils as pu
 
@@ -34,6 +35,7 @@ import plot_utils as pu
 ###                                 PUBLIC                                  ###
 ###############################################################################
 
+@population_method(population_to_bdb=0, generator_name=1)
 def draw_crosscat(bdb, generator, modelno, row_label_col=None):
     """Draw crosscat model from the specified generator.
 
@@ -68,7 +70,7 @@ def draw_crosscat(bdb, generator, modelno, row_label_col=None):
 
     return figure
 
-
+@population_method(population_to_bdb=0, generator_name=2)
 def plot_crosscat_chain_diagnostics(bdb, diagnostic, generator):
     """Plot diagnostics for all models of generator.
 
