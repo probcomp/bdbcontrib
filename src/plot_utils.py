@@ -86,8 +86,9 @@ def mi_hist(bdb, generator_name, col1, col2, num_samples=1000, bins=5):
 
 @population_method(population_to_bdb=0, specifier_to_df=1,
                    generator_name='generator_name')
-def pairplot(bdb, df, generator_name=None, show_contour=False, colorby=None,
-        show_missing=False, show_full=False, pad=None, h_pad=None, **kwargs):
+def pairplot(bdb, df, generator_name=None, stattypes=None, show_contour=False,
+             colorby=None, show_missing=False, show_full=False,
+             pad=None, h_pad=None, **kwargs):
     """Plot array of plots for all pairs of columns.
 
     Plots continuous-continuous pairs as scatter (optional KDE contour).
@@ -98,7 +99,12 @@ def pairplot(bdb, df, generator_name=None, show_contour=False, colorby=None,
     ----------
     bdb : __population_to_bdb__
     df : __specifier_to_df__
-    generator_name : __generator_name__
+    generator_name : __generator_name__ - used to find stattypes.
+    stattypes : dict, optional {column_name: "categorical"|"numerical"}
+        If you do not specify a generator name, have a column that the
+        generator doesn't know about, or would like to override the
+        statistical types the generator has for a given variable, then pass
+        this dict of column names to types.
     show_contour : bool, optional
         If True, KDE contours are plotted on top of scatter plots
         and histograms.
@@ -122,8 +128,8 @@ def pairplot(bdb, df, generator_name=None, show_contour=False, colorby=None,
     figure : matplotlib.figure.Figure
     """
     figure = _pairplot(df, bdb=bdb, generator_name=generator_name,
-        show_contour=show_contour, colorby=colorby, show_missing=show_missing,
-        show_full=show_full, **kwargs)
+        stattypes=stattypes, show_contour=show_contour, colorby=colorby,
+        show_missing=show_missing, show_full=show_full, **kwargs)
     if pad is not None or h_pad is not None:
       default_padding = -0.4 * (df.shape[1] - 2)
       if pad is None:
@@ -826,7 +832,7 @@ def heatmap(data_df, row_ordering=None, col_ordering=None, **kwargs):
 
 
 # TODO: bdb, and table_name should be optional arguments
-def _pairplot(df, bdb=None, generator_name=None,
+def _pairplot(df, bdb=None, generator_name=None, stattypes=None,
         show_contour=False, colorby=None, show_missing=False, show_full=False,
         **kwargs):
     """Plots the columns in data_df in a facet grid.
@@ -845,6 +851,11 @@ def _pairplot(df, bdb=None, generator_name=None,
         the generator for the data allows pairplot to choose plot types.
     generator_name : str
         The name of generator associated with `df` and `bdb`.
+    stattypes : dict, optional {column_name: "categorical"|"numerical"}
+        If you do not specify a generator name, have a column that the
+        generator doesn't know about, or would like to override the
+        statistical types the generator has for a given variable, then pass
+        this dict of column names to types.
     show_contour : bool
         If True, KDE contours are plotted on top of scatter plots
         and histograms.
@@ -876,6 +887,8 @@ def _pairplot(df, bdb=None, generator_name=None,
     # - where to handle dropping NaNs? Missing values may be informative.
 
     data_df = df
+    if stattypes is None:
+        stattypes = {}
 
     colors = None
     if colorby is not None:
@@ -894,8 +907,12 @@ def _pairplot(df, bdb=None, generator_name=None,
         dummy = data_df[colorby].dropna()
         dvals = np.sort(dummy.unique())
         ndvals = len(dvals)
-        dval_type = get_bayesdb_col_type('colorby', dummy, bdb=bdb,
-                                         generator_name=generator_name)
+        dval_type = "categorical"
+        if colorby in stattypes:
+            dval_type = stattypes[colorby]
+        elif generator_name:
+            dval_type = get_bayesdb_col_type(colorby, dummy, bdb=bdb,
+                                             generator_name=generator_name)
         if dval_type.lower() != 'categorical':
             raise BLE(ValueError('colorby columns must be categorical.'))
         cmap = sns.color_palette("Set1", ndvals)
@@ -912,10 +929,13 @@ def _pairplot(df, bdb=None, generator_name=None,
     if n_vars == 1:
         ax = plt.gca()
         varname = data_df.columns[0]
-        vartype = get_bayesdb_col_type(varname, data_df[varname], bdb=bdb,
-                                       generator_name=generator_name)
-        do_hist(data_df, dtype=vartype, ax=ax, bdb=bdb,
-            generator_name=generator_name, colors=colors)
+        vartype = "categorical"
+        if varname in stattypes:
+            vartype = stattypes[varname]
+        elif generator_name:
+            vartype = get_bayesdb_col_type(varname, data_df[varname], bdb=bdb,
+                                           generator_name=generator_name)
+        do_hist(data_df, dtype=vartype, ax=ax, bdb=bdb, colors=colors)
         rotate_tick_labels(ax)
         return
 
@@ -926,8 +946,12 @@ def _pairplot(df, bdb=None, generator_name=None,
 
     vartypes = []
     for varname in all_varnames:
-        vartype = get_bayesdb_col_type(varname, data_df[varname], bdb=bdb,
-            generator_name=generator_name)
+        vartype = "categorical"
+        if varname in stattypes:
+            vartype = stattypes[varname]
+        elif generator_name:
+            vartype = get_bayesdb_col_type(varname, data_df[varname], bdb=bdb,
+                                           generator_name=generator_name)
         vartypes.append(vartype)
 
     # store each axes; reaccessing ax with plt.subplot(plt_grid[a,b]) may
@@ -946,8 +970,7 @@ def _pairplot(df, bdb=None, generator_name=None,
                 if colorby is not None:
                     varnames.append(colorby)
                 ax = do_hist(data_df[varnames], dtype=var_x_type, ax=ax,
-                    bdb=bdb, generator_name=generator_name, colors=colors,
-                    show_contour=show_contour)
+                    bdb=bdb, colors=colors, show_contour=show_contour)
             else:
                 varnames = [var_name_x, var_name_y]
                 vartypes_pair = (var_x_type, var_y_type,)
@@ -955,7 +978,6 @@ def _pairplot(df, bdb=None, generator_name=None,
                     varnames.append(colorby)
                 plot_df = prep_plot_df(data_df, varnames)
                 ax = do_pair_plot(plot_df, vartypes_pair, ax=ax, bdb=bdb,
-                    generator_name=generator_name,
                     show_contour=show_contour, show_missing=show_missing,
                     colors=colors, **kwargs)
 

@@ -213,6 +213,14 @@ def test_one_variable():
       f = BytesIO()
       run_pairplot((df, bdb), f, colorby='categorical_2', show_contour=True)
       assert has_nontrivial_contents_over_white_background(flush(f))
+    with pytest.raises(BLE) as exc:
+      run_pairplot((df, bdb), f, colorby='floats_3')
+      assert 'non-categorical' in str(exc)
+    with pytest.raises(BLE):
+      run_pairplot((df, bdb), f, colorby='categorical_2',
+                   stattypes={'categorical_2': 'numerical'})
+      assert 'non-categorical' in str(exc)
+
 
 def test_complete_the_square():
     df = pd.DataFrame([['arb', 'arb', 1],
