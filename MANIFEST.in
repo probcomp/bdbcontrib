@@ -32,6 +32,7 @@ include examples/satellites/probe.py
 include examples/satellites/satellites.bql
 include examples/satellites/satellites.csv
 include examples/satellites/satellites_codebook.csv
+include examples/satellites/querying-and-plotting.ipynb
 include examples/satellites/visualize.py
 include hooks/hook_diagnostics.py
 include hooks/hook_maths.py
