@@ -1,68 +1,53 @@
 # bdbcontrib
 
-A set of utilities for bayesdb.
+A set of utilities and a front end for BayesDB.
 
 ## Installing
 
-The software in bdbcontrib requires:
+Software requirements are detailed in setup.py.
+Please see http://probcomp.csail.mit.edu/bayesdb/install.html for installation.
 
-- [bayeslite >=0.1.2](http://probcomp.csail.mit.edu/bayesdb/)
-- [ipython notebook >=3](http://ipython.org/notebook.html)
-- [markdown2](https://pypi.python.org/pypi/markdown2)
-- [matplotlib](http://matplotlib.org/)
-- [numpy](http://www.numpy.org/)
-- [pandas](http://pandas.pydata.org/)
-- [scikit-learn](http://scikit-learn.org/)
-- [seaborn >=6](http://stanford.edu/~mwaskom/software/seaborn/)
-- [tornado >=4](http://www.tornadoweb.org/en/stable/)
+## Expectations
 
-The tests require:
+Users and contributors should expect **rapidly and dramatically
+shifting code and behavior** at this time.
 
-- [mock](https://pypi.python.org/pypi/mock)
-- [pillow](https://python-pillow.github.io/)
-- [pytest](http://pytest.org/)
+We would like all users to enable session capture so that we can see
+how users behave with the software and improve it on that
+basis. Please read examples/Index.ipynb for details. You **must
+choose** either to opt in or to opt out.
 
-The documentation requires:
+**THIS SOFTWARE SHOULD NOT BE EXPECTED TO TREAT YOUR DATA SECURELY.**
 
-- [numpydoc](https://pypi.python.org/pypi/numpydoc)
-- [sphinx](sphinx-doc.org)
+## Contributing
 
-Individual parts of bdbcontrib may have slimmer dependencies, if you
-want to pull them out for more limited purposes.
+This repository is currently using "Light Review" from
+http://tinyurl.com/probcomp-review-standards
 
-## Test
+Our compatibility aim is to work on probcomp machines and members'
+laptops, and to provide scripts and instructions that make it not too
+hard to re-create our environments elsewhere. Pulls for polished
+packaging, broad installability, etc. are not appropriate
+contributions at this time.
 
-To run the paltry automatic tests:
+Please run local tests before sending a pull request:
 
 ```
 $ ./check.sh
 ```
 
-## Install
-
-To install system-wide, or into the current virtual environment:
+That does not run the complete test suite, only the smoke tests, but
+is usually good enough. For the full suite:
 
 ```
-$ python setup.py build
-$ python setup.py install
+$ ./check.sh tests examples/tests
 ```
 
 ## Documentation
 
-The python documentation is built using [sphinx](http://sphinx-doc.org/) and
-[numpydoc](https://pypi.python.org/pypi/numpydoc).
-
 ```
-$ make doc
-```
-
-## Use
-
-If you want the Python API, `import bdbcontrib.plot_utils`, &c.
-
-If you are using the bayeslite shell, load the bayeslite shell
-commands with:
-
-```
-.hook /path/to/bdbcontrib/hooks/hook_plotting.py
+from bdbcontrib import Population
+help(Population)
+foo = Population(...)
+foo.help("plot")
 ```
