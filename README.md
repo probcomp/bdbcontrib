@@ -12,6 +12,13 @@ Please see http://probcomp.csail.mit.edu/bayesdb/install.html for installation.
 Users and contributors should expect **rapidly and dramatically
 shifting code and behavior** at this time.
 
+We would like all users to enable session capture so that we can see
+how users behave with the software and improve it on that
+basis. Please read examples/Index.ipynb for details. You **must
+choose** either to opt in or to opt out.
+
+**THIS SOFTWARE SHOULD NOT BE EXPECTED TO TREAT YOUR DATA SECURELY.**
+
 ## Contributing
 
 This repository is currently using "Light Review" from
@@ -33,7 +40,7 @@ That does not run the complete test suite, only the smoke tests, but
 is usually good enough. For the full suite:
 
 ```
-$ ./check.sh tests shell/tests
+$ ./check.sh tests examples/tests
 ```
 
 ## Documentation
