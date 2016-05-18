@@ -91,8 +91,8 @@ class KeplersLaw(predictor.IBayesDBForeignPredictor):
         actual_period = self.dataset[self.targets].as_matrix().ravel()
         theoretical_period = satellite_period_minutes(X[:,0], X[:,1])
         errors = np.abs(actual_period-theoretical_period)
-        error_95 = np.percentile(errors, 95)
-        errors = np.mean(np.select([errors < error_95], [errors]))
+        error_robust = np.percentile(errors, 99.5)
+        errors = np.mean(np.select([errors < error_robust], [errors]))
         self.noise = np.sqrt(np.mean(errors**2))
 
     def _conditions(self, conditions):
@@ -121,9 +121,12 @@ class KeplersLaw(predictor.IBayesDBForeignPredictor):
 
 HALF_LOG2PI = 0.5 * math.log(2 * math.pi)
 def logpdfGaussian(x, mu, sigma):
-    deviation = x - mu
-    return - math.log(sigma) - HALF_LOG2PI \
-        - (0.5 * deviation * deviation / (sigma * sigma))
+    from scipy.stats import norm
+    val = norm.logpdf(x, loc=mu, scale=sigma)
+    print val
+    return val
+    # return - math.log(sigma) - HALF_LOG2PI \
+    #     - (0.5 * deviation * deviation / (sigma * sigma))
 
 def satellite_period_minutes(apogee_km, perigee_km):
     """Period of satellite with specified apogee and perigee.

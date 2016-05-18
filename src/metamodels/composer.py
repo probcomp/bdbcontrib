@@ -501,9 +501,17 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
             modelnos = core.bayesdb_generator_modelnos(bdb, generator_id)
         else:
             modelnos = [modelno]
-        with bdb.savepoint():
-            return logmeanexp([self._joint_logpdf(bdb, generator_id, modelno,
-                targets, constraints) for modelno in modelnos])
+        # with bdb.savepoint():
+        rowid = targets[0][0]
+        target_cols = [t[1] for t in targets]
+        if rowid != core.bayesdb_generator_fresh_row_id(bdb, generator_id):
+            row = core.bayesdb_generator_row_values(bdb, generator_id, rowid)
+            colnos = core.bayesdb_generator_column_numbers(bdb, generator_id)
+            assert len(row) == len(colnos)
+            constraints = [(rowid, c, v) for c,v in zip(colnos, row) if
+                v and c not in target_cols]
+        return logmeanexp([self._joint_logpdf(bdb, generator_id, modelno,
+            targets, constraints) for modelno in modelnos])
 
     def _joint_logpdf(self, bdb, genid, modelno, Q, Y, n_samples=None):
         # XXX Computes the joint probability of query Q given evidence Y
@@ -526,10 +534,9 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
                 "%s and %s requested" % (Q[0][0], r)
         # (Q,Y) marginal joint density.
         _, QY_weights = self._weighted_sample(bdb, genid, modelno,
-            Q[0][0], Q+Y, n_samples=n_samples)
+            Q[0][0], Q+Y, n_samples=1)
         # Y marginal density.
-        _, Y_weights = self._weighted_sample(bdb, genid, modelno,
-            Q[0][0], Y, n_samples=n_samples)
+        _, Y_weights = self._weighted_sample(bdb, genid, modelno, Q[0][0], Y, n_samples=1)
         # XXX TODO Keep sampling until logpQY <= logpY
         logpQY = logmeanexp(QY_weights)
         logpY = logmeanexp(Y_weights)
@@ -556,9 +563,9 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
 
     def predict_confidence(self, bdb, genid, modelno, colno, rowid,
             numsamples=None):
-        with bdb.savepoint():
-            return self._predict_confidence(bdb, genid, modelno, colno, rowid,
-                numsamples=numsamples)
+        # with bdb.savepoint():
+        return self._predict_confidence(bdb, genid, modelno, colno, rowid,
+            numsamples=numsamples)
 
     def _predict_confidence(self, bdb, genid, modelno, colno, rowid,
             numsamples=None):
