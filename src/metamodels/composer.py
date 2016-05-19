@@ -128,7 +128,7 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
         self.predictor_cache = {}
         # Default number of samples.
         if n_samples is None:
-            self.n_samples = 100
+            self.n_samples = 1
         else:
             assert 0 < n_samples
             self.n_samples = n_samples
@@ -171,12 +171,13 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
         # because the pattern using classes and class methods does not make the
         # classes be instances of that.
         assert hasattr(builder, 'create')
-        assert hasattr(builder, 'serialize')
-        assert hasattr(builder, 'deserialize')
+        # assert hasattr(builder, 'serialize')
+        # assert hasattr(builder, 'deserialize')
         assert hasattr(builder, 'name')
         # Check for duplicates.
         if casefold(builder.name()) in self.predictor_builder:
-            raise ValueError('A foreign predictor with name "{}" has already '
+            raise ValueError(
+                'A foreign predictor with name "{}" has already '
                 'been registered. Currently registered: {}'.format(
                     builder.name(), self.predictor_builder))
         self.predictor_builder[casefold(builder.name())] = builder
@@ -213,8 +214,8 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
         SUFFIX = '_cc'
         cc_name = bayeslite.core.bayesdb_generator_name(bdb, genid) + SUFFIX
         # Create strings for crosscat schema.
-        cc_cols = ','.join('{} {}'.format(quote(c), quote(columns[c]))
-                           for c in lcols)
+        cc_cols = ','.join(
+            '{} {}'.format(quote(c), quote(columns[c])) for c in lcols)
         cc_dep = []
         for dep, colnames in dependencies:
             qcns = ','.join(map(quote, colnames))
@@ -328,19 +329,20 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
             predictor_name = self.predictor_name(bdb, genid, fcol)
             builder = self.predictor_builder[predictor_name]
             predictor = builder.create(bdb, table_name, targets, conditions)
+            self.predictor_cache[(bdb, genid, fcol)] = predictor
             # Store in the database.
-            with bdb.savepoint():
-                sql = '''
-                    UPDATE bayesdb_composer_column_foreign_predictor SET
-                        predictor_binary = :predictor_binary
-                        WHERE generator_id = :genid AND colno = :colno
-                '''
-                predictor_binary = builder.serialize(bdb, predictor)
-                bdb.sql_execute(sql, {
-                    'genid': genid,
-                    'predictor_binary': sqlite3.Binary(predictor_binary),
-                    'colno': fcol
-                })
+            # with bdb.savepoint():
+            #     sql = '''
+            #         UPDATE bayesdb_composer_column_foreign_predictor SET
+            #             predictor_binary = :predictor_binary
+            #             WHERE generator_id = :genid AND colno = :colno
+            #     '''
+            #     predictor_binary = builder.serialize(bdb, predictor)
+            #     bdb.sql_execute(sql, {
+            #         'genid': genid,
+            #         'predictor_binary': sqlite3.Binary(predictor_binary),
+            #         'colno': fcol
+            #     })
 
     def drop_models(self, bdb, genid, modelnos=None):
         qg = quote(core.bayesdb_generator_name(bdb, self.cc_id(bdb, genid)))
@@ -619,6 +621,7 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
                     parent_conf = min(parent_conf, imp_conf)
                     conditions[colname] = imp_val
             assert all(v is not None for c,v in conditions.iteritems())
+            conditions.update({'rowid': rowid})
             predictor = self.predictor(bdb, genid, colno)
             samples = predictor.simulate(numsamples, conditions)
         # Since foreign predictor does not know how to impute, imputation
@@ -686,7 +689,7 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
         return self.cc(bdb, genid).row_similarity(bdb, self.cc_id(bdb, genid),
             modelno, rowid, target_rowid, cc_colnos)
 
-    def _weighted_sample(self, bdb, genid, modelno, row_id, Y, n_samples=None):
+    def _weighted_sample(self, bdb, genid, modelno, rowid, Y, n_samples=None):
         # Returns a pairs of parallel lists ([sample ...], [weight ...])
         # Each `sample` is a dict {col:v} of values for all nodes in
         # the network for one row. Y specifies evidence nodes as (row,
@@ -696,7 +699,7 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
         if n_samples is None:
             n_samples = self.n_samples
         # Create n_samples dicts, each entry is weighted sample from joint.
-        samples = [{c:v for r,c,v in Y if r == row_id}
+        samples = [{c:v for r,c,v in Y if r == rowid}
                    for _ in xrange(n_samples)]
         weights = []
         w0 = 0
@@ -706,7 +709,7 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
             w0 += self.cc(bdb, genid).logpdf_joint(bdb, self.cc_id(bdb, genid),
                 Y_cc, [], modelno)
         # Simulate unobserved ccs.
-        Q_cc = [(row_id, c)
+        Q_cc = [(rowid, c)
                 for c in self.lcols(bdb, genid) if c not in samples[0]]
         V_cc = self.cc(bdb, genid).simulate_joint(bdb, self.cc_id(bdb, genid),
             Q_cc, Y_cc, modelno, num_predictions=n_samples)
@@ -722,6 +725,7 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
                 conditions = {core.bayesdb_generator_column_name(
                     bdb, genid, c):v for c,v in samples[k].iteritems()
                         if c in pcols}
+                conditions.update({'rowid': rowid})
                 if fcol in samples[k]:
                     # f is evidence: compute likelihood weight.
                     w += predictor.logpdf(samples[k][fcol], conditions)
@@ -790,21 +794,22 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
         return cursor.fetchall()[0][0]
 
     def predictor(self, bdb, genid, fcol):
-        if (genid, fcol) not in self._predictor_cache(bdb):
-            cursor = bdb.sql_execute('''
-                SELECT predictor_name, predictor_binary
-                    FROM bayesdb_composer_column_foreign_predictor
-                    WHERE generator_id = ? AND colno = ?
-            ''', (genid, fcol))
-            name, binary = cursor.fetchall()[0]
-            builder = self.predictor_builder.get(name, None)
-            if builder is None:
-                raise LookupError('Foreign predictor for column "{}" '
-                    'not registered: "{}".'.format(name,
-                        core.bayesdb_generator_column_name(bdb, genid, fcol)))
-            self._predictor_cache(bdb)[(genid, fcol)] = \
-                builder.deserialize(bdb, binary)
-        return self._predictor_cache(bdb)[(genid, fcol)]
+        return self.predictor_cache[(bdb, genid, fcol)]
+        # if (genid, fcol) not in self._predictor_cache(bdb):
+        #     cursor = bdb.sql_execute('''
+        #         SELECT predictor_name, predictor_binary
+        #             FROM bayesdb_composer_column_foreign_predictor
+        #             WHERE generator_id = ? AND colno = ?
+        #     ''', (genid, fcol))
+        #     name, binary = cursor.fetchall()[0]
+        #     builder = self.predictor_builder.get(name, None)
+        #     if builder is None:
+        #         raise LookupError('Foreign predictor for column "{}" '
+        #             'not registered: "{}".'.format(name,
+        #                 core.bayesdb_generator_column_name(bdb, genid, fcol)))
+        #     self._predictor_cache(bdb)[(genid, fcol)] = \
+        #         builder.deserialize(bdb, binary)
+        # return self._predictor_cache(bdb)[(genid, fcol)]
 
     def parse(self, schema):
         """Parse the given `schema` for a `composer` metamodel.
