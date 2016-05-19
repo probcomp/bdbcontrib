@@ -571,8 +571,9 @@ class Composer(bayeslite.metamodel.IBayesDBMetamodel):
             numsamples=None):
         # Predicts a value for the cell [rowid, colno] with a confidence metric.
         # XXX Prefer accuracy over speed for imputation.
+        print rowid
         if numsamples is None:
-            numsamples = self.n_samples
+            numsamples = 1
         colnos = core.bayesdb_generator_column_numbers(bdb, genid)
         colnames = core.bayesdb_generator_column_names(bdb, genid)
         row = core.bayesdb_generator_row_values(bdb, genid, rowid)
