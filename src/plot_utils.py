@@ -806,10 +806,6 @@ def heatmap(data_df, row_ordering=None, col_ordering=None, **kwargs):
         clustermap_kws['vmax'] <= 1):
         clustermap_kws['vmin'] = 0
         clustermap_kws['vmax'] = 1
-    if autoset_vlimits:
-        print ("Detected value limits as [%s, %s]. Override with vmin and vmax."
-               % (clustermap_kws['vmin'], clustermap_kws['vmax']))
-
 
     if row_ordering is not None and col_ordering is not None:
         index = clustermap_kws['pivot_kws']['index']
