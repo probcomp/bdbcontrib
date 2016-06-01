@@ -1,0 +1,8 @@
+{
+    "metamodel": "crosscat",
+    "columns": {
+        "Age": {"stattype": "NUMERICAL"},
+        "Super Power": {"stattype": "CATEGORICAL"},
+        "Healing Factor": {"stattype": "IGNORE", "guessed": "NUMERICAL"}
+    }
+}
