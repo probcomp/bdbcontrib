@@ -815,9 +815,9 @@ def heatmap(data_df, row_ordering=None, col_ordering=None, **kwargs):
         df = data_df.pivot(index, columns, values)
         df = df.ix[:, col_ordering]
         df = df.ix[row_ordering, :]
+        _fig, ax = plt.subplots(figsize=clustermap_kws['figsize'])
         del clustermap_kws['pivot_kws']
         del clustermap_kws['figsize']
-        _fig, ax = plt.subplots()
         sns.heatmap(df, ax=ax, **clustermap_kws)
         rotate_tick_labels(ax)
         return (ax, row_ordering, col_ordering)
