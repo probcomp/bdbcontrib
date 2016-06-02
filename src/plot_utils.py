@@ -766,6 +766,7 @@ def heatmap(data_df, row_ordering=None, col_ordering=None, **kwargs):
     """
     clustermap_kws = {}
     clustermap_kws.update(kwargs)
+    data_df = data_df.copy()
     data_df.fillna(0, inplace=True)
     if clustermap_kws is None:
         clustermap_kws = {}
