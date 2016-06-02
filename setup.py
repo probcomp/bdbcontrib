@@ -168,7 +168,7 @@ version_py = 'src/version.py'
 setup(
     name='bdbcontrib',
     version=pkg_version,
-    description='Hodgepodge library of extras for bayeslite',
+    description='Library of extras for bayeslite',
     url='http://probcomp.csail.mit.edu/bayesdb',
     author='MIT Probabilistic Computing Project',
     author_email='bayesdb@mit.edu',
