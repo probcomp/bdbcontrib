@@ -3,9 +3,11 @@ from bdbcontrib.population_method import population_method
 from enum import Enum
 from string import Template
 
+import copy
 import json
 import jsonschema
 import pkgutil
+import uuid
 
 MML_SCHEMA = json.loads(
     pkgutil.get_data('bdbcontrib', 'mml.schema.json'))
@@ -127,3 +129,24 @@ def to_mml(mml_json, table, generator):
                 metamodel=mml_json['metamodel'],
                 subsample='SUBSAMPLE(%d),' % subsample if subsample else '',
                 schema_phrase=schema_phrase))
+
+
+def validate_schema(mml_json, bdb, table):
+    modified_schema = copy.deepcopy(mml_json)
+    for col, typ in mml_json['columns'].items():
+        if typ['stattype'] is 'IGNORE':
+            continue
+        one_col_json = copy.deepcopy(mml_json)
+        one_col_json['columns'] = {col: typ}
+        # Create a temp generator
+        gen_name = uuid.uuid4().hex
+        try:
+            bdb.execute(to_mml(one_col_json, table, gen_name))
+            bdb.execute('INITIALIZE 1 MODEL FOR %s' % bql_quote_name(gen_name))
+            bdb.execute('ANALYZE %s FOR 1 ITERATION WAIT' % bql_quote_name(gen_name))
+        except AssertionError:
+            modified_schema['columns'][col]['stattype'] = 'IGNORE'
+        finally:
+            # Drop our temp generator
+            bdb.execute('DROP GENERATOR %s' % bql_quote_name(gen_name))
+    return modified_schema
