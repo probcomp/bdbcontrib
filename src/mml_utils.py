@@ -159,8 +159,10 @@ def validate_schema(bdb, table, mml_json):
         gen_name = uuid.uuid4().hex
         try:
             bdb.execute(to_mml(one_col_json, table, gen_name))
-            bdb.execute('INITIALIZE 1 MODEL FOR %s' % bql_quote_name(gen_name))
-            bdb.execute('ANALYZE %s FOR 1 ITERATION WAIT' % bql_quote_name(gen_name))
+            bdb.execute('INITIALIZE 1 MODEL FOR %s'
+                        % (bql_quote_name(gen_name),))
+            bdb.execute('ANALYZE %s FOR 1 ITERATION WAIT'
+                        % (bql_quote_name(gen_name),))
         except AssertionError:
             bad_cols.append(col)
         finally:
