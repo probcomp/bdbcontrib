@@ -131,9 +131,26 @@ def to_mml(mml_json, table, generator):
                 schema_phrase=schema_phrase))
 
 
-def validate_schema(mml_json, bdb, table):
-    modified_schema = copy.deepcopy(mml_json)
+@population_method(population_to_bdb=0, population_name=1)
+def validate_schema(bdb, table, mml_json):
+    """Returns a modified JSON representation of a generator expression,
+    changing the stattypes of any columns which cause issues during analysis
+    to IGNORE.
+
+    This creates a single model for each column and analyzes it for a single
+    iteration. If this succeeds the column and stattype are deemed good. If it
+    fails the stattype is changed to IGNORE and the existing stattype is placed
+    into that column's 'guessed' field, overwriting it if it exists.
+
+    Parameters
+    ----------
+    mml_json
+        A json representation of the generator. Must validate against
+        MML_SCHEMA
+    """
+    bad_cols = []
     for col, typ in mml_json['columns'].items():
+        # If the column is already ignored there's nothing to check
         if typ['stattype'] is 'IGNORE':
             continue
         one_col_json = copy.deepcopy(mml_json)
@@ -145,8 +162,15 @@ def validate_schema(mml_json, bdb, table):
             bdb.execute('INITIALIZE 1 MODEL FOR %s' % bql_quote_name(gen_name))
             bdb.execute('ANALYZE %s FOR 1 ITERATION WAIT' % bql_quote_name(gen_name))
         except AssertionError:
-            modified_schema['columns'][col]['stattype'] = 'IGNORE'
+            bad_cols.append(col)
         finally:
             # Drop our temp generator
             bdb.execute('DROP GENERATOR %s' % bql_quote_name(gen_name))
+    modified_schema = copy.deepcopy(mml_json)
+    # TODO(asilvers): Should we also return a summary of the modifications?
+    for col in bad_cols:
+        modified_schema['columns'][col]['guessed'] = (
+            modified_schema['columns'][col]['stattype'])
+        modified_schema['columns'][col]['stattype'] = 'IGNORE'
+    jsonschema.validate(mml_json, MML_SCHEMA)
     return modified_schema
