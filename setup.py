@@ -203,6 +203,9 @@ setup(
     package_dir={
         'bdbcontrib': 'src',
     },
+    package_data={
+        'bdbcontrib': ['*.schema.json'],
+    },
     data_files=example_files.items(),
     scripts=[
         'scripts/bayesdb-demo',
