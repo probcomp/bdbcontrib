@@ -30,7 +30,8 @@ def test_mml_csv():
             'col2': StatType.CATEGORICAL,
             'col3': StatType.IGNORE,
             'col4': StatType.NUMERICAL,
-            'col5': StatType.CATEGORICAL})
+            'col5': StatType.CATEGORICAL,
+            'col6': StatType.NUMERICAL})
 
         mml_json = mml_utils.to_json(guesses)
         assert mml_json == {
@@ -40,10 +41,25 @@ def test_mml_csv():
                 'col2': {'stattype': 'CATEGORICAL'},
                 'col3': {'stattype': 'IGNORE'},
                 'col4': {'stattype': 'NUMERICAL'},
-                'col5': {'stattype': 'CATEGORICAL'}}}
+                'col5': {'stattype': 'CATEGORICAL'},
+                'col6': {'stattype': 'NUMERICAL'}}}
 
         mml_statement = mml_utils.to_mml(mml_json, 'table', 'generator')
         assert mml_statement == (
-            'CREATE GENERATOR generator FOR table '
+            'CREATE GENERATOR "generator" FOR "table" '
             'USING crosscat( '
-            '"col4" NUMERICAL,"col5" CATEGORICAL,"col2" CATEGORICAL);')
+            '"col6" NUMERICAL,"col4" NUMERICAL,"col5" CATEGORICAL,"col2" CATEGORICAL);')
+
+        # col6's values are constructed in such a way as to break crosscat.
+        # See https://github.com/probcomp/bayeslite/issues/284
+        # On validation the column should be ignored
+        mod_schema = mml_utils.validate_schema(bdb, 't', mml_json)
+        assert mod_schema == {
+            'metamodel': 'crosscat',
+            'columns': {
+                u'col1': {'stattype': 'IGNORE'},
+                u'col2': {'stattype': 'CATEGORICAL'},
+                u'col3': {'stattype': 'IGNORE'},
+                u'col4': {'stattype': 'NUMERICAL'},
+                u'col5': {'stattype': 'CATEGORICAL'},
+                u'col6': {'stattype': 'IGNORE', 'guessed': 'NUMERICAL'}}}
