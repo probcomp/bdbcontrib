@@ -15,7 +15,6 @@
 #   limitations under the License.
 
 from bdbcontrib import mml_utils
-from bdbcontrib.mml_utils import StatType
 
 import bayeslite
 
@@ -28,18 +27,18 @@ def test_mml_csv():
         # Testing these strings is going to be brittle, but I don't have a
         # great answer.
         assert guesses == ({
-            'col1': (StatType.IGNORE,
+            'col1': ('IGNORE',
                      'Column is constant'),
-            'col2': (StatType.CATEGORICAL,
+            'col2': ('CATEGORICAL',
                      'Only 5 distinct values'),
-            'col3': (StatType.IGNORE,
+            'col3': ('IGNORE',
                      'Column is constant'),
-            'col4': (StatType.NUMERICAL,
-                     'Contains exclusively numbers. 24 of them'),
-            'col5': (StatType.CATEGORICAL,
+            'col4': ('NUMERICAL',
+                     'Contains exclusively numbers (24 of them).'),
+            'col5': ('CATEGORICAL',
                      'Only 2 distinct values'),
-            'col6': (StatType.NUMERICAL,
-                     'Contains exclusively numbers. 25 of them')})
+            'col6': ('NUMERICAL',
+                     'Contains exclusively numbers (25 of them).')})
 
         mml_json = mml_utils.to_json(guesses)
         assert mml_json == {
@@ -52,11 +51,11 @@ def test_mml_csv():
                 'col3': {'stattype': 'IGNORE',
                          'reason': 'Column is constant'},
                 'col4': {'stattype': 'NUMERICAL',
-                         'reason': 'Contains exclusively numbers. 24 of them'},
+                         'reason': 'Contains exclusively numbers (24 of them).'},
                 'col5': {'stattype': 'CATEGORICAL',
                          'reason': 'Only 2 distinct values'},
                 'col6': {'stattype': 'NUMERICAL',
-                         'reason': 'Contains exclusively numbers. 25 of them'}
+                         'reason': 'Contains exclusively numbers (25 of them).'}
             }}
 
         mml_statement = mml_utils.to_mml(mml_json, 'table', 'generator')
@@ -80,7 +79,7 @@ def test_mml_csv():
                 'col3': {'stattype': 'IGNORE',
                          'reason': 'Column is constant'},
                 'col4': {'stattype': 'NUMERICAL',
-                         'reason': 'Contains exclusively numbers. 24 of them'},
+                         'reason': 'Contains exclusively numbers (24 of them).'},
                 'col5': {'stattype': 'CATEGORICAL',
                          'reason': 'Only 2 distinct values'},
                 'col6': {'stattype': 'IGNORE', 'guessed': 'NUMERICAL',
