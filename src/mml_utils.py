@@ -183,5 +183,6 @@ def validate_schema(bdb, table, mml_json):
         modified_schema['columns'][col]['guessed'] = (
             modified_schema['columns'][col]['stattype'])
         modified_schema['columns'][col]['stattype'] = 'IGNORE'
-    jsonschema.validate(mml_json, MML_SCHEMA)
+        modified_schema['columns'][col]['reason'] = 'Caused ANALYZE to error'
+    jsonschema.validate(modified_schema, MML_SCHEMA)
     return modified_schema
