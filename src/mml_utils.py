@@ -23,7 +23,12 @@ class StatType(Enum):
 def guess_types(bdb, table):
     """Guesses stattypes of a given table.
 
-    Returns a dictionary from column names to the guessed stattype.
+    Returns a dictionary from column names to a tuple of
+    (guessed stattype, reason).
+
+    You will most often want to pass this straight through to to_json, but this
+    form is a bit easier to programatically manipulate, so it provides an easy
+    place to hook in and make adjustments before serializing to json.
     """
     types = {}
     for col in _column_names(bdb, table):
@@ -52,22 +57,24 @@ def _type_given_vals(vals):
     on a minimal set of test datasets. They should be treated fluidly and
     improved as failures crop up.
     """
+    cardinality = len(vals)
     # Constant columns are uninteresting. Do not model them.
-    if len(vals) == 1:
-        return StatType.IGNORE
+    if cardinality == 1:
+        return (StatType.IGNORE, 'Column is constant')
     # Even if the whole column is numerical, if there are only a few distinct
     # values they are very likely enums of a sort.
-    elif len(vals) < 20:
-        return StatType.CATEGORICAL
+    elif cardinality < 20:
+        return (StatType.CATEGORICAL, 'Only %s distinct values' % cardinality)
     elif all(_numbery(v) for v in vals):
-        return StatType.NUMERICAL
-    elif len(vals) > 1000:
+        return (StatType.NUMERICAL, 'Contains exclusively numbers. %s of them'
+                                    % cardinality)
+    elif cardinality > 1000:
         # That's a lot of values for a categorical.
-        # TODO(asilvers): This seems like a reasonable guess, but an
-        # explanation in the resulting schema would make this more usable.
-        return StatType.IGNORE
+        nonnum = cardinality - len(filter(_numbery, vals))
+        return (StatType.IGNORE, '%s distinct values. %s are non-numeric'
+                                 % (cardinality, nonnum))
     else:
-        return StatType.CATEGORICAL
+        return (StatType.CATEGORICAL, 'Fallback')
 
 
 def _numbery(val):
@@ -85,14 +92,16 @@ def to_json(stattypes, metamodel='crosscat'):
 
     Parameters
     ----------
-    stattypes : dict<str, StatType>
-        A dictionary from column names to stattypes as produced by guess_types
+    stattypes : dict<str, (StatType, str)>
+        A dictionary from column names to stattypes with reasons as produced by
+        guess_types
     metamodel : str, optional
         The metamodel to use, e.g. 'crosscat'
 
     Returns a json representation validated by MML_SCHEMA.
     """
-    cols = {col: {'stattype': typ.name} for col, typ in stattypes.items()}
+    cols = {col: {'stattype': typ.name, 'reason': reason}
+            for col, (typ, reason) in stattypes.items()}
     mml_json = {
         'metamodel': metamodel,
         'columns': cols}
