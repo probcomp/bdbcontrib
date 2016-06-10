@@ -120,7 +120,7 @@ def to_mml(mml_json, table, generator):
     jsonschema.validate(mml_json, MML_SCHEMA)
     schema_phrase = ','.join(["%s %s" % (bql_quote_name(col), v['stattype'])
                              for col, v in mml_json['columns'].items()
-                             if v['stattype'] is not 'IGNORE'])
+                             if v['stattype'] != 'IGNORE'])
     subsample = mml_json.get('subsample', None)
     return (Template('CREATE GENERATOR $gen FOR $table '
                      'USING $metamodel($subsample $schema_phrase);')
@@ -154,7 +154,7 @@ def validate_schema(bdb, table, mml_json):
     bad_cols = []
     for col, typ in mml_json['columns'].items():
         # If the column is already ignored there's nothing to check
-        if typ['stattype'] is 'IGNORE':
+        if typ['stattype'] == 'IGNORE':
             continue
         one_col_json = copy.deepcopy(mml_json)
         one_col_json['columns'] = {col: typ}
