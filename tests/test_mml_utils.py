@@ -28,29 +28,43 @@ def test_mml_csv():
         # Testing these strings is going to be brittle, but I don't have a
         # great answer.
         assert guesses == ({
-            'col1': (StatType.IGNORE, 'Column is constant'),
-            'col2': (StatType.CATEGORICAL, 'Only 5 distinct values'),
-            'col3': (StatType.IGNORE, 'Column is constant'),
-            'col4': (StatType.NUMERICAL, 'Contains exclusively numbers. 24 of them'),
-            'col5': (StatType.CATEGORICAL, 'Only 2 distinct values'),
-            'col6': (StatType.NUMERICAL, 'Contains exclusively numbers. 25 of them')})
+            'col1': (StatType.IGNORE,
+                     'Column is constant'),
+            'col2': (StatType.CATEGORICAL,
+                     'Only 5 distinct values'),
+            'col3': (StatType.IGNORE,
+                     'Column is constant'),
+            'col4': (StatType.NUMERICAL,
+                     'Contains exclusively numbers. 24 of them'),
+            'col5': (StatType.CATEGORICAL,
+                     'Only 2 distinct values'),
+            'col6': (StatType.NUMERICAL,
+                     'Contains exclusively numbers. 25 of them')})
 
         mml_json = mml_utils.to_json(guesses)
         assert mml_json == {
             'metamodel': 'crosscat',
             'columns': {
-                'col1': {'stattype': 'IGNORE', 'reason': 'Column is constant'},
-                'col2': {'stattype': 'CATEGORICAL', 'reason': 'Only 5 distinct values'},
-                'col3': {'stattype': 'IGNORE', 'reason': 'Column is constant'},
-                'col4': {'stattype': 'NUMERICAL', 'reason': 'Contains exclusively numbers. 24 of them'},
-                'col5': {'stattype': 'CATEGORICAL', 'reason': 'Only 2 distinct values'},
-                'col6': {'stattype': 'NUMERICAL', 'reason': 'Contains exclusively numbers. 25 of them'}}}
+                'col1': {'stattype': 'IGNORE',
+                         'reason': 'Column is constant'},
+                'col2': {'stattype': 'CATEGORICAL',
+                         'reason': 'Only 5 distinct values'},
+                'col3': {'stattype': 'IGNORE',
+                         'reason': 'Column is constant'},
+                'col4': {'stattype': 'NUMERICAL',
+                         'reason': 'Contains exclusively numbers. 24 of them'},
+                'col5': {'stattype': 'CATEGORICAL',
+                         'reason': 'Only 2 distinct values'},
+                'col6': {'stattype': 'NUMERICAL',
+                         'reason': 'Contains exclusively numbers. 25 of them'}
+            }}
 
         mml_statement = mml_utils.to_mml(mml_json, 'table', 'generator')
         assert mml_statement == (
             'CREATE GENERATOR "generator" FOR "table" '
             'USING crosscat( '
-            '"col6" NUMERICAL,"col4" NUMERICAL,"col5" CATEGORICAL,"col2" CATEGORICAL);')
+            '"col6" NUMERICAL,"col4" NUMERICAL,'
+            '"col5" CATEGORICAL,"col2" CATEGORICAL);')
 
         # col6's values are constructed in such a way as to break crosscat.
         # See https://github.com/probcomp/bayeslite/issues/284
@@ -59,9 +73,15 @@ def test_mml_csv():
         assert mod_schema == {
             'metamodel': 'crosscat',
             'columns': {
-                'col1': {'stattype': 'IGNORE', 'reason': 'Column is constant'},
-                'col2': {'stattype': 'CATEGORICAL', 'reason': 'Only 5 distinct values'},
-                'col3': {'stattype': 'IGNORE', 'reason': 'Column is constant'},
-                'col4': {'stattype': 'NUMERICAL', 'reason': 'Contains exclusively numbers. 24 of them'},
-                'col5': {'stattype': 'CATEGORICAL', 'reason': 'Only 2 distinct values'},
-                'col6': {'stattype': 'IGNORE', 'guessed': 'NUMERICAL', 'reason': 'Caused ANALYZE to error'}}}
+                'col1': {'stattype': 'IGNORE',
+                         'reason': 'Column is constant'},
+                'col2': {'stattype': 'CATEGORICAL',
+                         'reason': 'Only 5 distinct values'},
+                'col3': {'stattype': 'IGNORE',
+                         'reason': 'Column is constant'},
+                'col4': {'stattype': 'NUMERICAL',
+                         'reason': 'Contains exclusively numbers. 24 of them'},
+                'col5': {'stattype': 'CATEGORICAL',
+                         'reason': 'Only 2 distinct values'},
+                'col6': {'stattype': 'IGNORE', 'guessed': 'NUMERICAL',
+                         'reason': 'Caused ANALYZE to error'}}}

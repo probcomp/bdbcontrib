@@ -64,14 +64,15 @@ def _type_given_vals(vals):
     # Even if the whole column is numerical, if there are only a few distinct
     # values they are very likely enums of a sort.
     elif cardinality < 20:
-        return (StatType.CATEGORICAL, 'Only %s distinct values' % cardinality)
+        return (StatType.CATEGORICAL, 'Only %d distinct values' % cardinality)
     elif all(_numbery(v) for v in vals):
-        return (StatType.NUMERICAL, 'Contains exclusively numbers. %s of them'
-                                    % cardinality)
+        return (StatType.NUMERICAL,
+                'Contains exclusively numbers (%d of them).'
+                % cardinality)
     elif cardinality > 1000:
         # That's a lot of values for a categorical.
         nonnum = cardinality - len(filter(_numbery, vals))
-        return (StatType.IGNORE, '%s distinct values. %s are non-numeric'
+        return (StatType.IGNORE, '%d distinct values. %d are non-numeric'
                                  % (cardinality, nonnum))
     else:
         return (StatType.CATEGORICAL, 'Fallback')
