@@ -1,6 +1,5 @@
 from bayeslite import bql_quote_name
 from bdbcontrib.population_method import population_method
-from enum import Enum
 from string import Template
 
 import copy
@@ -11,12 +10,6 @@ import uuid
 
 MML_SCHEMA = json.loads(
     pkgutil.get_data('bdbcontrib', 'mml.schema.json'))
-
-
-class StatType(Enum):
-    CATEGORICAL = 1
-    NUMERICAL = 2
-    IGNORE = 3
 
 
 @population_method(population_to_bdb=0, population_name=1)
@@ -60,22 +53,22 @@ def _type_given_vals(vals):
     cardinality = len(vals)
     # Constant columns are uninteresting. Do not model them.
     if cardinality == 1:
-        return (StatType.IGNORE, 'Column is constant')
+        return ('IGNORE', 'Column is constant')
     # Even if the whole column is numerical, if there are only a few distinct
     # values they are very likely enums of a sort.
     elif cardinality < 20:
-        return (StatType.CATEGORICAL, 'Only %d distinct values' % cardinality)
+        return ('CATEGORICAL', 'Only %d distinct values' % cardinality)
     elif all(_numbery(v) for v in vals):
-        return (StatType.NUMERICAL,
+        return ('NUMERICAL',
                 'Contains exclusively numbers (%d of them).'
                 % cardinality)
     elif cardinality > 1000:
         # That's a lot of values for a categorical.
         nonnum = cardinality - len(filter(_numbery, vals))
-        return (StatType.IGNORE, '%d distinct values. %d are non-numeric'
-                                 % (cardinality, nonnum))
+        return ('IGNORE', '%d distinct values. %d are non-numeric'
+                          % (cardinality, nonnum))
     else:
-        return (StatType.CATEGORICAL, 'Fallback')
+        return ('CATEGORICAL', 'Fallback')
 
 
 def _numbery(val):
@@ -93,7 +86,7 @@ def to_json(stattypes, metamodel='crosscat'):
 
     Parameters
     ----------
-    stattypes : dict<str, (StatType, str)>
+    stattypes : dict<str, (str, str)>
         A dictionary from column names to stattypes with reasons as produced by
         guess_types
     metamodel : str, optional
@@ -101,7 +94,7 @@ def to_json(stattypes, metamodel='crosscat'):
 
     Returns a json representation validated by MML_SCHEMA.
     """
-    cols = {col: {'stattype': typ.name, 'reason': reason}
+    cols = {col: {'stattype': typ, 'reason': reason}
             for col, (typ, reason) in stattypes.items()}
     mml_json = {
         'metamodel': metamodel,
