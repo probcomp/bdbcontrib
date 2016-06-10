@@ -25,30 +25,46 @@ def test_mml_csv():
         bayeslite.bayesdb_read_csv_file(
             bdb, 't', 'tests/mml.csv', header=True, create=True)
         guesses = mml_utils.guess_types(bdb, 't')
+        # Testing these strings is going to be brittle, but I don't have a
+        # great answer.
         assert guesses == ({
-            'col1': StatType.IGNORE,
-            'col2': StatType.CATEGORICAL,
-            'col3': StatType.IGNORE,
-            'col4': StatType.NUMERICAL,
-            'col5': StatType.CATEGORICAL,
-            'col6': StatType.NUMERICAL})
+            'col1': (StatType.IGNORE,
+                     'Column is constant'),
+            'col2': (StatType.CATEGORICAL,
+                     'Only 5 distinct values'),
+            'col3': (StatType.IGNORE,
+                     'Column is constant'),
+            'col4': (StatType.NUMERICAL,
+                     'Contains exclusively numbers. 24 of them'),
+            'col5': (StatType.CATEGORICAL,
+                     'Only 2 distinct values'),
+            'col6': (StatType.NUMERICAL,
+                     'Contains exclusively numbers. 25 of them')})
 
         mml_json = mml_utils.to_json(guesses)
         assert mml_json == {
             'metamodel': 'crosscat',
             'columns': {
-                'col1': {'stattype': 'IGNORE'},
-                'col2': {'stattype': 'CATEGORICAL'},
-                'col3': {'stattype': 'IGNORE'},
-                'col4': {'stattype': 'NUMERICAL'},
-                'col5': {'stattype': 'CATEGORICAL'},
-                'col6': {'stattype': 'NUMERICAL'}}}
+                'col1': {'stattype': 'IGNORE',
+                         'reason': 'Column is constant'},
+                'col2': {'stattype': 'CATEGORICAL',
+                         'reason': 'Only 5 distinct values'},
+                'col3': {'stattype': 'IGNORE',
+                         'reason': 'Column is constant'},
+                'col4': {'stattype': 'NUMERICAL',
+                         'reason': 'Contains exclusively numbers. 24 of them'},
+                'col5': {'stattype': 'CATEGORICAL',
+                         'reason': 'Only 2 distinct values'},
+                'col6': {'stattype': 'NUMERICAL',
+                         'reason': 'Contains exclusively numbers. 25 of them'}
+            }}
 
         mml_statement = mml_utils.to_mml(mml_json, 'table', 'generator')
         assert mml_statement == (
             'CREATE GENERATOR "generator" FOR "table" '
             'USING crosscat( '
-            '"col6" NUMERICAL,"col4" NUMERICAL,"col5" CATEGORICAL,"col2" CATEGORICAL);')
+            '"col6" NUMERICAL,"col4" NUMERICAL,'
+            '"col5" CATEGORICAL,"col2" CATEGORICAL);')
 
         # col6's values are constructed in such a way as to break crosscat.
         # See https://github.com/probcomp/bayeslite/issues/284
@@ -57,9 +73,15 @@ def test_mml_csv():
         assert mod_schema == {
             'metamodel': 'crosscat',
             'columns': {
-                u'col1': {'stattype': 'IGNORE'},
-                u'col2': {'stattype': 'CATEGORICAL'},
-                u'col3': {'stattype': 'IGNORE'},
-                u'col4': {'stattype': 'NUMERICAL'},
-                u'col5': {'stattype': 'CATEGORICAL'},
-                u'col6': {'stattype': 'IGNORE', 'guessed': 'NUMERICAL'}}}
+                'col1': {'stattype': 'IGNORE',
+                         'reason': 'Column is constant'},
+                'col2': {'stattype': 'CATEGORICAL',
+                         'reason': 'Only 5 distinct values'},
+                'col3': {'stattype': 'IGNORE',
+                         'reason': 'Column is constant'},
+                'col4': {'stattype': 'NUMERICAL',
+                         'reason': 'Contains exclusively numbers. 24 of them'},
+                'col5': {'stattype': 'CATEGORICAL',
+                         'reason': 'Only 2 distinct values'},
+                'col6': {'stattype': 'IGNORE', 'guessed': 'NUMERICAL',
+                         'reason': 'Caused ANALYZE to error'}}}
