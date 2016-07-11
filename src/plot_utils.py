@@ -934,7 +934,7 @@ def _pairplot(df, bdb=None, generator_name=None, stattypes=None,
                                            generator_name=generator_name)
         do_hist(data_df, dtype=vartype, ax=ax, bdb=bdb, colors=colors)
         rotate_tick_labels(ax)
-        return
+        return figure
 
     xmins = np.ones((n_vars, n_vars))*float('Inf')
     xmaxs = np.ones((n_vars, n_vars))*float('-Inf')
