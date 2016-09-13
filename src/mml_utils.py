@@ -52,6 +52,8 @@ def _type_given_vals(vals):
     """
     cardinality = len(vals)
     # Constant columns are uninteresting. Do not model them.
+    if cardinality == 0:
+        return ('IGNORE', 'Column is empty')
     if cardinality == 1:
         return ('IGNORE', 'Column is constant')
     # Even if the whole column is numerical, if there are only a few distinct
