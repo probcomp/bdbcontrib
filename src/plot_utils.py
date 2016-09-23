@@ -22,7 +22,7 @@ import matplotlib.gridspec as gridspec
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import seaborn as sns
+import seaborn.apionly as sns
 
 import bayeslite.core
 from bayeslite.exception import BayesLiteException as BLE
