@@ -176,7 +176,7 @@ setup(
     install_requires=[
         'bayeslite>=0.1.8',
         'ipython[notebook]>=3',
-        'markdown2',
+        'markdown',
         'matplotlib',
         'numpy',
         'numpydoc',
