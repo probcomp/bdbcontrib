@@ -148,6 +148,28 @@ def df_to_table(df, tablename=None, **kwargs):
     bayesdb_read_pandas_df(bdb, tablename, df, create=True)
     return (bdb, tablename)
 
+def drop_all_null_columns(bdb, tablename):
+    """
+    Drop all columns containing only null values from `tablename` in `bdb`.
+
+    Because SQLite does not support dropping columns directly, the table is
+    first converted to a DataFrame, all NaN-only columns are removed, and then
+    the table is recreated.
+
+    Parameters
+    ----------
+    bdb : the bdb in which the table is located
+    tablename : the name of the table to drop columns containing only null
+                values from.
+    """
+    df = table_to_df(bdb, tablename)
+    df.dropna(axis=1, how='all', inplace=True)
+    drop_table_query = 'DROP TABLE IF EXISTS %s' %(
+        sqlite3_quote_name(tablename))
+    with bdb.savepoint():
+        bdb.execute(drop_table_query)
+        bayesdb_read_pandas_df(bdb, tablename, df, create=True)
+
 @population_method(population_to_bdb=0, interpret_bql=1, logger="logger")
 def query(bdb, bql, bindings=None, logger=None):
     """Execute the `bql` query on the `bdb` instance.
