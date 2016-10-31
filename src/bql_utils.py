@@ -158,14 +158,13 @@ def drop_all_null_columns(bdb, tablename):
 
     Parameters
     ----------
-    bdb : the bdb in which the table is located
-    tablename : the name of the table to drop columns containing only null
-                values from.
+    bdb : the bdb in which the table is located.
+    tablename : the name of the table from which to drop columns containing only
+                null values.
     """
     df = table_to_df(bdb, tablename)
     df.dropna(axis=1, how='all', inplace=True)
-    drop_table_query = 'DROP TABLE IF EXISTS %s' %(
-        sqlite3_quote_name(tablename))
+    drop_table_query = 'DROP TABLE %s' %(sqlite3_quote_name(tablename))
     with bdb.savepoint():
         bdb.execute(drop_table_query)
         bayesdb_read_pandas_df(bdb, tablename, df, create=True)
