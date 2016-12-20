@@ -16,11 +16,15 @@
 
 import json
 
+import itertools
 import numpy as np
 import matplotlib
 from matplotlib import pyplot as plt
 from matplotlib.patches import Rectangle
+from numbers import Number
+import random
 import seaborn as sns
+import warnings
 
 import bayeslite.core
 from bayeslite.exception import BayesLiteException as BLE
@@ -36,7 +40,7 @@ import plot_utils as pu
 ###############################################################################
 
 @population_method(population_to_bdb=0, generator_name=1)
-def draw_crosscat(bdb, generator, modelno, row_label_col=None):
+def draw_crosscat(bdb, generator, modelno, figure=None, rng=random, **kwargs):
     """Draw crosscat model from the specified generator.
 
     Parameters
@@ -47,6 +51,12 @@ def draw_crosscat(bdb, generator, modelno, row_label_col=None):
         Name of generator.
     modelno: int
         Number of model to draw.
+    row_label_col: str
+        Name of column to use for row labels
+    kwargs: ???
+        Passed as keyword args to draw_state, which see
+    rng: object which provides the variate-generation functions in the random
+        module (e.g. random.uniform, or random.Random(0).uniform)
 
     Returns
     ----------
@@ -64,9 +74,9 @@ def draw_crosscat(bdb, generator, modelno, row_label_col=None):
             'Metamodel for generator %s (%s) should be crosscat' %
             (generator, metamodel)))
 
-    figure, axes = plt.subplots(tight_layout=False)
+    figure, axes = plt.subplots(tight_layout=False, figsize=(10, 20))
     draw_state(bdb, table_name, generator,
-        modelno, ax=axes, row_label_col=row_label_col)
+               modelno, ax=axes, rng=rng, **kwargs)
 
     return figure
 
@@ -220,16 +230,17 @@ def get_column_probabilities(X_L, M_c):
 
 
 def draw_state(bdb, table_name, generator_name, modelno,
-        ax=None, border_width=3, row_label_col=None, short_names=True,
-        hilight_rows=[], hilight_rows_colors=None,
-        hilight_cols=[], hilight_cols_colors=None,
-        separator_color='black', separator_width=4,
-        blank_state=False, nan_color=(1., 0., 0., 1.),
-        view_labels=None, view_label_fontsize='large',
-        legend=True, legend_fontsize='medium',
-        row_legend_loc=1, row_legend_title='Row key',
-        col_legend_loc=4, col_legend_title='Column key',
-        descriptions_in_legend=True, legend_wrap_threshold=20,):
+               ax=None, border_width=3, row_label_col=None, short_names=True,
+               hilight_rows=[], hilight_rows_colors=None,
+               hilight_cols=[], hilight_cols_colors=None,
+               separator_color='black', separator_width=4,
+               blank_state=False, nan_color=(1., 0., 0., 1.),
+               view_labels=None, view_label_fontsize='large',
+               legend=True, legend_fontsize='medium',
+               row_legend_loc=1, row_legend_title='Row key',
+               col_legend_loc=4, col_legend_title='Column key',
+               descriptions_in_legend=True, legend_wrap_threshold=20,
+               maxrows=None, maxcols=None, rng=random):
     """Creates a debugging (read: not pretty) rendering of a CrossCat state.
 
     Parameters
@@ -273,6 +284,10 @@ def draw_state(bdb, table_name, generator_name, modelno,
         location of the row legend. For use with row hilighting
     col_legend_loc : matplotlib.legend location
         location of the column legend. For use with column hilighting
+    maxrows, maxcols: ints
+        the maximum number of views and clusters to display
+    rng: object which provides the variate-generation functions in the random
+        module (e.g. random.uniform, or random.Random(0).uniform)
 
     Returns
     -------
@@ -301,7 +316,24 @@ def draw_state(bdb, table_name, generator_name, modelno,
     descriptions_in_legend : bool
         If True (default), the column descriptions (requires codebook) are
         added to the legend
+
     """
+
+    # Lots of existing functionality is broken by the code which affords a
+    # restricted view of the state.
+    restricted_view = (maxcols is not None) or (maxrows is not None)
+    if restricted_view:
+        if blank_state:
+            raise NotImplementedError("Can't make a restricted blank state")
+        if (hilight_rows or hilight_cols or hilight_rows_colors or
+            hilight_cols_colors):
+            raise NotImplementedError(
+                "Most formatting options are incompatible with making a "
+                "restricted view")
+        warnings.warn(
+            "You're using a restricted view. Testing of that functionality has"
+            " been totally inadequate.  It's probably broken.  Use with care!")
+
     theta = get_metadata(bdb, generator_name, modelno)
     M_c = get_M_c(bdb, generator_name)
     # idx_to_name doesn't use an int idx, but a string idx because
@@ -313,16 +345,19 @@ def draw_state(bdb, table_name, generator_name, modelno,
     X_D = theta['X_D']
 
     num_rows = len(T)
-    num_cols = len(T[0])
+    num_full_cols = len(T[0])
+    maxrows = maxrows if maxrows is not None else num_rows
+    maxcols = maxcols if maxcols is not None else num_full_cols
 
     if not blank_state:
-        sortedstate = DrawStateUtils.sort_state(X_L, X_D, M_c, T)
+        sortedstate = DrawStateUtils.sort_state(
+            X_L, X_D, M_c, T, maxrows, maxcols, rng=rng)
         sorted_views, sorted_clusters, sorted_cols, sorted_rows = sortedstate
         column_partition = X_L['column_partition']['assignments']
     else:
-        blankstate = DrawStateUtils.gen_blank_sort(num_rows, num_cols)
+        blankstate = DrawStateUtils.gen_blank_sort(maxrows, maxcols)
         sorted_views, sorted_clusters, sorted_cols, sorted_rows = blankstate
-        column_partition = [0]*num_cols
+        column_partition = [0]*maxcols
 
     if view_labels is not None:
         if not isinstance(view_labels, list):
@@ -330,7 +365,7 @@ def draw_state(bdb, table_name, generator_name, modelno,
         if len(view_labels) != len(sorted_views):
             view_labels += ['']*(len(sorted_rows)-len(view_labels))
     else:
-        view_labels = ['V ' + str(i) for i in range(num_rows)]
+        view_labels = ['view' + str(i) for i in range(num_rows)]
 
     if hilight_cols_colors is None:
         hilight_cols_colors = []
@@ -343,12 +378,9 @@ def draw_state(bdb, table_name, generator_name, modelno,
     cmap = matplotlib.colors.ListedColormap([(1, 1, 1, 1), (1, 1, 1, 1)])
     T = DrawStateUtils.convert_t_do_numerical(T, M_c)
 
-    num_views = len(sorted_cols)
-    X = np.zeros((num_rows, num_cols+num_views*border_width))
-
-    # row hilighting
-    row_hl_colors = DrawStateUtils.gen_hilight_colors(hilight_rows,
-        hilight_rows_colors)
+    num_views = len(sorted_views)
+    num_cols = sum(map(len, sorted_cols.values()))
+    X = np.zeros((maxrows, num_cols+num_views*border_width))
 
     hl_row_idx_label_zip = []
     if row_label_col is None:
@@ -375,16 +407,37 @@ def draw_state(bdb, table_name, generator_name, modelno,
         row_idx_to_label[row] = label
         row_label_to_idx[label] = row
 
-    for label in hilight_rows:
-        hl_row_idx_label_zip.append((row_label_to_idx[label], label,))
+    if hilight_rows:
+        raise NotImplementedError('Broke this for now...')
+
+    # Overwrite the hilight_rows list for now
+    row_list = itertools.chain(*sorted_rows.values()[0].values())
+    row_list = sorted(map(row_idx_to_label.get, row_list))
+    rng.shuffle(row_list)
+    hilight_rows = row_list[:1]
+
+    # row hilighting
+    hilight_rows_colors = ['#0000ff' for r in hilight_rows]
+    row_hl_colors = DrawStateUtils.gen_hilight_colors(
+        map(row_label_to_idx.get, hilight_rows), hilight_rows_colors, rng=rng)
+    row_hl_colors = {row_idx_to_label[ridx]: c  # XXX: interface atrocity
+                     for ridx, c in row_hl_colors.items()}
 
     # column hilighting
-    col_hl_colors = DrawStateUtils.gen_hilight_colors(hilight_cols,
-        hilight_cols_colors)
+    col_hl_colors = DrawStateUtils.gen_hilight_colors(
+        hilight_cols, hilight_cols_colors, rng=rng)
+
+    for label in hilight_rows:
+        hl_row_idx_label_zip.append((row_label_to_idx[label], label,))
 
     hl_col_idx_label_zip = []
     for label in hilight_cols:
         hl_col_idx_label_zip.append((M_c['name_to_idx'][label], label,))
+
+    num_highlit = len(hilight_rows)
+    num_to_print = len(row_list) / 5
+    display_rows = set(map(row_label_to_idx.get, sorted(
+        hilight_rows + row_list[num_highlit:num_to_print])))
 
     # generate a heatmap using the data (allows clusters to ahve different
     # base colors)
@@ -399,7 +452,7 @@ def draw_state(bdb, table_name, generator_name, modelno,
         ax = plt.gca()
 
     ax.imshow(cell_colors, cmap=cmap, interpolation='nearest', origin='upper',
-              aspect='auto')
+              aspect=0.95)
     col_count = 0
     for v, view in enumerate(sorted_views):
         view_x_labels = [M_c['idx_to_name'][str(col)]
@@ -411,6 +464,7 @@ def draw_state(bdb, table_name, generator_name, modelno,
             view_x_tick_labels = view_x_labels
 
         y_tick_labels = []
+        row_idxs = []
 
         x_labels += view_x_labels + ['_']*border_width
         num_cols_view = len(sorted_cols[view])
@@ -421,7 +475,7 @@ def draw_state(bdb, table_name, generator_name, modelno,
             if vxtl in hilight_cols:
                 edgecolor = col_hl_colors[vxtl]
                 x_a = sbplt_start+i-.5
-                ax.add_patch(Rectangle((x_a, -.5), 1, num_rows,
+                ax.add_patch(Rectangle((x_a, -.5), 1, maxrows,
                                        facecolor="none", edgecolor=edgecolor,
                                        lw=2, zorder=10))
                 fontcolor = edgecolor
@@ -431,11 +485,11 @@ def draw_state(bdb, table_name, generator_name, modelno,
                 fontsize = 'x-small'
             font_kws = dict(color=fontcolor, fontsize=fontsize, rotation=90,
                             va='top', ha='center')
-            ax.text(sbplt_start+i+.5, num_rows+.5, view_x_tick_labels[i],
+            ax.text(sbplt_start+i+.5, maxrows+.5, view_x_tick_labels[i],
                     font_kws)
 
         view_label_x = (sbplt_start+sbplt_end)/2. - .5
-        view_label_y = -2.5
+        view_label_y = -1
         font_kws = dict(ha='center',
                         fontsize=view_label_fontsize,
                         weight='bold')
@@ -443,8 +497,10 @@ def draw_state(bdb, table_name, generator_name, modelno,
 
         y = 0
         for cluster in sorted_clusters[view]:
-            y_tick_labels += [row_idx_to_label[row]
-                              for row in sorted_rows[view][cluster]]
+            y_tick_labels += [
+                row_idx_to_label[row] if row in display_rows else ''
+                for row in sorted_rows[view][cluster]]
+            row_idxs.extend(sorted_rows[view][cluster])
             ax.plot([sbplt_start-.5, sbplt_end-.5], [y-.5, y-.5],
                     color=separator_color, lw=separator_width)
             for row, label in hl_row_idx_label_zip:
@@ -462,7 +518,9 @@ def draw_state(bdb, table_name, generator_name, modelno,
 
             y += len(sorted_rows[view][cluster])
 
-        for i, row in enumerate(range(num_rows-1, -1, -1)):
+        assert len(row_idxs) == len(y_tick_labels)
+
+        for i, row in enumerate(range(maxrows-1, -1, -1)):
             if y_tick_labels[i] in hilight_rows:
                 fontcolor = row_hl_colors[y_tick_labels[i]]
                 fontsize = 'x-small'
@@ -470,8 +528,10 @@ def draw_state(bdb, table_name, generator_name, modelno,
                 zorder = 10
             else:
                 fontsize = 'x-small'
-                fontcolor = '#333333'
-                fontweight = 'light'
+                rowidx = row_idxs[i]
+                highest_row = float(len(row_labels)) - 1
+                fontcolor = '#333333' # plt.cm.Set3(rowidx / highest_row)
+                fontweight = 'normal'
                 zorder = 5
 
             ax.text(sbplt_start-1, i+.5, str(y_tick_labels[i]), ha='right',
@@ -515,11 +575,11 @@ def draw_state(bdb, table_name, generator_name, modelno,
     ax.spines['top'].set_color('white')
     ax.spines['right'].set_color('white')
     ax.spines['left'].set_color('white')
-    ax.set_yticks(range(num_rows))
+    ax.set_yticks(range(maxrows))
     ax.set_xticks(range(num_cols+num_views*border_width))
     ax.tick_params(axis='x', colors='white')
     # ax.set_xticklabels(x_tick_labels, rotation=90, color='black', fontsize=9)
-    ax.set_yticklabels(['']*num_rows)
+    ax.set_yticklabels(['']*maxrows)
     ax.tick_params(axis='y', colors='white')
     ax.grid(b=False)
     ax.set_axis_bgcolor('white')
@@ -543,14 +603,36 @@ class DrawStateUtils(object):
                 if isinstance(val, float):
                     if np.isnan(val):
                         continue
-                T[row][colno] = lookup[val]
+                # Deal with the multiple ways the value could be represented in
+                # the lookup table. XXX: Cargo-cult laziness. That this is
+                # necessary is a bug in bayeslite, crosscat, or my
+                # understanding of the related data structures.
+                translators = [id,                    # The value itself
+                               str,                   # String represntation
+                               lambda v: str(int(v))  # Rounded string
+                ]
+                translations = (f(val) for f in translators)
+                try:
+                    working_translation = next(
+                        t for t in translations if t in lookup)
+                except StopIteration:
+                    raise ValueError("Can't find %s in lookup table" % val)
+                T[row][colno] = lookup[working_translation]
 
+        out_count = 0
+        for rowidx, row in enumerate(T):
+            for colidx, cell in enumerate(row):
+                if not isinstance(cell, Number):
+                    print rowidx, colidx, cell, type(cell)
+                    out_count += 1
+                    if out_count >= 20:
+                        raise ValueError
         Tary = np.array(T)
         return Tary
 
 
     @staticmethod
-    def sort_state(X_L, X_D, M_c, T):
+    def sort_state(X_L, X_D, M_c, T, maxrows, maxcols, rng=random):
         """Sorts the metadata for visualization.
 
         Sort views from largest to smallest. W/in views, sorts columns
@@ -568,6 +650,8 @@ class DrawStateUtils(object):
         M_c : dict
             CrossCat column metadata
         T : list
+        maxviews, maxrows : int or None
+            The most views / rows to display
 
         Notes
         -----
@@ -587,57 +671,77 @@ class DrawStateUtils(object):
         sorted_rows : dict<dict<list>>
             sorted_rows[v][c] is a sorted list of rows in cluster c of view v
             from higest to lowest probability.
+        maxrows, maxcols: ints
+            How many rows & columns to display
+        rng: object which provides the variate-generation functions in the
+            random module (e.g. random.uniform, or random.Random(0).uniform)
+
         """
         num_views = len(X_L['view_state'])
+        maxrows = min(maxrows, len(X_D[0]))
 
         column_logps = get_column_probabilities(X_L, M_c)
 
         cols_by_view = [get_cols_in_view(X_L, v) for v in range(num_views)]
-        num_cols_in_view = [len(cv) for cv in cols_by_view]
-        sorted_views = [i[0] for i in sorted(enumerate(num_cols_in_view),
-                        reverse=True, key=lambda x:x[1])]
+        view_sizes = {vi: len(cols) for vi, cols in enumerate(cols_by_view)}
+        # View indices ordered by decreasing size
+        sorted_views = sorted(view_sizes, key=lambda v: -view_sizes[v])
+        # First view to exclude from this ordering to get maxcols columns
+        view_cutoff = np.cumsum([view_sizes[v] for v in sorted_views]
+                                ).searchsorted(maxcols) + 1
+        sorted_views = sorted_views[:view_cutoff]
+
+        # Random selection of rows to include in display
+        included_rows = range(len(T))
+        rng.shuffle(included_rows)
+        included_rows = set(included_rows[:maxrows])
+        print included_rows
 
         sorted_cols = {}
         sorted_rows = {}
         sorted_clusters = {}
         for view in sorted_views:
-            num_clusters = len(X_L['view_state'][view]['row_partition_model']['counts'])
+            partition_model = X_L['view_state'][view]['row_partition_model']
+            num_clusters = len(partition_model['counts'])
 
-            # get all columns in the view and sort by probability.
-            col_prob = {}
-            for col in cols_by_view[view]:
-                logp = column_logps[col]
-                # index by logp because that is how we're going to sort
-                col_prob[logp] = col
-
-            sorted_cols[view] = [col_prob[p] for p in sorted(col_prob.keys(),
-                                 reverse=True)]
+            sorted_cols[view] = sorted(  # Sort by decreasing probability
+                cols_by_view[view], key=column_logps.__getitem__, reverse=True)
 
             # sort clusters by size
             rows_by_cluster = [get_rows_in_cluster(X_D, view, clstr) for
                                clstr in range(num_clusters)]
-            num_rows_in_clstr = [len(rc) for rc in rows_by_cluster]
-            sorted_clusters[view] = [
-                i[0] for i in sorted(enumerate(num_rows_in_clstr), reverse=True,
-                                     key=lambda x:x[1])]
+            # Restrict to the rows which we've selected for display
+            rows_by_cluster = [included_rows.intersection(r)
+                               for r in rows_by_cluster]
+            # Sort by indices of clusters by decreasing size
+            clsizes = [(len(rc), ci) for ci, rc in enumerate(rows_by_cluster)]
+            sorted_clusters[view] = zip(*sorted(clsizes, reverse=True))[1]
 
             row_logps = get_row_probabilities(X_L, X_D, M_c, T, view)
             sorted_rows_view = {}
             num_rows_accounted_for = 0
+            new_cluster_list = []
             for clstr in sorted_clusters[view]:
                 rows_in_clstr = get_rows_in_cluster(X_D, view, clstr)
-                row_prob = [row_logps[row] for row in rows_in_clstr]
-                sorted_row_clstr = [rows_in_clstr[i] for
-                                    i in np.argsort(row_prob)][::-1]
-
-                assert len(rows_in_clstr) == len(sorted_row_clstr)
+                rows_in_clstr = set(rows_in_clstr).intersection(included_rows)
+                # Rows in order of decreasing probability
+                sorted_row_clstr = sorted(
+                    rows_in_clstr, key=row_logps.__getitem__,
+                    reverse=True)
+                sorted_row_clstr = sorted_row_clstr[
+                    :maxrows - num_rows_accounted_for]
 
                 num_rows_accounted_for += len(sorted_row_clstr)
                 sorted_rows_view[clstr] = sorted_row_clstr
+                new_cluster_list.append(clstr)
+                if num_rows_accounted_for == maxrows:
+                    break
 
-            assert num_rows_accounted_for == len(X_D[0])
+            assert num_rows_accounted_for == maxrows
 
             sorted_rows[view] = sorted_rows_view
+            # Trim the cluster list of clusters we didn't use
+            sorted_clusters[view] = new_cluster_list
 
         return sorted_views, sorted_clusters, sorted_cols, sorted_rows
 
@@ -688,19 +792,22 @@ class DrawStateUtils(object):
 
 
     @staticmethod
-    def gen_hilight_colors(hl_labels=None, hl_colors=None):
+    def gen_hilight_colors(hl_labels=None, hl_colors=None, rng=random):
         """Generates a hilight color lookup from labels to colors. Generates
         labels from Set1 by default.
+
+        rng: object which provides the variate-generation functions in the
+            random module (e.g. random.uniform, or random.Random(0).uniform)
+
         """
         if hl_labels is None:
             return {}
 
         hl_colors_out = {}
-        if hl_colors is None:
+        if not hl_colors:
             if len(hl_labels) > 0:
-                hl_max = float(len(hl_labels))
-                hl_colors_out = dict([(i, plt.cm.Set1(i/hl_max))
-                    for i in hl_labels])
+                hl_colors_out = dict([(i, plt.cm.Set1(rng.uniform(0, 1)))
+                                      for i in hl_labels])
         else:
             if isinstance(hl_colors, list):
                 hl_colors_out = dict(zip(hl_labels, hl_colors))
@@ -775,7 +882,7 @@ class DrawStateUtils(object):
                 continue
 
             view = column_partition[col]
-            col_cpy = np.array([[x] if x is not None else [float('NaN')]
+            col_cpy = np.array([[float(x)] if x is not None else [float('NaN')]
                                 for x in T[:, col]])
             col_cpy = col_cpy[np.isfinite(col_cpy)]
             cmin = np.min(col_cpy)
