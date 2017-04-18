@@ -14,7 +14,7 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
-import markdown2
+import markdown
 import os
 import shutil
 import shlex
@@ -67,7 +67,7 @@ def render_bql_as_html(self, argin):
     with open(bql_file) as f:
         mdstr = utils.mdread(f, output_dir, self)
 
-    html = head + markdown2.markdown(mdstr) + '</html>'
+    html = head + markdown.markdown(mdstr) + '</html>'
 
     htmlfilename = os.path.splitext(os.path.basename(bql_file))[0]
     htmlfilename = os.path.join(output_dir, htmlfilename + '.html')
